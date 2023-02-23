@@ -44,11 +44,20 @@ function tidy_media_organizer_create_table()
 add_action('admin_menu', 'tidy_media_organizer_admin_page');
 function tidy_media_organizer_admin_page()
 {
-    add_options_page(
+    add_menu_page(
         'Tidy Media Organizer',
         'Tidy Media Organizer',
         'manage_options',
         'tidy-media-organizer',
+        'tidy_media_organizer_options_page'
+    );
+
+    add_submenu_page(
+        'tidy-media-organizer',
+        'Options',
+        'Options',
+        'manage_options',
+        'tidy-media-organizer-options',
         'tidy_media_organizer_options_page'
     );
 }
@@ -125,14 +134,18 @@ if (isset($_POST['tidy_media_organizer_save'])) {
     // Retrieve current settings from database
     global $wpdb;
     $table_name = $wpdb->prefix . 'tidy_media_organizer';
+ if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") == $table_name) {
     $settings = $wpdb->get_results("SELECT * FROM $table_name");
-    $settings_arr = array();
-    foreach ($settings as $setting) {
-        $settings_arr[$setting->setting_name] = $setting->setting_value;
-    }
-    $organize_by_post_type = isset($settings_arr['organize_by_post_type']) ? $settings_arr['organize_by_post_type'] : 0;
-    $organize_by_taxonomy = isset($settings_arr['organize_by_taxonomy']) ? $settings_arr['organize_by_taxonomy'] : '';
-
+        $settings_arr = array();
+        foreach ($settings as $setting) {
+            $settings_arr[$setting->setting_name] = $setting->setting_value;
+        }
+        $organize_by_post_type = isset($settings_arr['organize_by_post_type']) ? $settings_arr['organize_by_post_type'] : 0;
+        $organize_by_taxonomy = isset($settings_arr['organize_by_taxonomy']) ? $settings_arr['organize_by_taxonomy'] : '';
+} else {
+    // Show an error message
+    echo '<div class="notice notice-error"><p><strong>Plugin issue</strong>: <code>' . $table_name . '</code> not found in database. Cannot store settings. Try reactivating the plugin.</p></div>';
+}
 
 
 
@@ -149,7 +162,10 @@ if (isset($_POST['tidy_media_organizer_save'])) {
     <div class="wrap">
         <h1>Tidy Media Organizer</h1>
 
-
+<nav class="nav-tab-wrapper">
+      <a href="?page=tidy-media-organizer-options" class="nav-tab <?php if($tab===null):?>nav-tab-active<?php endif; ?>">Options</a>
+      <a href="?page=my-plugin&tab=tools" class="nav-tab <?php if($tab==='tools'):?>nav-tab-active<?php endif; ?>">Tools</a>
+    </nav>
 
 
         <form method="post">
