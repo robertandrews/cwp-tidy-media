@@ -188,6 +188,10 @@ if (isset($_POST['tidy_media_organizer_save'])) {
                             <label>Organize by taxonomy:</label>
                         </th>
                         <td>
+                            <label style="margin: 0.35em 0 0.5em!important; display: inline-block;">
+                                <input type="radio" name="organize_by_taxonomy" value="" <?php checked($settings->taxonomy, '');?>>
+                                None
+                            </label><br>
 <?php
                             $taxonomies = get_taxonomies(array('public' => true));
                             foreach ($taxonomies as $taxonomy) {
@@ -217,6 +221,45 @@ if (isset($_POST['tidy_media_organizer_save'])) {
             </p>
         </form>
     </div>
+
+
+
+
+<script>
+// Update the planned path in real-time based on the user's selections
+function updatePlannedPath() {
+    var basedir = '<?php echo esc_js(wp_upload_dir()['basedir']); ?>';
+    var postTypeEnabled = document.querySelector('[name="organize_by_post_type"]').checked;
+    var taxonomySlug = document.querySelector('[name="organize_by_taxonomy"]:checked');
+
+    var path = basedir;
+
+    if (postTypeEnabled) {
+        path += '/{post_type}';
+    }
+
+    if (taxonomySlug && taxonomySlug.value !== '') {
+        path += '/' + taxonomySlug.value;
+    }
+
+    document.querySelector('#planned-path').innerHTML = path;
+}
+
+// Listen for changes to the form and update the planned path
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelector('[name="organize_by_post_type"]').addEventListener('change', updatePlannedPath);
+    var radioButtons = document.querySelectorAll('[name="organize_by_taxonomy"]');
+    for (var i = 0; i < radioButtons.length; i++) {
+        radioButtons[i].addEventListener('change', updatePlannedPath);
+    }
+
+    updatePlannedPath();
+});
+</script>
+
+
+
+
 <?php
 
 }
