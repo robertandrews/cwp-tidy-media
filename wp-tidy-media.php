@@ -235,12 +235,31 @@ function updatePlannedPath() {
     var path = basedir;
 
     if (postTypeEnabled) {
-        path += '/{post_type}';
+        path += '/<strong>{post_type}</strong>';
     }
 
     if (taxonomySlug && taxonomySlug.value !== '') {
-        path += '/' + taxonomySlug.value;
+        path += '/<strong>' + taxonomySlug.value+'</strong>';
     }
+
+
+    // Get the value of the 'uploads_use_yearmonth_folders' option using PHP and assign it to a JavaScript variable
+    var uploadsUseYearMonthFolders = <?php echo get_option('uploads_use_yearmonth_folders'); ?>;
+
+    // Check if the value of the 'uploads_use_yearmonth_folders' option is 1
+    if (uploadsUseYearMonthFolders === 1) {
+        // Create a new Date object with today's date
+        var today = new Date();
+        // Get the year and month from the Date object and format them as 'YYYY/MM'
+        var year = today.getFullYear();
+        var month = today.getMonth() + 1;
+        var dateFolders = year + '/' + (month < 10 ? '0' + month : month);
+    }
+    // If dateFolders exists, append it to the path
+        if (dateFolders) {
+        path += '/<strong>' + dateFolders+'</strong>';
+    }
+
 
     document.querySelector('#planned-path').innerHTML = path;
 }
