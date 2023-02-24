@@ -8,12 +8,6 @@ Author: Your Name
 Author URI: https://example.com/
  */
 
-
-
-
-
-
-
 // Create custom database table on plugin activation
 register_activation_hook(__FILE__, 'tidy_media_organizer_create_table');
 function tidy_media_organizer_create_table()
@@ -32,13 +26,6 @@ function tidy_media_organizer_create_table()
         dbDelta($sql);
     }
 }
-
-
-
-
-
-
-
 
 // Display admin page
 add_action('admin_menu', 'tidy_media_organizer_admin_page');
@@ -62,26 +49,6 @@ function tidy_media_organizer_admin_page()
     );
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 function tidy_media_organizer_options_page()
 {
     // Check if the user is authorized to access the options page
@@ -89,74 +56,49 @@ function tidy_media_organizer_options_page()
         wp_die('Unauthorized access');
     }
 
-
-
-
-
-
 // Save form data when Save button is clicked
-if (isset($_POST['tidy_media_organizer_save'])) {
-    global $wpdb;
-    $table_name = $wpdb->prefix . 'tidy_media_organizer';
+    if (isset($_POST['tidy_media_organizer_save'])) {
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'tidy_media_organizer';
 
 // Update or create settings
-    if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") == $table_name) {
-        $settings = array(
-            array('setting_name' => 'organize_by_post_type', 'setting_value' => isset($_POST['organize_by_post_type']) ? 1 : 0),
-            array('setting_name' => 'organize_by_taxonomy', 'setting_value' => isset($_POST['organize_by_taxonomy']) ? sanitize_text_field($_POST['organize_by_taxonomy']) : ''),
-        );
-        foreach ($settings as $setting) {
-            $existing_row = $wpdb->get_row("SELECT * FROM $table_name WHERE setting_name = '{$setting['setting_name']}'");
-            if ($existing_row) {
-                $wpdb->query("UPDATE $table_name SET setting_value = '{$setting['setting_value']}' WHERE setting_name = '{$setting['setting_name']}'");
-            } else {
-                $wpdb->insert($table_name, $setting);
+        if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") == $table_name) {
+            $settings = array(
+                array('setting_name' => 'organize_post_img_by_type', 'setting_value' => isset($_POST['organize_post_img_by_type']) ? 1 : 0),
+                array('setting_name' => 'organize_post_img_by_taxonomy', 'setting_value' => isset($_POST['organize_post_img_by_taxonomy']) ? sanitize_text_field($_POST['organize_post_img_by_taxonomy']) : ''),
+            );
+            foreach ($settings as $setting) {
+                $existing_row = $wpdb->get_row("SELECT * FROM $table_name WHERE setting_name = '{$setting['setting_name']}'");
+                if ($existing_row) {
+                    $wpdb->query("UPDATE $table_name SET setting_value = '{$setting['setting_value']}' WHERE setting_name = '{$setting['setting_name']}'");
+                } else {
+                    $wpdb->insert($table_name, $setting);
+                }
             }
+            echo '<div class="updated"><p><strong>Settings saved.</strong></p></div>';
+        } else {
+            // Show an error message
+            echo '<div class="notice notice-error"><p><strong>Save failed</strong>: <code>' . $table_name . '</code> not found in database. Cannot store settings. Try reactivating the plugin.</p></div>';
         }
-        echo '<div class="updated"><p><strong>Settings saved.</strong></p></div>';
-    } else {
-        // Show an error message
-        echo '<div class="notice notice-error"><p><strong>Save failed</strong>: <code>' . $table_name . '</code> not found in database. Cannot store settings. Try reactivating the plugin.</p></div>';
+
     }
-
-}
-
-
-
-
-
-
-
-
-
-
 
     // Retrieve current settings from database
     global $wpdb;
     $table_name = $wpdb->prefix . 'tidy_media_organizer';
- if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") == $table_name) {
-    $settings = $wpdb->get_results("SELECT * FROM $table_name");
+    if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") == $table_name) {
+        $settings = $wpdb->get_results("SELECT * FROM $table_name");
         $settings_arr = array();
         foreach ($settings as $setting) {
             $settings_arr[$setting->setting_name] = $setting->setting_value;
         }
-        $organize_by_post_type = isset($settings_arr['organize_by_post_type']) ? $settings_arr['organize_by_post_type'] : 0;
-        $organize_by_taxonomy = isset($settings_arr['organize_by_taxonomy']) ? $settings_arr['organize_by_taxonomy'] : '';
-} else {
-    // Show an error message
-    echo '<div class="notice notice-error"><p><strong>Plugin issue</strong>: <code>' . $table_name . '</code> not found in database. Cannot store settings. Try reactivating the plugin.</p></div>';
-}
+        $organize_post_img_by_type = isset($settings_arr['organize_post_img_by_type']) ? $settings_arr['organize_post_img_by_type'] : 0;
+        $organize_post_img_by_taxonomy = isset($settings_arr['organize_post_img_by_taxonomy']) ? $settings_arr['organize_post_img_by_taxonomy'] : '';
+    } else {
+        // Show an error message
+        echo '<div class="notice notice-error"><p><strong>Plugin issue</strong>: <code>' . $table_name . '</code> not found in database. Cannot store settings. Try reactivating the plugin.</p></div>';
+    }
 
-
-
-
-
-
-
-
-
-
-    
     // Output form HTML
     ?>
     <div class="wrap">
@@ -164,14 +106,14 @@ if (isset($_POST['tidy_media_organizer_save'])) {
 
         <?php
 //Get the active tab from the $_GET param
-$default_tab = null;
-$tab = isset($_GET['tab']) ? $_GET['tab'] : $default_tab;
-?>
+    $default_tab = null;
+    $tab = isset($_GET['tab']) ? $_GET['tab'] : $default_tab;
+    ?>
 
 
 <nav class="nav-tab-wrapper">
-      <a href="?page=tidy-media-organizer-options" class="nav-tab <?php if($tab===null):?>nav-tab-active<?php endif; ?>">Options</a>
-      <a href="?page=my-plugin&tab=tools" class="nav-tab <?php if($tab==='tools'):?>nav-tab-active<?php endif; ?>">Tools</a>
+      <a href="?page=tidy-media-organizer-options" class="nav-tab <?php if ($tab === null): ?>nav-tab-active<?php endif;?>">Options</a>
+      <a href="?page=my-plugin&tab=tools" class="nav-tab <?php if ($tab === 'tools'): ?>nav-tab-active<?php endif;?>">Tools</a>
     </nav>
 
 
@@ -191,50 +133,50 @@ $tab = isset($_GET['tab']) ? $_GET['tab'] : $default_tab;
 
                                     <tr>
                                         <th scope="row">
-                                            <label for="organize_by_post_type">Organize by post type?</label>
+                                            <label for="organize_post_img_by_type">Organize by post type?</label>
                                         </th>
                                         <td>
-                                            <input type="checkbox" name="organize_by_post_type" id="organize_by_post_type" value="1" <?php checked($organize_by_post_type, 1);?>>
+                                            <input type="checkbox" name="organize_post_img_by_type" id="organize_post_img_by_type" value="1" <?php checked($organize_post_img_by_type, 1);?>>
                                             <?php
-                                            // Show post types
-                                            $args = array(
-                                                'public' => true,
-                                                '_builtin' => false, // exclude default post types
-                                            );
-                                            $post_types = get_post_types($args);
-                                            // add back default post types 'post' and 'page'
-                                            array_push($post_types, 'post', 'page');
-                                            echo '('.implode(', ', array_map(function ($post_type) {
-                                                return '<code>' . $post_type . '</code>';
-                                            }, $post_types)).')';
-                                            ?>
+// Show post types
+    $args = array(
+        'public' => true,
+        '_builtin' => false, // exclude default post types
+    );
+    $post_types = get_post_types($args);
+    // add back default post types 'post' and 'page'
+    array_push($post_types, 'post', 'page');
+    echo '(' . implode(', ', array_map(function ($post_type) {
+        return '<code>' . $post_type . '</code>';
+    }, $post_types)) . ')';
+    ?>
                                             <p class="description">All uploads attached to posts will be housed in a corresponding folder.</strong></p>
                                         </td>
                                     </tr>
 
 
-                                    
+
                                     <tr>
                                         <th scope="row">
                                             <label>Organize by taxonomy:</label>
                                         </th>
                                         <td>
                                             <label style="margin: 0.35em 0 0.5em!important; display: inline-block;">
-                                                <input type="radio" name="organize_by_taxonomy" value="" <?php checked($organize_by_taxonomy, '');?>>
+                                                <input type="radio" name="organize_post_img_by_taxonomy" value="" <?php checked($organize_post_img_by_taxonomy, '');?>>
                                                 None
                                             </label><br>
 <?php
-                            $taxonomies = get_taxonomies(array('public' => true));
-                            foreach ($taxonomies as $taxonomy) {
-                            ?>
+$taxonomies = get_taxonomies(array('public' => true));
+    foreach ($taxonomies as $taxonomy) {
+        ?>
                                 <label style="margin: 0.35em 0 0.5em!important; display: inline-block;">
-                                    <input type="radio" name="organize_by_taxonomy" value="<?php echo esc_attr($taxonomy); ?>" <?php checked($organize_by_taxonomy, $taxonomy);?>>
+                                    <input type="radio" name="organize_post_img_by_taxonomy" value="<?php echo esc_attr($taxonomy); ?>" <?php checked($organize_post_img_by_taxonomy, $taxonomy);?>>
                                     <code><?php echo esc_html($taxonomy); ?></code>
                                 </label>
                                 <br>
                                 <?php
-                            }
-                            ?>
+}
+    ?>
 
                         </td>
                     </tr>
@@ -243,7 +185,7 @@ $tab = isset($_GET['tab']) ? $_GET['tab'] : $default_tab;
                         <th scope="row">
                             <label>Use date folders:</label>
                         </th>
-                        <td>Set in <a href="<?php echo admin_url();?>options-media.php">Media Settings</a></td>
+                        <td>Set in <a href="<?php echo admin_url(); ?>options-media.php">Media Settings</a></td>
                     </tr>
 
                     <tr>
@@ -268,8 +210,8 @@ $tab = isset($_GET['tab']) ? $_GET['tab'] : $default_tab;
 // Update the planned path in real-time based on the user's selections
 function updatePlannedPath() {
     var basedir = '<?php echo esc_js(wp_upload_dir()['basedir']); ?>';
-    var postTypeEnabled = document.querySelector('[name="organize_by_post_type"]').checked;
-    var taxonomySlug = document.querySelector('[name="organize_by_taxonomy"]:checked');
+    var postTypeEnabled = document.querySelector('[name="organize_post_img_by_type"]').checked;
+    var taxonomySlug = document.querySelector('[name="organize_post_img_by_taxonomy"]:checked');
 
     var path = basedir;
 
@@ -305,8 +247,8 @@ function updatePlannedPath() {
 
 // Listen for changes to the form and update the planned path
 document.addEventListener('DOMContentLoaded', function() {
-    document.querySelector('[name="organize_by_post_type"]').addEventListener('change', updatePlannedPath);
-    var radioButtons = document.querySelectorAll('[name="organize_by_taxonomy"]');
+    document.querySelector('[name="organize_post_img_by_type"]').addEventListener('change', updatePlannedPath);
+    var radioButtons = document.querySelectorAll('[name="organize_post_img_by_taxonomy"]');
     for (var i = 0; i < radioButtons.length; i++) {
         radioButtons[i].addEventListener('change', updatePlannedPath);
     }
