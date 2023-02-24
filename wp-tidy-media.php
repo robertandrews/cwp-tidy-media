@@ -110,12 +110,12 @@ function tidy_media_organizer_options_page()
     $tab = isset($_GET['tab']) ? $_GET['tab'] : $default_tab;
     ?>
 
-
+<!--
 <nav class="nav-tab-wrapper">
       <a href="?page=tidy-media-organizer-options" class="nav-tab <?php if ($tab === null): ?>nav-tab-active<?php endif;?>">Options</a>
       <a href="?page=my-plugin&tab=tools" class="nav-tab <?php if ($tab === 'tools'): ?>nav-tab-active<?php endif;?>">Tools</a>
     </nav>
-
+      -->
 
 <div id="poststuff">
     <div id="post-body" class="metabox-holder ">
