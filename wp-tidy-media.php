@@ -162,52 +162,67 @@ if (isset($_POST['tidy_media_organizer_save'])) {
     <div class="wrap">
         <h1>Tidy Media Organizer</h1>
 
+        <?php
+//Get the active tab from the $_GET param
+$default_tab = null;
+$tab = isset($_GET['tab']) ? $_GET['tab'] : $default_tab;
+?>
+
+
 <nav class="nav-tab-wrapper">
       <a href="?page=tidy-media-organizer-options" class="nav-tab <?php if($tab===null):?>nav-tab-active<?php endif; ?>">Options</a>
       <a href="?page=my-plugin&tab=tools" class="nav-tab <?php if($tab==='tools'):?>nav-tab-active<?php endif; ?>">Tools</a>
     </nav>
 
 
-        <form method="post">
-            <table class="form-table">
-                <tbody>
+<div id="poststuff">
+    <div id="post-body" class="metabox-holder ">
+        <div id="post-body-content">
+            <div class="meta-box-sortables ui-sortable">
+                <div class="postbox">
+  <div class="postbox-header"><h2>Post media folders</h2></div>
+                    <div class="inside">
+                        <form method="post">
+                            <table class="form-table">
+                                <tbody>
 
 
 
 
-                    <tr>
-                        <th scope="row">
-                            <label for="organize_by_post_type">Organize by post type?</label>
-                        </th>
-                        <td>
-                            <input type="checkbox" name="organize_by_post_type" id="organize_by_post_type" value="1" <?php checked($organize_by_post_type, 1);?>>
-                                <?php
-                                // Show post types
-                                $args = array(
-                                    'public' => true,
-                                    '_builtin' => false, // exclude default post types
-                                );
-                                $post_types = get_post_types($args);
-                                // add back default post types 'post' and 'page'
-                                array_push($post_types, 'post', 'page');
-                                echo '('.implode(', ', array_map(function ($post_type) {
-                                    return '<code>' . $post_type . '</code>';
-                                }, $post_types)).')';
-                                ?>
-                        </td>
-                    </tr>
+                                    <tr>
+                                        <th scope="row">
+                                            <label for="organize_by_post_type">Organize by post type?</label>
+                                        </th>
+                                        <td>
+                                            <input type="checkbox" name="organize_by_post_type" id="organize_by_post_type" value="1" <?php checked($organize_by_post_type, 1);?>>
+                                            <?php
+                                            // Show post types
+                                            $args = array(
+                                                'public' => true,
+                                                '_builtin' => false, // exclude default post types
+                                            );
+                                            $post_types = get_post_types($args);
+                                            // add back default post types 'post' and 'page'
+                                            array_push($post_types, 'post', 'page');
+                                            echo '('.implode(', ', array_map(function ($post_type) {
+                                                return '<code>' . $post_type . '</code>';
+                                            }, $post_types)).')';
+                                            ?>
+                                            <p class="description">All uploads attached to posts will be housed in a corresponding folder.</strong></p>
+                                        </td>
+                                    </tr>
 
 
-                    
-                    <tr>
-                        <th scope="row">
-                            <label>Organize by taxonomy:</label>
-                        </th>
-                        <td>
-                            <label style="margin: 0.35em 0 0.5em!important; display: inline-block;">
-                                <input type="radio" name="organize_by_taxonomy" value="" <?php checked($settings->taxonomy, '');?>>
-                                None
-                            </label><br>
+                                    
+                                    <tr>
+                                        <th scope="row">
+                                            <label>Organize by taxonomy:</label>
+                                        </th>
+                                        <td>
+                                            <label style="margin: 0.35em 0 0.5em!important; display: inline-block;">
+                                                <input type="radio" name="organize_by_taxonomy" value="" <?php checked($organize_by_taxonomy, '');?>>
+                                                None
+                                            </label><br>
 <?php
                             $taxonomies = get_taxonomies(array('public' => true));
                             foreach ($taxonomies as $taxonomy) {
@@ -226,6 +241,13 @@ if (isset($_POST['tidy_media_organizer_save'])) {
 
                     <tr>
                         <th scope="row">
+                            <label>Use date folders:</label>
+                        </th>
+                        <td>Set in <a href="<?php echo admin_url();?>options-media.php">Media Settings</a></td>
+                    </tr>
+
+                    <tr>
+                        <th scope="row">
                             <label>Preview:</label>
                         </th>
                         <td><div id="planned-path"></div></td>
@@ -236,6 +258,7 @@ if (isset($_POST['tidy_media_organizer_save'])) {
                 <input type="submit" name="tidy_media_organizer_save" class="button-primary" value="Save Changes">
             </p>
         </form>
+
     </div>
 
 
