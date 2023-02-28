@@ -8,6 +8,12 @@ Author: Your Name
 Author URI: https://example.com/
  */
 
+
+
+
+
+
+
 // Create custom database table on plugin activation
 register_activation_hook(__FILE__, 'tidy_media_organizer_create_table');
 function tidy_media_organizer_create_table()
@@ -27,6 +33,10 @@ function tidy_media_organizer_create_table()
     }
 }
 
+
+
+
+
 // Display admin page
 add_action('admin_menu', 'tidy_media_organizer_admin_page');
 function tidy_media_organizer_admin_page()
@@ -36,7 +46,7 @@ function tidy_media_organizer_admin_page()
         'Tidy Media Organizer',
         'manage_options',
         'tidy-media-organizer',
-        'tidy_media_organizer_options_page'
+        'tidy_media_organizer_main_page'
     );
 
     add_submenu_page(
@@ -48,6 +58,44 @@ function tidy_media_organizer_admin_page()
         'tidy_media_organizer_options_page'
     );
 }
+
+
+
+
+
+
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+
+
+
+
+
+
+
+function tidy_media_organizer_main_page()
+{ ?>
+
+<div class="wrap">
+    <h1>Tidy Media Organizer</h1>
+</div>
+
+<?php }
+
+
+
+
+
+
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+
+
+
+
+
 
 function tidy_media_organizer_options_page()
 {
@@ -101,43 +149,51 @@ function tidy_media_organizer_options_page()
 
     // Output form HTML
     ?>
-    <div class="wrap">
-        <h1>Tidy Media Organizer</h1>
+<div class="wrap">
+    <h1>Tidy Media Organizer</h1>
 
-        <?php
+    <?php
 //Get the active tab from the $_GET param
     $default_tab = null;
     $tab = isset($_GET['tab']) ? $_GET['tab'] : $default_tab;
     ?>
 
-<!--
+    <!--
 <nav class="nav-tab-wrapper">
       <a href="?page=tidy-media-organizer-options" class="nav-tab <?php if ($tab === null): ?>nav-tab-active<?php endif;?>">Options</a>
       <a href="?page=my-plugin&tab=tools" class="nav-tab <?php if ($tab === 'tools'): ?>nav-tab-active<?php endif;?>">Tools</a>
     </nav>
       -->
 
-<div id="poststuff">
-    <div id="post-body" class="metabox-holder ">
-        <div id="post-body-content">
-            <div class="meta-box-sortables ui-sortable">
-                <div class="postbox">
-  <div class="postbox-header"><h2>Post media folders</h2></div>
-                    <div class="inside">
-                        <form method="post">
-                            <table class="form-table">
-                                <tbody>
+
+
+
+    <form method="post">
+        <div id="poststuff">
+            <div id="post-body" class="metabox-holder ">
+                <div id="post-body-content">
+                    <div class="meta-box-sortables ui-sortable">
+                        <div class="postbox">
+                            <div class="postbox-header">
+                                <h2>Post media folders</h2>
+                            </div>
+                            <div class="inside">
+
+                                <table class="form-table">
+                                    <tbody>
 
 
 
 
-                                    <tr>
-                                        <th scope="row">
-                                            <label for="organize_post_img_by_type">Organize by post type?</label>
-                                        </th>
-                                        <td>
-                                            <input type="checkbox" name="organize_post_img_by_type" id="organize_post_img_by_type" value="1" <?php checked($organize_post_img_by_type, 1);?>>
-                                            <?php
+                                        <tr>
+                                            <th scope="row">
+                                                <label for="organize_post_img_by_type">Organize by post type?</label>
+                                            </th>
+                                            <td>
+                                                <input type="checkbox" name="organize_post_img_by_type"
+                                                    id="organize_post_img_by_type" value="1"
+                                                    <?php checked($organize_post_img_by_type, 1);?>>
+                                                <?php
 // Show post types
     $args = array(
         'public' => true,
@@ -150,117 +206,240 @@ function tidy_media_organizer_options_page()
         return '<code>' . $post_type . '</code>';
     }, $post_types)) . ')';
     ?>
-                                            <p class="description">All uploads attached to posts will be housed in a corresponding folder.</strong></p>
-                                        </td>
-                                    </tr>
+                                                <p class="description">All uploads attached to posts will be housed in a
+                                                    corresponding folder.</strong></p>
+                                            </td>
+                                        </tr>
 
 
 
-                                    <tr>
-                                        <th scope="row">
-                                            <label>Organize by taxonomy:</label>
-                                        </th>
-                                        <td>
-                                            <label style="margin: 0.35em 0 0.5em!important; display: inline-block;">
-                                                <input type="radio" name="organize_post_img_by_taxonomy" value="" <?php checked($organize_post_img_by_taxonomy, '');?>>
-                                                None
-                                            </label><br>
-<?php
+                                        <tr>
+                                            <th scope="row">
+                                                <label>Organize by taxonomy:</label>
+                                            </th>
+                                            <td>
+                                                <label style="margin: 0.35em 0 0.5em!important; display: inline-block;">
+                                                    <input type="radio" name="organize_post_img_by_taxonomy" value=""
+                                                        <?php checked($organize_post_img_by_taxonomy, '');?>>
+                                                    None
+                                                </label><br>
+                                                <?php
 $taxonomies = get_taxonomies(array('public' => true));
     foreach ($taxonomies as $taxonomy) {
         ?>
-                                <label style="margin: 0.35em 0 0.5em!important; display: inline-block;">
-                                    <input type="radio" name="organize_post_img_by_taxonomy" value="<?php echo esc_attr($taxonomy); ?>" <?php checked($organize_post_img_by_taxonomy, $taxonomy);?>>
-                                    <code><?php echo esc_html($taxonomy); ?></code>
-                                </label>
-                                <br>
-                                <?php
+                                                <label style="margin: 0.35em 0 0.5em!important; display: inline-block;">
+                                                    <input type="radio" name="organize_post_img_by_taxonomy"
+                                                        value="<?php echo esc_attr($taxonomy); ?>"
+                                                        <?php checked($organize_post_img_by_taxonomy, $taxonomy);?>>
+                                                    <code><?php echo esc_html($taxonomy); ?></code>
+                                                </label>
+                                                <br>
+                                                <?php
 }
     ?>
 
-                        </td>
-                    </tr>
+                                            </td>
+                                        </tr>
 
-                    <tr>
-                        <th scope="row">
-                            <label>Use date folders:</label>
-                        </th>
-                        <td>Set in <a href="<?php echo admin_url(); ?>options-media.php">Media Settings</a></td>
-                    </tr>
+                                        <tr>
+                                            <th scope="row">
+                                                <label>Use date folders:</label>
+                                            </th>
+                                            <td>Set in <a href="<?php echo admin_url(); ?>options-media.php">Media
+                                                    Settings</a></td>
+                                        </tr>
 
-                    <tr>
-                        <th scope="row">
-                            <label>Preview:</label>
-                        </th>
-                        <td><div id="planned-path"></div></td>
-                    </tr>
-                </tbody>
-            </table>
-            <p class="submit">
-                <input type="submit" name="tidy_media_organizer_save" class="button-primary" value="Save Changes">
-            </p>
-        </form>
-
-    </div>
+                                        <tr>
+                                            <th scope="row">
+                                                <label>Preview:</label>
+                                            </th>
+                                            <td>
+                                                <div id="planned-path"></div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
 
 
+                            </div>
+                        </div>
+
+                        <p class="submit">
+                            <input type="submit" name="tidy_media_organizer_save" class="button-primary"
+                                value="Save Changes">
+                        </p>
+    </form>
+
+    <script>
+    // Update the planned path in real-time based on the user's selections
+    function updatePlannedPath() {
+        var basedir = '<?php echo esc_js(wp_upload_dir()['basedir']); ?>';
+        var postTypeEnabled = document.querySelector('[name="organize_post_img_by_type"]').checked;
+        var taxonomySlug = document.querySelector('[name="organize_post_img_by_taxonomy"]:checked');
+
+        var path = basedir;
+
+        if (postTypeEnabled) {
+            path += '/<strong>{post_type}</strong>';
+        }
+
+        if (taxonomySlug && taxonomySlug.value !== '') {
+            path += '/<strong>' + taxonomySlug.value + '</strong>';
+        }
 
 
-<script>
-// Update the planned path in real-time based on the user's selections
-function updatePlannedPath() {
-    var basedir = '<?php echo esc_js(wp_upload_dir()['basedir']); ?>';
-    var postTypeEnabled = document.querySelector('[name="organize_post_img_by_type"]').checked;
-    var taxonomySlug = document.querySelector('[name="organize_post_img_by_taxonomy"]:checked');
+        // Get the value of the 'uploads_use_yearmonth_folders' option using PHP and assign it to a JavaScript variable
+        var uploadsUseYearMonthFolders = <?php echo get_option('uploads_use_yearmonth_folders'); ?>;
 
-    var path = basedir;
-
-    if (postTypeEnabled) {
-        path += '/<strong>{post_type}</strong>';
-    }
-
-    if (taxonomySlug && taxonomySlug.value !== '') {
-        path += '/<strong>' + taxonomySlug.value+'</strong>';
-    }
-
-
-    // Get the value of the 'uploads_use_yearmonth_folders' option using PHP and assign it to a JavaScript variable
-    var uploadsUseYearMonthFolders = <?php echo get_option('uploads_use_yearmonth_folders'); ?>;
-
-    // Check if the value of the 'uploads_use_yearmonth_folders' option is 1
-    if (uploadsUseYearMonthFolders === 1) {
-        // Create a new Date object with today's date
-        var today = new Date();
-        // Get the year and month from the Date object and format them as 'YYYY/MM'
-        var year = today.getFullYear();
-        var month = today.getMonth() + 1;
-        var dateFolders = year + '/' + (month < 10 ? '0' + month : month);
-    }
-    // If dateFolders exists, append it to the path
+        // Check if the value of the 'uploads_use_yearmonth_folders' option is 1
+        if (uploadsUseYearMonthFolders === 1) {
+            // Create a new Date object with today's date
+            var today = new Date();
+            // Get the year and month from the Date object and format them as 'YYYY/MM'
+            var year = today.getFullYear();
+            var month = today.getMonth() + 1;
+            var dateFolders = year + '/' + (month < 10 ? '0' + month : month);
+        }
+        // If dateFolders exists, append it to the path
         if (dateFolders) {
-        path += '/<strong>' + dateFolders+'</strong>';
+            path += '/<strong>' + dateFolders + '</strong>';
+        }
+
+
+        document.querySelector('#planned-path').innerHTML = path;
+    }
+
+    // Listen for changes to the form and update the planned path
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelector('[name="organize_post_img_by_type"]').addEventListener('change',
+            updatePlannedPath);
+        var radioButtons = document.querySelectorAll('[name="organize_post_img_by_taxonomy"]');
+        for (var i = 0; i < radioButtons.length; i++) {
+            radioButtons[i].addEventListener('change', updatePlannedPath);
+        }
+
+        updatePlannedPath();
+    });
+    </script>
+
+
+
+
+    <?php
+
+}
+
+
+
+
+
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+
+
+
+
+
+// Hook the 'get_saved_post_attachments' function to the 'save_post' action
+add_action('save_post', 'get_saved_post_attachments', 10, 1);
+
+function get_saved_post_attachments($post_id) {
+    echo 'Post was saved!<br>';
+    echo 'post_id is '. $post_id.'<br>';
+
+    $preferred_path = get_preferred_post_img_path($post_id);
+    echo '<span style="color:green">Preferred img path is '.$preferred_path.'</span><br>';
+
+    $post_attachments = get_attached_media('', $post_id);
+    // var_dump($post_attachments);
+
+    if ($post_attachments) {
+        foreach ($post_attachments as $post_attachment) {
+            echo $post_attachment->ID;
+            $attachment_path = get_attached_file($post_attachment->ID);
+            $existing_path = dirname($attachment_path);
+            echo '<span style="color:red">Attachment directory: ' . $existing_path . '</span><br>';
+
+            if ($existing_path === $preferred_path) {
+                echo 'That\'s the same 😄';
+                // Do nothing
+            } else {
+                echo 'That\'s different! 🤬';
+                move_attachment_file($post_attachment->ID, $existing_path, $preferred_path);
+            }
+
+        }
+    } else {
+        echo 'No attachments?!';
     }
 
 
-    document.querySelector('#planned-path').innerHTML = path;
 }
 
-// Listen for changes to the form and update the planned path
-document.addEventListener('DOMContentLoaded', function() {
-    document.querySelector('[name="organize_post_img_by_type"]').addEventListener('change', updatePlannedPath);
-    var radioButtons = document.querySelectorAll('[name="organize_post_img_by_taxonomy"]');
-    for (var i = 0; i < radioButtons.length; i++) {
-        radioButtons[i].addEventListener('change', updatePlannedPath);
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+
+
+function get_preferred_post_img_path($post_id) {
+
+    // Retrieve current settings from database
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'tidy_media_organizer';
+    if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") == $table_name) {
+        $settings = $wpdb->get_results("SELECT * FROM $table_name");
+        $settings_arr = array();
+        foreach ($settings as $setting) {
+            $settings_arr[$setting->setting_name] = $setting->setting_value;
+        }
+        $organize_post_img_by_type = isset($settings_arr['organize_post_img_by_type']) ? $settings_arr['organize_post_img_by_type'] : 0;
+        $organize_post_img_by_taxonomy = isset($settings_arr['organize_post_img_by_taxonomy']) ? $settings_arr['organize_post_img_by_taxonomy'] : '';
     }
+    // TODO: Add error handling
 
-    updatePlannedPath();
-});
-</script>
+    // Build preferred file path...
+    // Start out with just /wp-content/uploads
+    $basedir = wp_upload_dir()['basedir'];
+    // $preferred_path = $basedir;
+    // Add post type?
+    if ($organize_post_img_by_type == 1) {
+        $post_type = get_post_type($post_id);
+        $preferred_path .= '/'.$post_type;
+    }
+    // Add taxonomy name?
+    if ($organize_post_img_by_taxonomy != '') {
+        $preferred_path .= '/' . $organize_post_img_by_taxonomy;
+        $post_terms = get_the_terms($post_id, $organize_post_img_by_taxonomy);
+        // print_r($post_terms);
+        $preferred_path .= '/'.$post_terms[0]->slug;
+    }
+    // Date folders?
+    $wp_use_date_folders = get_option('uploads_use_yearmonth_folders');
+    if ($wp_use_date_folders == 1) {
+        $post_date = get_post_field('post_date', $post_id);
+        $formatted_date = date('Y/m', strtotime($post_date));
+        $preferred_path .= '/' . $formatted_date;
+    }
+    return $preferred_path;
+}
 
 
 
 
-<?php
+function move_attachment_file($attachment_id, $existing_path, $preferred_path) {
+
+    echo 'In move function now.<br>';
+    echo 'attachment is '. $attachment_id.'<br>';
+    echo 'existing path is '. $existing_path.'<br>';
+    echo 'so, existing subfolder would be '. str_replace(wp_upload_dir()['basedir'], '', $existing_path).'<br>';
+    echo 'preferred path is ' . $preferred_path.'<br>';
+
+    // to write
+
 
 }
+
+
+
+
 ?>
