@@ -345,35 +345,43 @@ $taxonomies = get_taxonomies(array('public' => true));
 add_action('save_post', 'get_saved_post_attachments', 10, 1);
 
 function get_saved_post_attachments($post_id) {
-    echo 'Post was saved!<br>';
-    echo 'post_id is '. $post_id.'<br>';
 
-    $preferred_path = get_preferred_post_img_path($post_id);
-    echo '<span style="color:green">Preferred img path is '.$preferred_path.'</span><br>';
+    if ( ! wp_is_post_revision( $post_id ) ) {
 
-    $post_attachments = get_attached_media('', $post_id);
-    // var_dump($post_attachments);
 
-    if ($post_attachments) {
-        foreach ($post_attachments as $post_attachment) {
-            echo $post_attachment->ID;
-            $attachment_path = get_attached_file($post_attachment->ID);
-            $existing_path = dirname($attachment_path);
-            echo '<span style="color:red">Attachment directory: ' . $existing_path . '</span><br>';
+        /*
+        echo '<mark>Fired</mark>';
+        echo 'Post was saved!<br>';
+        echo 'post_id is '. $post_id.'<br><hr>';
+        */
 
-            if ($existing_path === $preferred_path) {
-                echo 'That\'s the same 😄';
-                // Do nothing
-            } else {
-                echo 'That\'s different! 🤬';
-                move_attachment_file($post_attachment->ID, $existing_path, $preferred_path);
+        $preferred_path = get_preferred_post_img_path($post_id);
+        // echo '<span style="color:green">Preferred img path is '.$preferred_path.'</span><br>';
+
+        $post_attachments = get_attached_media('', $post_id);
+        // var_dump($post_attachments);
+        // echo 'Number of post attachments: <mark>'. count($post_attachments).'</mark><br>';
+
+        if ($post_attachments) {
+            foreach ($post_attachments as $post_attachment) {
+                // echo 'doing attachment '.$post_attachment->ID.'<br><hr>';
+                $attachment_path = get_attached_file($post_attachment->ID);
+                $existing_path = dirname($attachment_path);
+                // echo '<span style="color:red">Attachment directory: ' . $existing_path . '</span><br>';
+
+                if ($existing_path === $preferred_path) {
+                    // echo 'That\'s the same 😄';
+                    // Do nothing
+                } else {
+                    // echo 'That\'s different! 🤬';
+                    move_attachment_file($post_attachment->ID, $existing_path, $preferred_path);
+                }
             }
-
+        } else {
+            echo 'No attachments?!';
         }
-    } else {
-        echo 'No attachments?!';
-    }
 
+    }
 
 }
 
@@ -401,6 +409,7 @@ function get_preferred_post_img_path($post_id) {
     // Start out with just /wp-content/uploads
     $basedir = wp_upload_dir()['basedir'];
     // $preferred_path = $basedir;
+    $preferred_path = '';
     // Add post type?
     if ($organize_post_img_by_type == 1) {
         $post_type = get_post_type($post_id);
@@ -410,7 +419,14 @@ function get_preferred_post_img_path($post_id) {
     if ($organize_post_img_by_taxonomy != '') {
         $preferred_path .= '/' . $organize_post_img_by_taxonomy;
         $post_terms = get_the_terms($post_id, $organize_post_img_by_taxonomy);
-        // print_r($post_terms);
+        /*
+        echo "=====<br>\n";
+        echo "these are the post_terms:<br>\n";
+        print_r($post_terms);
+        echo "=====<br>\n";
+        echo "preferred path:<br>\n";
+        echo $preferred_path;
+        */
         $preferred_path .= '/'.$post_terms[0]->slug;
     }
     // Date folders?
@@ -428,13 +444,204 @@ function get_preferred_post_img_path($post_id) {
 
 function move_attachment_file($attachment_id, $existing_path, $preferred_path) {
 
+    /*
     echo 'In move function now.<br>';
     echo 'attachment is '. $attachment_id.'<br>';
     echo 'existing path is '. $existing_path.'<br>';
     echo 'so, existing subfolder would be '. str_replace(wp_upload_dir()['basedir'], '', $existing_path).'<br>';
     echo 'preferred path is ' . $preferred_path.'<br>';
+    */
 
-    // to write
+
+    /*
+    * This code must update upto three images or sets of images:
+    * 1. A scaled-down, big-file original (filename-scaled.jpeg)
+    * 2. Multiple, smaller thumbnail sizes
+    * 3. The original (potentially, a big file)
+    *
+    * The process involves:
+    * A. Moving the files for each
+    * B. Updating metadata in either wp_postmeta or wp_posts, depending on the file and on the metadata
+    */
+
+    /*
+    * Existing location
+    */
+    // Set the ID of the attachment to move
+    // $attachment_id = 156870;
+    // Get the attachment metadata
+    $attachment_metadata = wp_get_attachment_metadata($attachment_id);
+    // Get old subfolder part
+    $old_subfolder = dirname($attachment_metadata['file']);
+
+    /*
+    * Set the scene
+    */
+    // Get the WordPress uploads directory path
+    $uploads_dir = wp_upload_dir();
+    $uploads_dir_path = $uploads_dir['basedir']; // eg. /Users/robert/Sites/context.local/wp-content/uploads
+
+    /*
+    * New location
+    */
+    // Set the name of the new sub-folder to move the files to
+    $new_subfolder = $preferred_path;
+    // Generate the new sub-folder path based on the WordPress uploads directory
+    $new_file_dir = $uploads_dir_path . trailingslashit($new_subfolder); // eg. /Users/robert/Sites/context.local/wp-content/uploads/new-subfolder/
+
+    if ($attachment_metadata) {
+
+        /* * * * * * * * * * * * * * * * * * * * *
+        *
+        *      MOVE IMAGES
+        *
+        /* * * * * * * * * * * * * * * * * * * * */
+
+        // Get the current file path of the attachment
+        $current_file = get_attached_file($attachment_id); // eg. /Users/robert/Sites/context.local/wp-content/uploads/2023/02/sgalagaev-5iSCtrJX5o-unsplash-scaled.jpeg
+
+        /*
+        * Make new subfolder
+        */
+        // Create the new sub-folder if it doesn't exist
+        if (!file_exists($new_file_dir)) {
+            wp_mkdir_p($new_file_dir);
+        }
+
+        /*
+        * 1. Main image
+        */
+        // echo '<br>new_file: '.$new_file_dir.'<br>';
+        // Generate the new file path for the attachment based on the new sub-folder
+        $new_file = $new_file_dir . basename($current_file); // eg. /Users/robert/Sites/context.local/wp-content/uploads/new-subfolder/sgalagaev-5iSCtrJX5o-unsplash-scaled.jpeg
+        // Move the files to the new sub-folder
+        // echo '<br>current: '.$current_file.'<br>';
+        // echo 'new: ' . $new_file . '<br>';
+
+        $result = rename($current_file, $new_file);
+
+        if ($result) {
+
+            /*
+            * 2. Sized images
+            */
+            foreach ($attachment_metadata['sizes'] as $size => $data) {
+                // Get the current file path of the size variant
+                $current_size_file = trailingslashit(dirname($current_file)) . $data['file'];
+                // Generate the new file path for the size variant based on the new sub-folder
+                $new_size_file = $new_file_dir . $data['file'];
+                // Move the size variant to the new sub-folder
+                $result = rename($current_size_file, $new_size_file);
+                /*
+            if ($result) {
+            // Update the attachment metadata with the new file path for the size variant
+            // TODO: This is a needless str_replace, as 'file' for sized images appears to only be the filename
+            $attachment_metadata['sizes'][$size]['file'] = str_replace($old_subfolder, $new_subfolder, $data['file']);
+            } else {
+            // Handle error case
+            error_log('Error moving file: ' . $error['message']);
+            }
+            */
+            }
+
+            /*
+            * 3. Original image (ie. not filename-scaled.jpeg)
+            */
+            // a. In wp_postmeta value "_wp_attachment_metadata" (a serialised array), [original_image] carries no subfolder, only image name - no update required there.
+            // b. However, the original file should be moved.
+            if (isset($attachment_metadata['original_image'])) {
+                $current_original_file = trailingslashit($uploads_dir_path) . trailingslashit($old_subfolder) . $attachment_metadata['original_image'];
+                // echo $current_original_file ."\n";
+                $new_original_file = trailingslashit($uploads_dir_path) . trailingslashit($new_subfolder) . $attachment_metadata['original_image'];
+                // echo $new_original_file;
+                if (file_exists($current_original_file)) {
+                    $result = rename($current_original_file, $new_original_file);
+                    if (!$result) {
+                        echo "Error moving original file.";
+                    }
+                } else {
+                    echo "Original file does not exist.";
+                }
+            } else {
+                echo "[original_image] not found";
+            }
+
+            /* * * * * * * * * * * * * * * * * * * * *
+            *
+            *     UPDATE DATABASE
+            *
+            /* * * * * * * * * * * * * * * * * * * * */
+
+            /*
+            * A. wp_postmeta: "_wp_attached_file" (with 1. Main image)
+            * - If [original_image], then it's "2023/02/myfile-scaled.jpeg"
+            * - If no [original_image], then it's "2023/02/myfile.jpeg"
+            * This is determined automatically (?)
+            */
+            // Check if the file exists
+            if (file_exists($new_file)) {
+                /*
+                // Update the attachment meta data in the WordPress database
+                $new_location_partial = trailingslashit($new_subfolder) . basename($current_file);
+                update_post_meta($attachment_id, '_wp_attached_file', $new_location_partial);
+                */
+                // Update the attachment meta data in the WordPress database
+                $new_location_partial = trailingslashit($new_subfolder) . basename($current_file);
+                $att_location_without_leading_slash = ltrim($new_location_partial, '/');
+                // remove_action('save_post', 'move_attachment_file');
+                update_post_meta($attachment_id, '_wp_attached_file', $att_location_without_leading_slash);
+                // add_action('save_post', 'move_attachment_file');
+
+
+            } else {
+                // File doesn't exist, show an error message
+                echo "The specified file does not exist.";
+            }
+
+            /*
+            * B. wp_postmeta: "_wp_attachment_metadata" (serialised array)
+            */
+            // Update the attachment metadata with the new file path for the original file
+            $file_value_without_leading_slash = ltrim($new_subfolder, '/');
+            $attachment_metadata['file'] = str_replace(
+                $old_subfolder, // eg. /Users/robert/Sites/context.local/wp-content/uploads
+                $file_value_without_leading_slash, // eg. /Users/robert/Sites/context.local/wp-content/uploads/new-subfolder/
+                $attachment_metadata['file']
+            );
+            wp_update_attachment_metadata($attachment_id, $attachment_metadata);
+
+            // c. wp_posts: "guid"
+            // - If [original_image] (big size upload), then it is "http://context.local:8888/wp-content/uploads/2023/02/letters-scaled.jpeg")
+            // - If no [original_image] (no big size), then it is "http://context.local:8888/wp-content/uploads/2023/02/letters.jpeg")
+            // Regardless, isn't it always the value of [file]?
+            // guid is simply a unique identifier. Most people advise not to change.
+            // However, newly-uploaded images, at the least, benefit from being accurately represented.
+            $new_guid = trailingslashit($uploads_dir['baseurl']) . $attachment_metadata['file'];
+            // echo "new guid: ".$new_guid . "\n";
+            // Update the GUID value in the database
+            global $wpdb;
+            $table_name = $wpdb->prefix . 'posts';
+            $data = array('guid' => $new_guid);
+            $where = array('ID' => $attachment_id);
+            $result = $wpdb->update($table_name, $data, $where);
+
+            // Check if the update was successful
+            if ($result === false) {
+                // Error handling
+            } elseif ($result === 0) {
+                // No rows were updated
+            } else {
+                // The GUID was updated successfully
+            }
+
+        } else {
+            // Handle error case
+            echo 'Could not move main image.';
+        }
+    }
+
+
+
 
 
 }
