@@ -96,24 +96,16 @@ add_action('admin_menu', 'tidy_media_organizer_admin_page');
  *
  * @return void
  */
-function tidy_media_organizer_main_page()
-{
-    ?>
-    <div class="wrap">
-        <h1>Tidy Media Organizer</h1>
-    </div>
-    <?php
-}
+function tidy_media_organizer_main_page()   { ?>
+<div class="wrap">
+    <h1>Tidy Media Organizer</h1>
+</div>
+<?php }
 
 
 
 
-?>
 
-
-
-
-<?php
 
 /**
  * Admin Options Page.
@@ -359,63 +351,137 @@ function tidy_media_organizer_options_page()
 
 
 
+/**
+ * Catch Saved Posts.
+ * 
+ * This function is triggered when a post is saved in WordPress. It checks whether the post is not a revision
+ * and then proceeds to call the tidy_post_attachments function, passing in the post ID as a parameter.
+ * 
+ * @param int $post_id The ID of the post being saved.
+ * @return void
+ */
+function do_saved_post($post_id) {
+    if ( ! wp_is_post_revision( $post_id ) ) {
+        tidy_post_attachments($post_id);
+    }
+}
+add_action('save_post', 'do_saved_post', 10, 1);
+
+
+
+
 
 
 /**
- * Saved Post Checker.
+ * Tidy Post Attachments.
  * 
- * Retrieves saved post attachments and moves them to the preferred directory if needed.
+ * This main function is responsible for tidying up post attachments after a post is saved in WordPress. It retrieves all
+ * the attachments related to the post, and checks if they are located in the preferred path. If an attachment is found
+ * in a non-preferred path, it will be moved to the preferred path.
  * 
- * @param int $post_id The ID of the post to retrieve attachments from.
- * 
- * @return void
+ * @param int $post_id The ID of the post to tidy up its attachments.
+ * @return boolean Returns false if no attachments are found, or if any errors occur during the attachment move process.
  */
+function tidy_post_attachments($post_id) {
 
-function get_saved_post_attachments($post_id) {
+    $post_attachments = get_saved_post_attachments($post_id);
+    $preferred_path = get_preferred_post_img_path($post_id);
 
-    if ( ! wp_is_post_revision( $post_id ) ) {
-
-        echo 'Post was saved!<br>';
-        echo 'post_id is '. $post_id.'<br><hr>';
-
-        $preferred_path = get_preferred_post_img_path($post_id);
-        // echo '<span style="color:green">Preferred img path is '.$preferred_path.'</span><br>';
-
-        $post_attachments = get_attached_media('', $post_id);
-        // var_dump($post_attachments);
-        echo 'Number of post attachments: <mark>'. count($post_attachments).'</mark><br>';
-
-        if ($post_attachments) {
-            foreach ($post_attachments as $post_attachment) {
-                // echo 'doing attachment '.$post_attachment->ID.'<br><hr>';
-                $attachment_path = get_attached_file($post_attachment->ID);
-                $existing_path = dirname($attachment_path);
-                echo '<span style="color:red">Existing path: ' . $existing_path . '</span><br>';
-                echo '<span style="color:green">Preferred path: ' . wp_upload_dir()['basedir'].$preferred_path . '</span><br>';
-
-                if ($existing_path === wp_upload_dir()['basedir'].$preferred_path) {
-                    // echo 'That\'s the same 😄';
-                    // Do nothing
-                    echo '<br><span style="color:blue">Doing nothing</span><br>';
-                    my_trigger_notice(3);
-                } else {
-                    // echo 'That\'s different! 🤬';
-                    move_attachment_file($post_attachment->ID, $existing_path, $preferred_path);
-                    echo '<br><span style="color:orange">Doing move_attachment_file</span><br>';
-
-
-                }
+    if ($post_attachments) {
+        foreach ($post_attachments as $post_attachment) {
+            $existing_path = get_existing_post_img_path($post_attachment);
+            $move_post_check = check_media_for_move($post_attachment, $existing_path, $preferred_path);
+            if ($move_post_check == true) {
+                // echo 'do the move';
+                move_media_file($post_attachment->ID, $existing_path, $preferred_path);
+            } else {
+                // echo 'no move';
             }
-        } else {
-            echo 'No attachments?!';
         }
-
+    } else {
+        // echo 'No attachments?!';
+        return false;
     }
 
 }
-add_action('save_post', 'get_saved_post_attachments', 10, 1);
 
 
+
+
+
+/**
+ * Get Post Attachments.
+ * 
+ * Retrieves saved post attachments.
+ * 
+ * @param int $post_id The ID of the post to retrieve attachments from.
+ * @return void
+ */
+function get_saved_post_attachments($post_id) {
+
+    $post_attachments = get_attached_media('', $post_id);
+    // echo 'Number of post attachments: <mark>'. count($post_attachments).'</mark><br>';
+
+    return $post_attachments;
+}
+
+
+
+/**
+ * Check Media For Move.
+ * 
+ * This function is responsible for checking whether a given media attachment should be moved from its existing path to a
+ * preferred path. It first formulates the full path of the preferred path, and then compares it to the existing path. If
+ * the two paths are identical, the function does nothing. Otherwise, it returns true, indicating that the media attachment
+ * should be moved.
+ * 
+ * @param object $post_attachment The attachment object to check for a move.
+ * @param string $existing_path The current path of the attachment.
+ * @param string $preferred_path The preferred path of the attachment.
+ * @return boolean Returns true if the attachment should be moved, false otherwise.
+ */
+function check_media_for_move($post_attachment, $existing_path, $preferred_path) {
+
+    // 2. New path: formulate full path
+    // echo '<span style="color:green">Preferred img path is '.$preferred_path.'</span><br>';
+    // echo '<span style="color:green">Preferred path: ' . wp_upload_dir()['basedir'] . $preferred_path . '</span><br>';
+
+    // 3. Compare existing and new paths
+    if ($existing_path === wp_upload_dir()['basedir'] . $preferred_path) {
+        // echo 'That\'s the same 😄';
+        // Do nothing
+        // echo '<br><span style="color:blue">Doing nothing</span><br>';
+
+            my_trigger_notice(3);
+
+        return false;
+    } else {
+        // echo 'That\'s different! 🤬';
+        return true;
+
+    }
+}
+
+
+
+/**
+ * Get Image's Existing Path.
+ * 
+ * This function is responsible for retrieving the existing path of a given post attachment. It first retrieves the
+ * attachment file path using the get_attached_file function, and then returns the directory name of the path using
+ * the dirname function.
+ * 
+ * @param object $post_attachment The attachment object to retrieve the existing path for.
+ * @return string Returns the existing path of the attachment.
+ */
+function get_existing_post_img_path($post_attachment) {
+    // 1. Existing path: find it
+    $attachment_path = get_attached_file($post_attachment->ID);
+    $existing_path = dirname($attachment_path);
+    // echo '<span style="color:red">Existing path foo: ' . $existing_path . '</span><br>';
+
+    return $existing_path;
+}
 
 
 
@@ -444,39 +510,33 @@ function get_preferred_post_img_path($post_id) {
         $organize_post_img_by_type = isset($settings_arr['organize_post_img_by_type']) ? $settings_arr['organize_post_img_by_type'] : 0;
         $organize_post_img_by_taxonomy = isset($settings_arr['organize_post_img_by_taxonomy']) ? $settings_arr['organize_post_img_by_taxonomy'] : '';
     }
-    // TODO: Add error handling
 
     // Build preferred file path...
-    // Start out with just /wp-content/uploads
+    // a. Start out with just /wp-content/uploads
     $basedir = wp_upload_dir()['basedir'];
     // $preferred_path = $basedir;
     $preferred_path = '';
-    // Add post type?
+    // b. Add post type?
     if ($organize_post_img_by_type == 1) {
         $post_type = get_post_type($post_id);
         $preferred_path .= '/'.$post_type;
     }
-    // Add taxonomy name?
+    // c. Add taxonomy name?
     if ($organize_post_img_by_taxonomy != '') {
         $preferred_path .= '/' . $organize_post_img_by_taxonomy;
         $post_terms = get_the_terms($post_id, $organize_post_img_by_taxonomy);
-        /*
-        echo "=====<br>\n";
-        echo "these are the post_terms:<br>\n";
-        print_r($post_terms);
-        echo "=====<br>\n";
-        echo "preferred path:<br>\n";
-        echo $preferred_path;
-        */
-        $preferred_path .= '/'.$post_terms[0]->slug;
+        // echo '<mark>post terms:</mark><br>';
+        // print_r($post_terms);
+        $preferred_path .= '/' . $post_terms[0]->slug;
     }
-    // Date folders?
+    // d. Date folders?
     $wp_use_date_folders = get_option('uploads_use_yearmonth_folders');
     if ($wp_use_date_folders == 1) {
         $post_date = get_post_field('post_date', $post_id);
         $formatted_date = date('Y/m', strtotime($post_date));
         $preferred_path .= '/' . $formatted_date;
     }
+    // Return short preferred path, not inc basedir
     return $preferred_path;
 }
 
@@ -486,27 +546,24 @@ function get_preferred_post_img_path($post_id) {
 
 
 /**
- * Main Attachment Mover.
+ * Move Media File
  * 
  * Move an attachment file from one directory to another and update metadata accordingly.
  * 
  * @param int $attachment_id The ID of the attachment to move.
- * 
  * @param string $existing_path The current path of the attachment file.
- * 
  * @param string $preferred_path The preferred path of the attachment file.
- * 
  * @return void
  */
-function move_attachment_file($attachment_id, $existing_path, $preferred_path) {
+function move_media_file($attachment_id, $existing_path, $preferred_path) {
 
-    global $screen;
+    // echo '<br><span style="color:orange">Doing move_media_file</span><br>';
 
     /*
     * This code must update upto three images or sets of images:
-    * 1. A scaled-down, big-file original (filename-scaled.jpeg)
-    * 2. Multiple, smaller thumbnail sizes
-    * 3. The original (potentially, a big file)
+    * 1. A scaled-down, big-file original (filename-scaled.jpeg - created by WordPress if there was a big [original_image])
+    * 2. Multiple, smaller thumbnail [sizes]
+    * 3. The [original_image], if it was big
     *
     * The process involves:
     * A. Moving the files for each
@@ -516,8 +573,6 @@ function move_attachment_file($attachment_id, $existing_path, $preferred_path) {
     /*
     * Existing location
     */
-    // Set the ID of the attachment to move
-    // $attachment_id = 156870;
     // Get the attachment metadata
     $attachment_metadata = wp_get_attachment_metadata($attachment_id);
     // Get old subfolder part
@@ -567,8 +622,8 @@ function move_attachment_file($attachment_id, $existing_path, $preferred_path) {
         // echo '<br>current: '.$current_file.'<br>';
         // echo 'new: ' . $new_file . '<br>';
         
-        echo '<hr><br><span style="color:red">from: '.$current_file.'</style><br>';
-        echo '<br><span style="color:green">to: ' . $new_file . '</style><br>';
+        // echo '<hr><br><span style="color:red">from: '.$current_file.'</style><br>';
+        // echo '<br><span style="color:green">to: ' . $new_file . '</style><br>';
 
 
         $result = rename($current_file, $new_file);
@@ -576,11 +631,10 @@ function move_attachment_file($attachment_id, $existing_path, $preferred_path) {
         if ($result) {
 
             // Show success notice on post.php edit page only
-            if ($screen) {
-                if ($screen->base == 'post') {
+
                     my_trigger_notice(1);
-                } 
-            }
+
+
 
 
             /*
@@ -649,9 +703,9 @@ function move_attachment_file($attachment_id, $existing_path, $preferred_path) {
                 // Update the attachment meta data in the WordPress database
                 $new_location_partial = trailingslashit($new_subfolder) . basename($current_file);
                 $att_location_without_leading_slash = ltrim($new_location_partial, '/');
-                // remove_action('save_post', 'move_attachment_file');
+                // remove_action('save_post', 'move_media_file');
                 update_post_meta($attachment_id, '_wp_attached_file', $att_location_without_leading_slash);
-                // add_action('save_post', 'move_attachment_file');
+                // add_action('save_post', 'move_media_file');
 
 
             } else {
@@ -695,8 +749,6 @@ function move_attachment_file($attachment_id, $existing_path, $preferred_path) {
                 // The GUID was updated successfully
             }
 
-            return $result;
-
         } else {
             // Handle error case
             my_trigger_notice(2);
@@ -728,16 +780,25 @@ function move_attachment_file($attachment_id, $existing_path, $preferred_path) {
  * 
  * @return void
  */
-function my_trigger_notice( $key = '' ) {
-    add_filter(
-        'redirect_post_location',
-        function ( $location ) use ( $key ) {
-            $key = sanitize_text_field( $key );
+function my_trigger_notice($key = '')
+{
 
-            return add_query_arg( array( 'notice_key' => rawurlencode( sanitize_key( $key ) ) ), $location );
-        }
-    );
+    global $pagenow;
+
+    if ($pagenow === 'post.php') {
+
+        add_filter(
+            'redirect_post_location',
+            function ($location) use ($key) {
+                $key = sanitize_text_field($key);
+                return add_query_arg(array('notice_key' => rawurlencode(sanitize_key($key))), $location);
+            }
+        );
+
+    }
+
 }
+
 
 
 /**
