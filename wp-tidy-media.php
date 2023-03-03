@@ -409,9 +409,11 @@ function tidy_post_attachments($post_id) {
             $move_post_check = check_media_for_move($post_attachment, $existing_path, $preferred_path);
             if ($move_post_check == true) {
                 // echo 'do the move';
-                move_media_file($post_attachment->ID, $existing_path, $preferred_path);
+                $move_file_success = move_media_file($post_attachment->ID, $existing_path, $preferred_path);
+                return $move_file_success;
             } else {
                 // echo 'no move';
+                return false;
             }
         }
     } else {
@@ -646,12 +648,6 @@ function move_media_file($attachment_id, $existing_path, $preferred_path) {
 
         if ($result) {
 
-            // Show success notice on post.php edit page only
-
-                    my_trigger_notice(1);
-
-
-
 
             /*
             * 2. Sized images
@@ -765,10 +761,15 @@ function move_media_file($attachment_id, $existing_path, $preferred_path) {
                 // The GUID was updated successfully
             }
 
+            // Show success notice on post.php edit page only
+            my_trigger_notice(1);
+            return true;
+
         } else {
             // Handle error case
             my_trigger_notice(2);
             echo 'Could not move main image.';
+            return false;
         }
     }
 
