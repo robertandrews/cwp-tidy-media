@@ -361,8 +361,24 @@ function tidy_media_organizer_options_page()
  * @return void
  */
 function do_saved_post($post_id) {
+
     if ( ! wp_is_post_revision( $post_id ) ) {
-        tidy_post_attachments($post_id);
+
+        // Only for post, page and custom post types
+        $args = array(
+            'public' => true,
+            '_builtin' => false, // exclude default post types
+        );
+        $post_types = get_post_types($args);
+        array_push($post_types, 'post', 'page');
+        $my_post_type = get_post_type($post_id);
+
+        if (in_array($my_post_type, $post_types)) {
+            tidy_post_attachments($post_id);
+        } else {
+            // error: disallowed post type
+        }
+
     }
 }
 add_action('save_post', 'do_saved_post', 10, 1);
