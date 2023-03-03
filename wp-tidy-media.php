@@ -393,10 +393,10 @@ function do_saved_post($post_id) {
         // Only for post, page and custom post types
         $args = array(
             'public' => true,
-            '_builtin' => false, // exclude default post types
+            '_builtin' => false,                        // exclude default post types
         );
         $post_types = get_post_types($args);
-        array_push($post_types, 'post', 'page');
+        array_push($post_types, 'post', 'page');        // add back post and page
         $my_post_type = get_post_type($post_id);
 
         if (in_array($my_post_type, $post_types)) {
