@@ -46,6 +46,32 @@ register_activation_hook(__FILE__, 'tidy_media_organizer_create_table');
 
 
 
+
+/**
+ * Clean On Deletion.
+ *
+ * Deletes the database table used by the Tidy Media Organizer plugin.
+ *
+ * This function deletes the database table used by the Tidy Media Organizer plugin when the plugin is uninstalled.
+ *
+ * @since 1.0.0
+ */
+function tidy_media_organizer_delete_table()
+{
+    global $wpdb;
+    global $table_name;
+
+    $table_name = $wpdb->prefix . 'tidy_media_organizer';
+
+    $wpdb->query("DROP TABLE IF EXISTS $table_name");
+}
+register_uninstall_hook(__FILE__, 'tidy_media_organizer_delete_table');
+
+
+
+
+
+
 /**
  * Admin Menus.
  * 
