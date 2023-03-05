@@ -441,6 +441,7 @@ function tidy_post_attachments($post_id)
             } else {
                 // print_r("Paths are different! Need to move.\n");
                 $move_main_file_success = move_main_file($post_attachment->ID, $old_image_details, $new_image_details);
+                // TODO: Shouldn't these two be conditional on the first file being moved successfully, as per original code... ?
                 $move_sizes_files_success = move_sizes_files($post_attachment->ID, $old_image_details, $new_image_details);
                 $move_original_file_success = move_original_file($post_attachment->ID, $old_image_details, $new_image_details);
                 // return $move_file_success;
@@ -586,33 +587,36 @@ function move_main_file($attachment_id, $old_image_details, $new_image_details) 
     }
     // If folder now exists
     if (file_exists($new_image_details['dirname'])) {
-        // Move file
-        $result = rename($old_image_details['filepath'], $new_image_details['filepath']);
-        if ($result) {
-            // B. Update database
-            // Update database #1 - image wp_postmeta, _wp_attached_file (eg. post/client/clarity/2018/06/146343_photo-1486312338219-ce68d2c6f44d-4959-art.jpe)
-            update_post_meta($attachment_id, '_wp_attached_file', trailingslashit($new_image_details['subdir']) . $new_image_details['filename']);
-            // Update database #2 - image wp_postmeta, _wp_attachment_metadata (eg. [file] => post/client/clarity/2018/06/146343_photo-1486312338219-ce68d2c6f44d-4959-art.jpe)
-            $attachment_metadata = wp_get_attachment_metadata($attachment_id);
-            $attachment_metadata['file'] = trailingslashit($new_image_details['subdir']) . $new_image_details['filename'];
-            wp_update_attachment_metadata($attachment_id, $attachment_metadata);
+        // If source file actually exists
+        if (file_exists($old_image_details['filepath'])) {
+            // Move file
+            $result = rename($old_image_details['filepath'], $new_image_details['filepath']);
+            if ($result) {
+                // B. Update database
+                // Update database #1 - image wp_postmeta, _wp_attached_file (eg. post/client/clarity/2018/06/146343_photo-1486312338219-ce68d2c6f44d-4959-art.jpe)
+                update_post_meta($attachment_id, '_wp_attached_file', trailingslashit($new_image_details['subdir']) . $new_image_details['filename']);
+                // Update database #2 - image wp_postmeta, _wp_attachment_metadata (eg. [file] => post/client/clarity/2018/06/146343_photo-1486312338219-ce68d2c6f44d-4959-art.jpe)
+                $attachment_metadata = wp_get_attachment_metadata($attachment_id);
+                $attachment_metadata['file'] = trailingslashit($new_image_details['subdir']) . $new_image_details['filename'];
+                wp_update_attachment_metadata($attachment_id, $attachment_metadata);
 
-            // Update database #3 - image wp_postmeta, guid
-            $old_guid_full = get_post_field('guid', $attachment_id);
-            $new_guid_full = str_replace($old_image_details['subdir'], $new_image_details['subdir'], $old_image_details['guid']);
-            global $wpdb;
-            $wpdb->update(
-                $wpdb->posts,
-                array('guid' => $new_guid_full),
-                array('ID' => $attachment_id),
-                array('%s'),
-                array('%d')
-            );
-            my_trigger_notice(1);
-            return true;
-        } else {
-            my_trigger_notice(2);
-            return false;
+                // Update database #3 - image wp_postmeta, guid - does not alter hostname part
+                $old_guid_full = get_post_field('guid', $attachment_id);
+                $new_guid_full = str_replace($old_image_details['subdir'], $new_image_details['subdir'], $old_image_details['guid']);
+                global $wpdb;
+                $wpdb->update(
+                    $wpdb->posts,
+                    array('guid' => $new_guid_full),
+                    array('ID' => $attachment_id),
+                    array('%s'),
+                    array('%d')
+                );
+                my_trigger_notice(1);
+                return true;
+            } else {
+                my_trigger_notice(2);
+                return false;
+            }
         }
     } else {
         my_trigger_notice(2);
