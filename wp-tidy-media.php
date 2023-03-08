@@ -51,7 +51,7 @@ function tidy_media_organizer_create_table()
         $sql = "CREATE TABLE $table_name (
             setting_id mediumint(9) NOT NULL AUTO_INCREMENT,
             setting_name varchar(50) NOT NULL,
-            setting_value varchar(50) NOT NULL,
+            setting_value varchar(300) NOT NULL,
             PRIMARY KEY (setting_id)
         ) $charset_collate;";
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
@@ -132,6 +132,15 @@ function tidy_media_organizer_main_page()
 </div>
 <?php }
 
+
+
+
+
+
+
+
+
+
 /**
  * Admin Options Page.
  *
@@ -160,6 +169,9 @@ function tidy_media_organizer_options_page()
             $settings = array(
                 array('setting_name' => 'organize_post_img_by_type', 'setting_value' => isset($_POST['organize_post_img_by_type']) ? 1 : 0),
                 array('setting_name' => 'organize_post_img_by_taxonomy', 'setting_value' => isset($_POST['organize_post_img_by_taxonomy']) ? sanitize_text_field($_POST['organize_post_img_by_taxonomy']) : ''),
+                // TODO: Save/retrieve a serialised array, not a single text string.
+                // TODO: Use dynamic input entry/array consolidation
+                array('setting_name' => 'domains_to_replace', 'setting_value' => isset($_POST['domains_to_replace']) ? sanitize_text_field($_POST['domains_to_replace']) : ''),
             );
             foreach ($settings as $setting) {
                 $existing_row = $wpdb->get_row("SELECT * FROM $table_name WHERE setting_name = '{$setting['setting_name']}'");
@@ -188,6 +200,8 @@ function tidy_media_organizer_options_page()
         }
         $organize_post_img_by_type = isset($settings_arr['organize_post_img_by_type']) ? $settings_arr['organize_post_img_by_type'] : 0;
         $organize_post_img_by_taxonomy = isset($settings_arr['organize_post_img_by_taxonomy']) ? $settings_arr['organize_post_img_by_taxonomy'] : '';
+        $domains_to_replace = isset($settings_arr['domains_to_replace']) ? $settings_arr['domains_to_replace'] : '';
+
     } else {
         // Show an error message
         echo '<div class="notice notice-error"><p><strong>Plugin issue</strong>: <code>' . $table_name . '</code> not found in database. Cannot store settings. Try reactivating the plugin.</p></div>';
@@ -200,14 +214,16 @@ function tidy_media_organizer_options_page()
 
     <?php
 //Get the active tab from the $_GET param
+/*
     $default_tab = null;
     $tab = isset($_GET['tab']) ? $_GET['tab'] : $default_tab;
+    */
     ?>
 
     <!--
         <nav class="nav-tab-wrapper">
-        <a href="?page=tidy-media-organizer-options" class="nav-tab <?php if ($tab === null): ?>nav-tab-active<?php endif;?>">Options</a>
-        <a href="?page=my-plugin&tab=tools" class="nav-tab <?php if ($tab === 'tools'): ?>nav-tab-active<?php endif;?>">Tools</a>
+        <a href="?page=tidy-media-organizer-options" class="nav-tab <?php /* if ($tab === null): ?>nav-tab-active<?php endif; */?>">Options</a>
+        <a href="?page=my-plugin&tab=tools" class="nav-tab <?php /* if ($tab === 'tools'): ?>nav-tab-active<?php endif; */?>">Tools</a>
         </nav>
         -->
 
@@ -217,6 +233,8 @@ function tidy_media_organizer_options_page()
             <div id="post-body" class="metabox-holder ">
                 <div id="post-body-content">
                     <div class="meta-box-sortables ui-sortable">
+
+                        <!-- Post media folders -->
                         <div class="postbox">
                             <div class="postbox-header">
                                 <h2>Post media folders</h2>
@@ -234,20 +252,20 @@ function tidy_media_organizer_options_page()
                                                     id="organize_post_img_by_type" value="1"
                                                     <?php checked($organize_post_img_by_type, 1);?>>
                                                 <?php
-// Show post types
-    $args = array(
-        'public' => true,
-        '_builtin' => false, // exclude default post types
-    );
-    $post_types = get_post_types($args);
-    // add back default post types 'post' and 'page'
-    array_push($post_types, 'post', 'page');
-    echo '(' . implode(', ', array_map(function ($post_type) {
-        return '<code>' . $post_type . '</code>';
-    }, $post_types)) . ')';
-    ?>
+                                                // Show post types
+                                                    $args = array(
+                                                        'public' => true,
+                                                        '_builtin' => false, // exclude default post types
+                                                    );
+                                                    $post_types = get_post_types($args);
+                                                    // add back default post types 'post' and 'page'
+                                                    array_push($post_types, 'post', 'page');
+                                                    echo '(' . implode(', ', array_map(function ($post_type) {
+                                                        return '<code>' . $post_type . '</code>';
+                                                    }, $post_types)) . ')';
+                                                    ?>
                                                 <p class="description">All uploads attached to posts will be housed in a
-                                                    corresponding folder.</strong></p>
+                                                    corresponding folder.</p>
                                             </td>
                                         </tr>
                                         <tr>
@@ -261,9 +279,9 @@ function tidy_media_organizer_options_page()
                                                     None
                                                 </label><br>
                                                 <?php
-$taxonomies = get_taxonomies(array('public' => true));
-    foreach ($taxonomies as $taxonomy) {
-        ?>
+                                                $taxonomies = get_taxonomies(array('public' => true));
+                                                    foreach ($taxonomies as $taxonomy) {
+                                                        ?>
                                                 <label style="margin: 0.35em 0 0.5em!important; display: inline-block;">
                                                     <input type="radio" name="organize_post_img_by_taxonomy"
                                                         value="<?php echo esc_attr($taxonomy); ?>"
@@ -272,8 +290,8 @@ $taxonomies = get_taxonomies(array('public' => true));
                                                 </label>
                                                 <br>
                                                 <?php
-}
-    ?>
+                                                }
+                                                ?>
 
                                             </td>
                                         </tr>
@@ -298,6 +316,36 @@ $taxonomies = get_taxonomies(array('public' => true));
                                 </table>
 
 
+                            </div>
+                        </div><!-- end .postbox -->
+
+                        <!-- Body image URLs-->
+                        <div class="postbox">
+                            <div class="postbox-header">
+                                <h2>Use relative image URLs in post body</h2>
+                            </div>
+                            <div class="inside">
+                                <table class="form-table">
+                                    <tbody>
+                                        <tr>
+                                            <th scope="row">
+                                                <label for="organize_post_img_by_type">Remove home URL</label>
+                                            </th>
+                                            <td>
+                                                <?php echo home_url(); ?>
+                                                <p class="description">eg. <strike><?php echo home_url(); ?></strike>/wp-content/uploads/path/to/image.jpeg</p></td>
+                                        </tr>
+                                        <tr>
+                                            <th scope="row">
+                                                <label for="organize_post_img_by_type">Additional domains</label>
+                                            </th>
+                                            <td>
+                                                 <input type="text" name="domains_to_replace" id="domains_to_replace" size="75" value="<?php echo $domains_to_replace; ?>" />                                            
+                                                 <p class="description">Separate multiple hostnames by comma (eg. "http://www.oldsite.com, "https://testsite:8080")</p>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
 
@@ -483,12 +531,16 @@ function make_body_imgs_relative($post_id) {
     // Replace the image URLs
     // $new_content = replace_image_urls($content);
 
+    $domains_to_remove = array_map('trim', explode(",", $domains_to_replace));
+    array_push($domains_to_remove, get_site_url());
+    /*
     $domains_to_remove = array(
         'http://context:8080',
         'https://contexthq.com',
         'http://context.local:8888',
         get_site_url(),
     );
+    */
 
     // For each domain we're removing
     foreach ($domains_to_remove as $domain) {
