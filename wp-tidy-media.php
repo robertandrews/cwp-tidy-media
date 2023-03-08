@@ -383,8 +383,9 @@ $taxonomies = get_taxonomies(array('public' => true));
  * @param int $post_id The ID of the post being saved.
  * @return void
  */
-function do_saved_post($post_id)
-{
+function do_saved_post($post_id) {
+
+    echo "do_saved_post()\n";
 
     if (!wp_is_post_revision($post_id)) {
         // Only for post, page and custom post types
@@ -398,13 +399,14 @@ function do_saved_post($post_id)
 
         if (in_array($my_post_type, $post_types)) {
             tidy_post_attachments($post_id);
+            make_body_imgs_relative($post_id);
         } else {
             // error: disallowed post type
         }
 
     }
 }
-// add_action('save_post', 'do_saved_post', 10, 1);
+add_action('save_post', 'do_saved_post', 10, 1);
 
 
 
@@ -440,10 +442,10 @@ function tidy_post_attachments($post_id)
                 // return false
             } else {
                 // print_r("Paths are different! Need to move.\n");
-                $move_main_file_success = move_main_file($post_attachment->ID, $old_image_details, $new_image_details);
+                // $move_main_file_success = move_main_file($post_attachment->ID, $old_image_details, $new_image_details);
                 // TODO: Shouldn't these two be conditional on the first file being moved successfully, as per original code... ?
-                $move_sizes_files_success = move_sizes_files($post_attachment->ID, $old_image_details, $new_image_details);
-                $move_original_file_success = move_original_file($post_attachment->ID, $old_image_details, $new_image_details);
+                // $move_sizes_files_success = move_sizes_files($post_attachment->ID, $old_image_details, $new_image_details);
+                // $move_original_file_success = move_original_file($post_attachment->ID, $old_image_details, $new_image_details);
                 // return $move_file_success;
             }
 
@@ -454,6 +456,81 @@ function tidy_post_attachments($post_id)
     }
 
 }
+
+
+
+
+
+
+
+/**
+ * Make In-Line Image URLs relative
+ * 
+ * This function takes a WordPress post ID and modifies the post's content by
+ * making all local image URLs relative to the site's root directory. It does this by
+ * removing any specified domains from the image URLs.
+ * 
+ * The function only removes the site's own scheme domain (eg. "http://www.myblog.com").
+ * 
+ * @param int $post_id The ID of the WordPress post to modify.
+ * @return void
+ */
+function make_body_imgs_relative($post_id) {
+
+    // Get the post content
+    $content = get_post_field('post_content', $post_id);
+
+    // Replace the image URLs
+    // $new_content = replace_image_urls($content);
+
+    $domains_to_remove = array(
+        'http://context:8080',
+        'https://contexthq.com',
+        'http://context.local:8888',
+        get_site_url(),
+    );
+
+    // For each domain we're removing
+    foreach ($domains_to_remove as $domain) {
+
+        // Find any strings like "<img src="http://www.domain.com"
+        $pattern = '/<img[^>]*src=["\']' . preg_quote($domain, '/') . '(.*?)["\']/i';
+        // Replace the leading portion only, ie. "<img src="{match}"
+        $replacement = '<img src="$1"';
+        // Perform the replacement
+        $new_content = preg_replace($pattern, $replacement, $content);
+
+        // If the content has changed, set the modified flag to true
+        if ($new_content !== $content) {
+            $modified = true;
+            $content = $new_content;
+        }
+    }
+
+    print_r(get_post_field('post_title', $post_id) . "\n");
+
+    // If links were modified, re-save the post
+    if ($modified == true) { // was if ($new_content) {
+
+        // Unhook do_saved_post(), or wp_update_post() would cause an infinite loop
+        remove_action('save_post', 'do_saved_post', 10, 1);
+        // Re-save the post
+        wp_update_post(array(
+            'ID' => $post_id,
+            'post_content' => $new_content,
+        ));
+        // Hook it back up
+        add_action('save_post', 'do_saved_post', 10, 1);
+
+    }
+
+}
+
+
+
+
+
+
 
 
 
