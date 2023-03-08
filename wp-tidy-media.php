@@ -1,11 +1,11 @@
 <?php
 /*
 Plugin Name: Tidy Media Organizer
-Plugin URI: https://example.com/
+Plugin URI: https:/www.robertandrews.co.uk
 Description: A plugin to organize media by post type or taxonomy.
 Version: 1.0
-Author: Your Name
-Author URI: https://example.com/
+Author: Robert Andrews
+Author URI: https:/www.robertandrews.co.uk
  */
 
 
@@ -404,7 +404,7 @@ function do_saved_post($post_id)
 
     }
 }
-add_action('save_post', 'do_saved_post', 10, 1);
+// add_action('save_post', 'do_saved_post', 10, 1);
 
 
 
