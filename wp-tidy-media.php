@@ -433,7 +433,7 @@ function tidy_media_organizer_options_page()
  */
 function do_saved_post($post_id) {
 
-    do_my_log("do_saved_post() - ".$post_id." ".get_post_type()." - ".get_the_title($post_id));
+    do_my_log("💾 do_saved_post() - ".$post_id." ".get_post_field('post_type', $post_id).": ".get_the_title($post_id));
 
     if (!wp_is_post_revision($post_id)) {
         do_my_log("Not a revision.");
@@ -449,9 +449,10 @@ function do_saved_post($post_id) {
         if (in_array($my_post_type, $post_types)) {
             do_my_log("Save is valid for action.");
             // TODO: Consider switching order - onyl tidy (move posts) when all links are set?
-            tidy_post_attachments($post_id);
             make_body_imgs_relative($post_id);
-            // fix_body_image_paths($post_id); // TODO: Avoid infinite loop
+            fix_body_image_paths($post_id); // TODO: Avoid infinite loop
+            tidy_post_attachments($post_id);
+
         } else {
             // error: disallowed post type
         }
@@ -600,21 +601,38 @@ function make_body_imgs_relative($post_id) {
 
 
 
+/**
+ * Fix Body Img Paths
+ * 
+ * Fixes all relative image URLs in the post's body to point to the expected location, based on the post's ID.
+ * eg. Maybe /wp-content/uploads/image.jpeg should be /wp-content/uploads/post/taxonomy/term/image.jpeg
+ *
+ * When a malformed img src is found, function will:
+ *  - Check if it exists in specified location form - move it and change the URL.
+ *  - Check if it exists in intended location form  - just update URL to reflect.
+ * 
+ * @param int $post_id The ID of the post whose body should be fixed.
+ * 
+ * @return void
+ */
 
 function fix_body_img_paths($post_id) {
 
+    do_my_log("🎯 fix_body_img_paths()...");
+
     // Universal details
-    $uploads_base = trailingslashit(wp_upload_dir()['baseurl']); // http: //context.local:8888/wp-content/uploads/
+    $uploads_base = trailingslashit(wp_upload_dir()['baseurl']);                // http://context.local:8888/wp-content/uploads/
     $uploads_folder = str_replace(trailingslashit(home_url()), '', $uploads_base); // /wp-content/uploads/
 
-    echo $post_id . " ". get_the_title($post_id) ."\n\n";
-
+    do_my_log("Getting post content...");
     // Get the post content
     $content = get_post_field('post_content', $post_id);
-    // print_r($content);
+
+    do_my_log("Checking for malformed img src locations...");
     // Find relative URLs in the content
     $pattern = '/<img[^>]+src=["\']\/([^"\']+)/';                               // <img src="/wp-content/uploa...
     preg_match_all($pattern, $content, $matches);
+    do_my_log("Malformed relative links: ".count($matches));
 
 
     // For every src found,
@@ -622,18 +640,17 @@ function fix_body_img_paths($post_id) {
 
         $modified = null;
         
-        echo "Found src attribute ". $found_img_src."\n";
-
         // Get found file's details
+        do_my_log("🌄 Found src attribute ". $found_img_src);
         $found_img_filepath = get_home_path() . $found_img_src;                 // /Users/robert/Sites/context.local/wp-content/uploads/media/folio/clients/wired/tom_heather.jpg
-        // echo $found_img_filepath."\n";
+        do_my_log("Filepath would be ".$found_img_filepath);
         $post_attachment = null;
         
 
         // ✅ File is where src says
         if (file_exists($found_img_filepath)) {
 
-            echo "File exists at src location.\n";
+            do_my_log("File does exist there.");
             
             // Generate its details
             $found_img_url = trailingslashit(get_site_url()) . $found_img_src;  // http://context.local:8888/wp-content/uploads/media/folio/clients/wired/tom_heather.jpg
@@ -641,6 +658,7 @@ function fix_body_img_paths($post_id) {
             $img_path_no_base = str_replace($uploads_base, '', $found_img_url);
 
             // Get attachment ID for file at this location
+            do_my_log("Searching database _wp_attachment_metadata for " . $img_path_no_base);
             $args = array(
                 'post_type' => 'attachment',
                 'post_status' => 'inherit',
@@ -655,13 +673,16 @@ function fix_body_img_paths($post_id) {
             );
             $query = new WP_Query($args);
             if ($query->have_posts()) {
+                
                 $query->the_post();
                 // Get the attachment metadata
                 $attachment_id = get_the_ID();
+                do_my_log("Found attachment ID ".$attachment_id.".");
                 wp_reset_postdata();
+
             } else {
                 // No attachments found
-                echo 'No attachments found';
+                echo 'No attachments found.';
             }
 
             // Generate actual and proper path pieces
