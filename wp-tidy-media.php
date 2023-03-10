@@ -450,9 +450,9 @@ function do_saved_post($post_id) {
             do_my_log("Save is valid for action.");
             // TODO: Consider switching order - onyl tidy (move posts) when all links are set?
             make_body_imgs_relative($post_id);
-            fix_body_image_paths($post_id); // TODO: Avoid infinite loop
+            fix_body_img_paths($post_id); // TODO: Avoid infinite loop
             tidy_post_attachments($post_id);
-
+            do_my_log("Complete.");
         } else {
             // error: disallowed post type
         }
@@ -513,6 +513,7 @@ function tidy_post_attachments($post_id) {
         do_my_log("No attachments found.");
         return false;
     }
+    do_my_log("Finished tidy_post_attachments().");
 
 }
 
@@ -591,11 +592,15 @@ function make_body_imgs_relative($post_id) {
             'post_content' => $new_content,
         ));
         do_my_log("Post updated.");
+        my_trigger_notice(4);
         // Hook it back up
         add_action('save_post', 'do_saved_post', 10, 1);
     } else {
         do_my_log("Post not updated.");
     }
+
+    do_my_log("Finished make_body_imgs_relative().");
+
 }
 
 
@@ -677,7 +682,7 @@ function fix_body_img_paths($post_id) {
                 $post_attachment = get_post($attachment_id);                    // WP_Post object: attachment
 
                 if ($post_attachment) {
-                    do_my_log("Found corresponding attachment object.");
+                    do_my_log("🖼 Found attachment object.");
 
                     // Generate actual and intended path pieces, used for comparison
                     $old_image_details = old_image_details($post_attachment);
@@ -687,14 +692,14 @@ function fix_body_img_paths($post_id) {
                     // 😩 But this is the _wrong_ location - move it, and update post and metadata
                     if ($old_image_details['subdir'] !== $new_image_details['subdir_stem']) {
 
-                        do_my_log("File not in user\'s designated folder.");
+                        do_my_log("File not in user's designated folder.");
                         do_my_log("Considering file for move and body update...");
 
                         // If image belongs to this post or is as yet unattached,
                         if ($post_attachment->post_parent == $post_id || $post_attachment->post_parent == 0) {
 
                             do_my_log("File is not attached to any other post. Safe to move file and attach to this post (".$post_id.").");
-                            do_my_log("Move from ". $old_image_details['filepath'].  "to ".$new_image_details['filepath']."...");
+                            do_my_log("Move from ". $old_image_details['filepath'].  " to ".$new_image_details['filepath']."...");
 
                             // 1. Move the file
                             $move_result = move_main_file($post_attachment->ID, $old_image_details, $new_image_details);
@@ -708,15 +713,15 @@ function fix_body_img_paths($post_id) {
                                 // 2. Update the body
                                 do_my_log("Update the body...");
                                 $new_src = $uploads_folder . trailingslashit($new_image_details['subdir']) . $new_image_details['filename'];
-                                do_my_log("Replace with ".$new_src);
-                                $new_content = str_replace($found_img_src, $new_src, $content);
-                                $num_replacements = strlen($found_img_src) - strlen($new_content);
+                                do_my_log("Replace ".$found_img_src." with ".$new_src);
+                                $new_content = str_replace($found_img_src, $new_src, $content, $num_replacements);
                                 do_my_log("Replacements made: ".$num_replacements);
                                 // If the content has changed, set the modified flag to true
                                 if ($new_content !== $content) {
                                     $modified = true;
                                     $content = $new_content;
                                 }
+                                // TODO: Should the save happen here, repeatedly, or outside?
                                 if ($modified == true) { // was if ($new_content) {
                                     do_my_log("Updating post...");
                                     // Unhook do_saved_post(), or wp_update_post() would cause an infinite loop
@@ -801,7 +806,8 @@ function fix_body_img_paths($post_id) {
 
     }
 
-    print_r($content);
+    do_my_log("Finished fix_body_img_paths().");
+    // print_r($content);
 
 
 }
@@ -942,7 +948,7 @@ function move_main_file($attachment_id, $old_image_details, $new_image_details) 
     $uploads_dir_path = $uploads_dir['basedir']; // eg. /Users/robert/Sites/context.local/wp-content/uploads
     // Create the new sub-folder if it doesn't exist
     if (!file_exists($new_image_details['dirname'])) {
-        do_my_log("Making directory ".$new_image_details['dirname']."...");
+        do_my_log("Making directory ".$new_image_details['dirname']);
         wp_mkdir_p($new_image_details['dirname']);
     }
     // If folder now exists
@@ -980,7 +986,7 @@ function move_main_file($attachment_id, $old_image_details, $new_image_details) 
                     array('%d')
                 );
                 my_trigger_notice(1);
-                do_my_log("Database fields should be updated.");
+                do_my_log("Database fields should now be updated.");
                 return true;
             } else {
                 my_trigger_notice(2);
@@ -1169,7 +1175,7 @@ function my_trigger_notice($key = '')
  *
  * @return void
  */
-function my_admin_notices()
+function my_admin_notices() 
 {
     if (!isset($_GET['notice_key'])) {
         return;
@@ -1179,6 +1185,7 @@ function my_admin_notices()
         1 => 'Moved attached image to preferred folder',
         2 => 'Could not move attached image to preferred folder',
         3 => 'Attached image already in preferred media path - not moved',
+        4 => 'Converted src for local img/s from absolute to <a href="https://www.tutorialspoint.com/difference-between-an-absolute-url-and-a-relative-url">relative URL</a>',
     ];
     if (empty($all_notices[$notice_key])) {
         return;
@@ -1189,6 +1196,8 @@ function my_admin_notices()
         $notice_class = "error";
     } elseif ($notice_key == 3) {
         $notice_class = "info";
+    } elseif ($notice_key == 4) {
+        $notice_class = "success";
     }
     ?>
 <div class="notice notice-<?php echo $notice_class; ?> is-dismissible">
