@@ -433,9 +433,10 @@ function tidy_media_organizer_options_page()
  */
 function do_saved_post($post_id) {
 
-    echo "do_saved_post()\n";
+    do_my_log("do_saved_post() - ".$post_id." ".get_post_type()." - ".get_the_title($post_id));
 
     if (!wp_is_post_revision($post_id)) {
+        do_my_log("Not a revision.");
         // Only for post, page and custom post types
         $args = array(
             'public' => true,
@@ -446,8 +447,11 @@ function do_saved_post($post_id) {
         $my_post_type = get_post_type($post_id);
 
         if (in_array($my_post_type, $post_types)) {
+            do_my_log("Save is valid for action.");
+            // TODO: Consider switching order - onyl tidy (move posts) when all links are set?
             tidy_post_attachments($post_id);
             make_body_imgs_relative($post_id);
+            // fix_body_image_paths($post_id); // TODO: Avoid infinite loop
         } else {
             // error: disallowed post type
         }
@@ -471,13 +475,16 @@ add_action('save_post', 'do_saved_post', 10, 1);
  * @param int $post_id The ID of the post to tidy up its attachments.
  * @return boolean Returns false if no attachments are found, or if any errors occur during the attachment move process.
  */
-function tidy_post_attachments($post_id)
-{
+function tidy_post_attachments($post_id) {
+
+    do_my_log('🧹 tidy_post_attachments()...');
 
     $post_attachments = get_attached_media('', $post_id);
 
     if ($post_attachments) {
         foreach ($post_attachments as $post_attachment) {
+
+            do_my_log("🖼 Attachment ".$post_attachment->ID . " - " . $post_attachment->post_title);
 
             // Generate source and destination path pieces
             $old_image_details = old_image_details($post_attachment);
@@ -485,21 +492,24 @@ function tidy_post_attachments($post_id)
 
             // Check if need to move
             if ($old_image_details['filepath'] == $new_image_details['filepath']) {
-                // print_r("Paths are the same! No move needed.\n");
+                do_my_log("Path ok, no need to move.");
                 my_trigger_notice(3);
                 // return false
             } else {
                 // print_r("Paths are different! Need to move.\n");
-                // $move_main_file_success = move_main_file($post_attachment->ID, $old_image_details, $new_image_details);
-                // TODO: Shouldn't these two be conditional on the first file being moved successfully, as per original code... ?
-                // $move_sizes_files_success = move_sizes_files($post_attachment->ID, $old_image_details, $new_image_details);
-                // $move_original_file_success = move_original_file($post_attachment->ID, $old_image_details, $new_image_details);
-                // return $move_file_success;
+                do_my_log("🚨 Path looks incorrect - ".$old_image_details['filepath']);
+                $move_main_file_success = move_main_file($post_attachment->ID, $old_image_details, $new_image_details);
+                if ($move_main_file_success == true) {
+                    // TODO: Shouldn't these two be conditional on the first file being moved successfully, as per original code... ?
+                    $move_sizes_files_success = move_sizes_files($post_attachment->ID, $old_image_details, $new_image_details);
+                    $move_original_file_success = move_original_file($post_attachment->ID, $old_image_details, $new_image_details);
+                    return $move_main_file_success;
+                }
             }
 
         }
     } else {
-        // No attachments found
+        do_my_log("No attachments found.");
         return false;
     }
 
@@ -525,25 +535,30 @@ function tidy_post_attachments($post_id)
  */
 function make_body_imgs_relative($post_id) {
 
+    do_my_log("🔗 make_body_imgs_relative()...");
+
     // Get the post content
     $content = get_post_field('post_content', $post_id);
+    $modified = false;
 
-    // Replace the image URLs
-    // $new_content = replace_image_urls($content);
+    // TODO: Check this is actually being set - may only be in scope on options page
+    // Set up list of domains to strip from links - site URL is added by default
+    global $wpdb;
+    $setting_name = 'domains_to_replace';
+    $table_name = $wpdb->prefix . 'tidy_media_organizer';
+    $query = $wpdb->prepare("SELECT setting_value FROM $table_name WHERE setting_name = %s", $setting_name);
+    $domains_to_replace = $wpdb->get_var($query);
 
     $domains_to_remove = array_map('trim', explode(",", $domains_to_replace));
-    array_push($domains_to_remove, get_site_url());
-    /*
-    $domains_to_remove = array(
-        'http://context:8080',
-        'https://contexthq.com',
-        'http://context.local:8888',
-        get_site_url(),
-    );
-    */
+    if (!in_array(get_site_url(), $domains_to_remove)) {
+        array_push($domains_to_remove, get_site_url());
+
+    }
 
     // For each domain we're removing
+    $num_changes = 0;
     foreach ($domains_to_remove as $domain) {
+        do_my_log("Checking for any <img src=\"".$domain."...");
 
         // Find any strings like "<img src="http://www.domain.com"
         $pattern = '/<img[^>]*src=["\']' . preg_quote($domain, '/') . '(.*?)["\']/i';
@@ -555,14 +570,17 @@ function make_body_imgs_relative($post_id) {
         // If the content has changed, set the modified flag to true
         if ($new_content !== $content) {
             $modified = true;
+            do_my_log("Changed a link.");
             $content = $new_content;
+            $num_changes++;
         }
     }
+    do_my_log("Changes made: ".$num_changes++);
 
-    print_r(get_post_field('post_title', $post_id) . "\n");
-
-    // If links were modified, re-save the post
+    // If any URLs were modified, re-save the post
     if ($modified == true) { // was if ($new_content) {
+
+        do_my_log("Need to save post...");
 
         // Unhook do_saved_post(), or wp_update_post() would cause an infinite loop
         remove_action('save_post', 'do_saved_post', 10, 1);
@@ -571,16 +589,199 @@ function make_body_imgs_relative($post_id) {
             'ID' => $post_id,
             'post_content' => $new_content,
         ));
+        do_my_log("Post updated.");
         // Hook it back up
         add_action('save_post', 'do_saved_post', 10, 1);
-
+    } else {
+        do_my_log("Post not updated.");
     }
-
 }
 
 
 
 
+
+function fix_body_img_paths($post_id) {
+
+    // Universal details
+    $uploads_base = trailingslashit(wp_upload_dir()['baseurl']); // http: //context.local:8888/wp-content/uploads/
+    $uploads_folder = str_replace(trailingslashit(home_url()), '', $uploads_base); // /wp-content/uploads/
+
+    echo $post_id . " ". get_the_title($post_id) ."\n\n";
+
+    // Get the post content
+    $content = get_post_field('post_content', $post_id);
+    // print_r($content);
+    // Find relative URLs in the content
+    $pattern = '/<img[^>]+src=["\']\/([^"\']+)/';                               // <img src="/wp-content/uploa...
+    preg_match_all($pattern, $content, $matches);
+
+
+    // For every src found,
+    foreach ($matches[1] as $found_img_src) {                                   // /wp-content/uploads/media/folio/clients/wired/tom_heather.jpg
+
+        $modified = null;
+        
+        echo "Found src attribute ". $found_img_src."\n";
+
+        // Get found file's details
+        $found_img_filepath = get_home_path() . $found_img_src;                 // /Users/robert/Sites/context.local/wp-content/uploads/media/folio/clients/wired/tom_heather.jpg
+        // echo $found_img_filepath."\n";
+        $post_attachment = null;
+        
+
+        // ✅ File is where src says
+        if (file_exists($found_img_filepath)) {
+
+            echo "File exists at src location.\n";
+            
+            // Generate its details
+            $found_img_url = trailingslashit(get_site_url()) . $found_img_src;  // http://context.local:8888/wp-content/uploads/media/folio/clients/wired/tom_heather.jpg
+            $uploads_base = trailingslashit(wp_upload_dir()['baseurl']);           
+            $img_path_no_base = str_replace($uploads_base, '', $found_img_url);
+
+            // Get attachment ID for file at this location
+            $args = array(
+                'post_type' => 'attachment',
+                'post_status' => 'inherit',
+                // 'fields' => 'ids',
+                'meta_query' => array(
+                    array(
+                        'value' => $img_path_no_base,
+                        'compare' => 'LIKE',
+                        'key' => '_wp_attachment_metadata',
+                    ),
+                ),
+            );
+            $query = new WP_Query($args);
+            if ($query->have_posts()) {
+                $query->the_post();
+                // Get the attachment metadata
+                $attachment_id = get_the_ID();
+                wp_reset_postdata();
+            } else {
+                // No attachments found
+                echo 'No attachments found';
+            }
+
+            // Generate actual and proper path pieces
+            $post_attachment = get_post($attachment_id);                        // WP_Post object
+            $old_image_details = old_image_details($post_attachment);
+            $new_image_details = new_image_details($post_id, $post_attachment);
+
+            
+
+            
+            // 😩 But this is the _wrong_ location - move it, and update post and metadata
+            if ($old_image_details['subdir'] !== $new_image_details['subdir_stem'] ) {
+
+
+                echo "But this is the wrong location\n";
+
+                echo "post parent " . $post_attachment->post_parent . "\n";
+
+                // If image belongs to this post or is as yet unattached,
+                if ($post_attachment->post_parent == $post_id || $post_attachment->post_parent == 0) {
+
+                    echo "Move to location expected of this post.\n";
+                    echo "from: ".$old_image_details['filepath']."\n";
+                    echo "to:   ".$new_image_details['filepath']."\n";
+
+                    // 1. Move the file
+                    $move_result = move_main_file($post_attachment->ID, $old_image_details, $new_image_details);
+                    echo "move: ".$move_result."\n";
+                    if ($move_result === true) {
+
+                        // Also move image variants
+                        move_sizes_files($post_attachment->ID, $old_image_details, $new_image_details);
+                        move_original_file($post_attachment->ID, $old_image_details, $new_image_details);
+
+                        // 2. Update the body
+                        echo "Update the body...\n";
+                        $new_src = $uploads_folder . trailingslashit($new_image_details['subdir']) . $new_image_details['filename'];
+                        echo $new_src."\n\n";
+                        $new_content = str_replace($found_img_src, $new_src, $content);
+                        // If the content has changed, set the modified flag to true
+                        if ($new_content !== $content) {
+                            $modified = true;
+                            $content = $new_content;
+                        }
+                        if ($modified == true) { // was if ($new_content) {
+                            // Unhook do_saved_post(), or wp_update_post() would cause an infinite loop
+                            remove_action('save_post', 'do_saved_post', 10, 1);
+                            // Re-save the post
+                            wp_update_post(array(
+                                'ID' => $post_id,
+                                'post_content' => $content,
+                            ));
+                            // Hook it back up
+                            add_action('save_post', 'do_saved_post', 10, 1);
+                        }
+
+                        // 3. Attach image to this post if it was unattached
+                        if ( $post_attachment->post_parent === 0 || $post_attachment->post_parent === '' ) {
+                            // Set the post_parent of the image to the post ID
+                            $update_args = array(
+                                'ID' => $attachment_id,
+                                'post_parent' => $post_id,
+                            );
+                            remove_action('save_post', 'do_saved_post', 10, 1);
+                            wp_update_post($update_args);
+                            add_action('save_post', 'do_saved_post', 10, 1);
+                        }
+
+                    }
+
+
+
+
+                }
+
+
+
+            }
+
+            
+
+            // TODO: Else: maybe it exists in the *right* place (so the body URL alone is wrong)...
+            // $expected_filepath = trailingslashit(wp_upload_dir()['basedir']) . trailingslashit($new_image_details['subdir']) . basename($found_img_src);
+            // $expected_filepath."\n";
+            
+
+        } else {
+            // ❌ File is not even at src location                                  // /Users/robert/Sites/context.local/wp-content/uploads/media/folio/clients/wired/tom_heather.jpg
+
+            print_r("Does not exist\n\n");
+        }
+
+
+
+
+
+
+
+        
+
+
+
+        /*
+        // Is the img src path in user's preferred format?
+        if (strpos($found_img_src, $new_image_details['subdir_stem']) !== false) {
+            // ✅ URL is in user's expected format
+        } else {
+            // ❌ URL not in user's expected format
+            // echo "Image URL not in correct format";
+
+            // 1. If it's where specified, move it
+        }
+        */
+
+    }
+
+    print_r($content);
+
+
+}
 
 
 
@@ -666,6 +867,7 @@ function new_image_details($post_id, $post_attachment)
         // print_r($post_terms);
         if ($post_terms) {
             $new_subdir .= '/' . $post_terms[0]->slug;
+            $new_subdir_stem = $new_subdir;
         }
     }
     // c. Are date-folders in use?
@@ -678,13 +880,16 @@ function new_image_details($post_id, $post_attachment)
     // new subdir is now generated
 
     $filepath = get_attached_file($post_attachment->ID);
+
     $upload_dir = wp_upload_dir();
     $subdir = $new_subdir;
 
+    // Populate bits of $new_image
     $new_image = array();
+    $new_image['subdir'] = $subdir; // post/client/contentnext/2011/12
+    $new_image['subdir_stem'] = $new_subdir_stem; // post/client/contentnext
     $new_image['filepath'] = trailingslashit(trailingslashit($upload_dir['basedir']) . $subdir) . basename($filepath); // /Users/robert/Sites/context.local/wp-content/uploads/post/client/contentnext/2011/12/netflix-on-tv-in-living-room-o.jpg
     $new_image['dirname'] = trailingslashit($upload_dir['basedir']) . $subdir; // /Users/robert/Sites/context.local/wp-content/uploads/post/client/contentnext/2011/12/
-    $new_image['subdir'] = $subdir; // post/client/contentnext/2011/12
     $new_image['filename'] = basename($filepath); // netflix-on-tv-in-living-room-o.jpg
     $new_image['guid'] = trailingslashit(trailingslashit($upload_dir['baseurl']) . $subdir) . basename($filepath); // /Users/robert/Sites/context.local/wp-content/uploads/post/client/contentnext/2011/12/netflix-on-tv-in-living-room-o.jpg
     // print_r($new_image);
@@ -706,21 +911,32 @@ function new_image_details($post_id, $post_attachment)
  */
 function move_main_file($attachment_id, $old_image_details, $new_image_details) {
 
+    do_my_log("🔧 move_main_file()...");
+
     // A. Move file
     // Get the WordPress uploads directory path
     $uploads_dir = wp_upload_dir();
     $uploads_dir_path = $uploads_dir['basedir']; // eg. /Users/robert/Sites/context.local/wp-content/uploads
     // Create the new sub-folder if it doesn't exist
     if (!file_exists($new_image_details['dirname'])) {
+        do_my_log("Making directory ".$new_image_details['dirname']."...");
         wp_mkdir_p($new_image_details['dirname']);
     }
     // If folder now exists
     if (file_exists($new_image_details['dirname'])) {
+
         // If source file actually exists
         if (file_exists($old_image_details['filepath'])) {
+            do_my_log("Source file exists at given location - ".$old_image_details['filepath']);
+
             // Move file
+            do_my_log("Move to " . $new_image_details['filepath']);
             $result = rename($old_image_details['filepath'], $new_image_details['filepath']);
+
             if ($result) {
+                do_my_log("Moved: " . $result);
+                do_my_log("Updating attachment's database fields.");
+
                 // B. Update database
                 // Update database #1 - image wp_postmeta, _wp_attached_file (eg. post/client/clarity/2018/06/146343_photo-1486312338219-ce68d2c6f44d-4959-art.jpe)
                 update_post_meta($attachment_id, '_wp_attached_file', trailingslashit($new_image_details['subdir']) . $new_image_details['filename']);
@@ -741,14 +957,20 @@ function move_main_file($attachment_id, $old_image_details, $new_image_details) 
                     array('%d')
                 );
                 my_trigger_notice(1);
+                do_my_log("Database fields should be updated.");
                 return true;
             } else {
                 my_trigger_notice(2);
+                do_my_log("Moved failed");
                 return false;
             }
+        } else {
+            do_my_log("File does not exist.");
         }
     } else {
         my_trigger_notice(2);
+        do_my_log("Folder does not exist.");
+
         return false;
     }
 
@@ -769,8 +991,9 @@ function move_main_file($attachment_id, $old_image_details, $new_image_details) 
  * @return bool $success Whether or not the move was successful.
  */
 
-function move_sizes_files($attachment_id, $old_image_details, $new_image_details)
-{
+function move_sizes_files($attachment_id, $old_image_details, $new_image_details) {
+
+    do_my_log("🔧 move_sizes_files() - " .$attachment_id . "...");
 
     // Get the _wp_attachment_metadata serialised array
     $attachment_metadata = wp_get_attachment_metadata($attachment_id);
@@ -778,27 +1001,36 @@ function move_sizes_files($attachment_id, $old_image_details, $new_image_details
     // Any [sizes]?
     $success = false;
     if (isset($attachment_metadata['sizes'])) {
+        do_my_log("Metadata has [sizes]. Number of sizes: ".count($attachment_metadata['sizes']));
+        $num_sizes=0;
         foreach ($attachment_metadata['sizes'] as $size => $data) {
+            $num_sizes++;
+            do_my_log("Size: ".$data['file']);
             // A. Move files
             // Generate the old and new filepaths for size variants
             $old_size_filename = trailingslashit($old_image_details['dirname']) . $data['file'];
             $new_size_filename = trailingslashit($new_image_details['dirname']) . $data['file'];
             // Do the move
             $result = rename($old_size_filename, $new_size_filename);
+            do_my_log("Move result: ".$result);
             if ($result) {
                 // Great
+                do_my_log("Moved ".$data['file']);
                 $success = true;
             } else {
                 // Error
                 $success = false;
+                do_my_log("Failed to move" . $data['file']);
             }
             // B. Update database
             // No metadata to update - [sizes] filenames do not contain folders, only filenames.
         }
+        do_my_log("Sizes handled: ".$num_sizes);
         // I want to access $success here
         return $success;
     } else {
         // No sizes here
+        do_my_log("No [sizes].");
         return $success;
     }
 
@@ -831,10 +1063,13 @@ function move_sizes_files($attachment_id, $old_image_details, $new_image_details
  */
 function move_original_file($attachment_id, $old_image_details, $new_image_details) {
 
+    do_my_log("🔧 move_original_file()...");
+
     // Get the _wp_attachment_metadata serialised array
     $attachment_metadata = wp_get_attachment_metadata($attachment_id);
 
     if (isset($attachment_metadata['original_image'])) {
+        do_my_log("[original_image] is present.");
 
         // A. Move the file
         // Generate the old and new filepaths for the original
@@ -845,20 +1080,24 @@ function move_original_file($attachment_id, $old_image_details, $new_image_detai
 
         // Do the move
         if (file_exists($old_original_filename)) {
+            do_my_log("File exists.");
             $result = rename($old_original_filename, $new_original_filename);
             if ($result) {
                 // Move succeeded
-
+                do_my_log("Moved ".$old_original_filename." to ". $new_original_filename);
             } else {
                 // Move failed
+                do_my_log("Move failed.");
             }
             // echo $result;
         } else {
             // Old original not found.
+            do_my_log("File not found.");
         }
 
     } else {
         // "[original_image] not found";
+        do_my_log("No [original_image].");
     }
 
 }
