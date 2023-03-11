@@ -8,9 +8,6 @@ Author: Robert Andrews
 Author URI: https:/www.robertandrews.co.uk
  */
 
-
-
- 
 /**
  * Do My Log.
  *
@@ -31,8 +28,6 @@ function do_my_log($log_message)
         error_log($log_entry, 3, $log_file);
     }
 }
-
-
 
 /**
  * Database Setup.
@@ -59,8 +54,6 @@ function tidy_media_organizer_create_table()
     }
 }
 register_activation_hook(__FILE__, 'tidy_media_organizer_create_table');
-
-
 
 /**
  * Clean On Deletion.
@@ -110,13 +103,7 @@ function tidy_media_organizer_admin_page()
 }
 add_action('admin_menu', 'tidy_media_organizer_admin_page');
 
-
-
-
-
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-
-
 
 /**
  * Admin Main Page.
@@ -131,15 +118,6 @@ function tidy_media_organizer_main_page()
     <h1>Tidy Media Organizer</h1>
 </div>
 <?php }
-
-
-
-
-
-
-
-
-
 
 /**
  * Admin Options Page.
@@ -214,10 +192,10 @@ function tidy_media_organizer_options_page()
 
     <?php
 //Get the active tab from the $_GET param
-/*
+    /*
     $default_tab = null;
     $tab = isset($_GET['tab']) ? $_GET['tab'] : $default_tab;
-    */
+     */
     ?>
 
     <!--
@@ -252,18 +230,18 @@ function tidy_media_organizer_options_page()
                                                     id="organize_post_img_by_type" value="1"
                                                     <?php checked($organize_post_img_by_type, 1);?>>
                                                 <?php
-                                                // Show post types
-                                                    $args = array(
-                                                        'public' => true,
-                                                        '_builtin' => false, // exclude default post types
-                                                    );
-                                                    $post_types = get_post_types($args);
-                                                    // add back default post types 'post' and 'page'
-                                                    array_push($post_types, 'post', 'page');
-                                                    echo '(' . implode(', ', array_map(function ($post_type) {
-                                                        return '<code>' . $post_type . '</code>';
-                                                    }, $post_types)) . ')';
-                                                    ?>
+// Show post types
+    $args = array(
+        'public' => true,
+        '_builtin' => false, // exclude default post types
+    );
+    $post_types = get_post_types($args);
+    // add back default post types 'post' and 'page'
+    array_push($post_types, 'post', 'page');
+    echo '(' . implode(', ', array_map(function ($post_type) {
+        return '<code>' . $post_type . '</code>';
+    }, $post_types)) . ')';
+    ?>
                                                 <p class="description">All uploads attached to posts will be housed in a
                                                     corresponding folder.</p>
                                             </td>
@@ -279,9 +257,9 @@ function tidy_media_organizer_options_page()
                                                     None
                                                 </label><br>
                                                 <?php
-                                                $taxonomies = get_taxonomies(array('public' => true));
-                                                    foreach ($taxonomies as $taxonomy) {
-                                                        ?>
+$taxonomies = get_taxonomies(array('public' => true));
+    foreach ($taxonomies as $taxonomy) {
+        ?>
                                                 <label style="margin: 0.35em 0 0.5em!important; display: inline-block;">
                                                     <input type="radio" name="organize_post_img_by_taxonomy"
                                                         value="<?php echo esc_attr($taxonomy); ?>"
@@ -290,8 +268,8 @@ function tidy_media_organizer_options_page()
                                                 </label>
                                                 <br>
                                                 <?php
-                                                }
-                                                ?>
+}
+    ?>
 
                                             </td>
                                         </tr>
@@ -419,13 +397,7 @@ function tidy_media_organizer_options_page()
 
 }
 
-
-
-
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-
-
-
 
 /**
  * Catch Saved Posts.
@@ -436,9 +408,10 @@ function tidy_media_organizer_options_page()
  * @param int $post_id The ID of the post being saved.
  * @return void
  */
-function do_saved_post($post_id) {
+function do_saved_post($post_id)
+{
 
-    do_my_log("💾 do_saved_post() - ".$post_id." ".get_post_field('post_type', $post_id).": ".get_the_title($post_id));
+    do_my_log("💾 do_saved_post() - " . $post_id . " " . get_post_field('post_type', $post_id) . ": " . get_the_title($post_id));
 
     if (!wp_is_post_revision($post_id)) {
         do_my_log("Not a revision.");
@@ -466,11 +439,6 @@ function do_saved_post($post_id) {
 }
 add_action('save_post', 'do_saved_post', 10, 1);
 
-
-
-
-
-
 /**
  * Tidy Post Attachments.
  *
@@ -481,7 +449,8 @@ add_action('save_post', 'do_saved_post', 10, 1);
  * @param int $post_id The ID of the post to tidy up its attachments.
  * @return boolean Returns false if no attachments are found, or if any errors occur during the attachment move process.
  */
-function tidy_post_attachments($post_id) {
+function tidy_post_attachments($post_id)
+{
 
     do_my_log('🧹 tidy_post_attachments()...');
 
@@ -490,7 +459,7 @@ function tidy_post_attachments($post_id) {
     if ($post_attachments) {
         foreach ($post_attachments as $post_attachment) {
 
-            do_my_log("🖼 Attachment ".$post_attachment->ID . " - " . $post_attachment->post_title);
+            do_my_log("🖼 Attachment " . $post_attachment->ID . " - " . $post_attachment->post_title);
 
             // Generate source and destination path pieces
             $old_image_details = old_image_details($post_attachment);
@@ -503,7 +472,7 @@ function tidy_post_attachments($post_id) {
                 // return false
             } else {
                 // print_r("Paths are different! Need to move.\n");
-                do_my_log("🚨 Path looks incorrect - ".$old_image_details['filepath']);
+                do_my_log("🚨 Path looks incorrect - " . $old_image_details['filepath']);
                 $move_main_file_success = move_main_file($post_attachment->ID, $old_image_details, $new_image_details);
                 if ($move_main_file_success == true) {
                     // TODO: Shouldn't these two be conditional on the first file being moved successfully, as per original code... ?
@@ -522,25 +491,20 @@ function tidy_post_attachments($post_id) {
 
 }
 
-
-
-
-
-
-
 /**
  * Make In-Line Image URLs relative
- * 
+ *
  * This function takes a WordPress post ID and modifies the post's content by
  * making all local image URLs relative to the site's root directory. It does this by
  * removing any specified domains from the image URLs.
- * 
+ *
  * The function only removes the site's own scheme domain (eg. "http://www.myblog.com").
- * 
+ *
  * @param int $post_id The ID of the WordPress post to modify.
  * @return void
  */
-function make_body_imgs_relative($post_id) {
+function make_body_imgs_relative($post_id)
+{
 
     do_my_log("🔗 make_body_imgs_relative()...");
 
@@ -565,7 +529,7 @@ function make_body_imgs_relative($post_id) {
     // For each domain we're removing
     $num_changes = 0;
     foreach ($domains_to_remove as $domain) {
-        do_my_log("Checking for any <img src=\"".$domain."...");
+        do_my_log("Checking for any <img src=\"" . $domain . "...");
 
         // Find any strings like "<img src="http://www.domain.com"
         $pattern = '/<img[^>]*src=["\']' . preg_quote($domain, '/') . '(.*?)["\']/i';
@@ -582,7 +546,7 @@ function make_body_imgs_relative($post_id) {
             $num_changes++;
         }
     }
-    do_my_log("Changes made: ".$num_changes++);
+    do_my_log("Changes made: " . $num_changes++);
 
     // If any URLs were modified, re-save the post
     if ($modified == true) { // was if ($new_content) {
@@ -608,25 +572,23 @@ function make_body_imgs_relative($post_id) {
 
 }
 
-
-
-
 /**
  * Fix Body Img Paths
- * 
+ *
  * Fixes all relative image URLs in the post's body to point to the expected location, based on the post's ID.
  * eg. Maybe /wp-content/uploads/image.jpeg should be /wp-content/uploads/post/taxonomy/term/image.jpeg
  *
  * When a malformed img src is found, function will:
  *  - Check if it exists in specified location form - move it and change the URL.
  *  - Check if it exists in intended location form  - just update URL to reflect.
- * 
+ *
  * @param int $post_id The ID of the post whose body should be fixed.
- * 
+ *
  * @return void
  */
 
-function fix_body_img_paths($post_id) {
+function fix_body_img_paths($post_id)
+{
 
     do_my_log("🎯 fix_body_img_paths()...");
 
@@ -634,24 +596,22 @@ function fix_body_img_paths($post_id) {
     // Get the post content
     $content = get_post_field('post_content', $post_id);
 
-    do_my_log("Checking for malformed img src locations...");
+    do_my_log("Checking for relative img src locations...");
     // Find relative URLs in the content
-    $pattern = '/<img[^>]+src=["\']\/([^"\']+)/';                               // <img src="/wp-content/uploa...
+    $pattern = '/<img[^>]+src=["\']\/([^"\']+)/'; // <img src="/wp-content/uploa...
     preg_match_all($pattern, $content, $matches);
-    do_my_log("Malformed relative links: ".count($matches));
-
+    do_my_log("Relative img URLs: " . count($matches[0]));
 
     // For every src found,
-    foreach ($matches[1] as $found_img_src) {                                   // /wp-content/uploads/media/folio/clients/wired/tom_heather.jpg
+    foreach ($matches[1] as $found_img_src) { // /wp-content/uploads/media/folio/clients/wired/tom_heather.jpg
 
         $modified = null;
-        
+
         // Get found file's details
-        do_my_log("🌄 Found src attribute ". $found_img_src);
-        $found_img_filepath = get_home_path() . $found_img_src;                 // /Users/robert/Sites/context.local/wp-content/uploads/media/folio/clients/wired/tom_heather.jpg
-        do_my_log("Filepath would be ".$found_img_filepath);
+        do_my_log("🌄 Found src attribute " . $found_img_src);
+        $found_img_filepath = get_home_path() . $found_img_src; // /Users/robert/Sites/context.local/wp-content/uploads/media/folio/clients/wired/tom_heather.jpg
+        do_my_log("Filepath would be " . $found_img_filepath);
         $post_attachment = null;
-        
 
         // ✅ File is where src says - move it and update body
         if (file_exists($found_img_filepath)) {
@@ -659,10 +619,10 @@ function fix_body_img_paths($post_id) {
             do_my_log("File does exist there. Getting its attachment object...");
 
             // Upload folder parts, used to generate attachment
-            $uploads_base = trailingslashit(wp_upload_dir()['baseurl']);        // http://context.local:8888/wp-content/uploads/
+            $uploads_base = trailingslashit(wp_upload_dir()['baseurl']); // http://context.local:8888/wp-content/uploads/
             $uploads_folder = str_replace(trailingslashit(home_url()), '', $uploads_base); // /wp-content/uploads/
             // Get file's attachment object
-            $found_img_url = trailingslashit(get_site_url()) . $found_img_src;  // http://context.local:8888/wp-content/uploads/media/folio/clients/wired/tom_heather.jpg       
+            $found_img_url = trailingslashit(get_site_url()) . $found_img_src; // http://context.local:8888/wp-content/uploads/media/folio/clients/wired/tom_heather.jpg
             $img_path_no_base = str_replace($uploads_base, '', $found_img_url);
             do_my_log("Searching database _wp_attachment_metadata to find " . $img_path_no_base);
             $args = array(
@@ -681,10 +641,10 @@ function fix_body_img_paths($post_id) {
             if ($query->have_posts()) {
 
                 $query->the_post();
-                $attachment_id = get_the_ID();                                  // 128824
-                do_my_log("Found attachment ID ".$attachment_id.".");
+                $attachment_id = get_the_ID(); // 128824
+                do_my_log("Found attachment ID " . $attachment_id . ".");
                 wp_reset_postdata();
-                $post_attachment = get_post($attachment_id);                    // WP_Post object: attachment
+                $post_attachment = get_post($attachment_id); // WP_Post object: attachment
 
                 if ($post_attachment) {
                     do_my_log("🖼 Found attachment object.");
@@ -692,10 +652,10 @@ function fix_body_img_paths($post_id) {
                     // Generate actual and intended path pieces, used for comparison
                     $old_image_details = old_image_details($post_attachment);
                     $new_image_details = new_image_details($post_id, $post_attachment);
-                    do_my_log("Comparing: ".$old_image_details['subdir']." vs ".$new_image_details['subdir_stem']);
+                    do_my_log("Comparing found " . $old_image_details['subdir'] . " vs user-specified pattern " . $new_image_details['subdir']);
 
                     // 😩 But this is the _wrong_ location - move it, and update post and metadata
-                    if ($old_image_details['subdir'] !== $new_image_details['subdir_stem']) {
+                    if ($old_image_details['subdir'] !== $new_image_details['subdir']) {
 
                         do_my_log("File not in user's designated folder.");
                         do_my_log("Considering file for move and body update...");
@@ -703,8 +663,8 @@ function fix_body_img_paths($post_id) {
                         // If image belongs to this post or is as yet unattached,
                         if ($post_attachment->post_parent == $post_id || $post_attachment->post_parent == 0) {
 
-                            do_my_log("File is not attached to any other post. Safe to move file and attach to this post (".$post_id.").");
-                            do_my_log("Move from ". $old_image_details['filepath'].  " to ".$new_image_details['filepath']."...");
+                            do_my_log("File is not attached to any other post. Safe to move file and attach to this post (" . $post_id . ").");
+                            do_my_log("Move from " . $old_image_details['filepath'] . " to " . $new_image_details['filepath'] . "...");
 
                             // 1. Move the file
                             $move_result = move_main_file($post_attachment->ID, $old_image_details, $new_image_details);
@@ -718,9 +678,9 @@ function fix_body_img_paths($post_id) {
                                 // 2. Update the body
                                 do_my_log("Update the body...");
                                 $new_src = $uploads_folder . trailingslashit($new_image_details['subdir']) . $new_image_details['filename'];
-                                do_my_log("Replace ".$found_img_src." with ".$new_src);
+                                do_my_log("Replace " . $found_img_src . " with " . $new_src);
                                 $new_content = str_replace($found_img_src, $new_src, $content, $num_replacements);
-                                do_my_log("Replacements made: ".$num_replacements);
+                                do_my_log("Replacements made: " . $num_replacements);
                                 // If the content has changed, set the modified flag to true
                                 if ($new_content !== $content) {
                                     $modified = true;
@@ -742,7 +702,7 @@ function fix_body_img_paths($post_id) {
 
                                 // 3. Attach image to this post if it was unattached
                                 if ($post_attachment->post_parent === 0 || $post_attachment->post_parent === '') {
-                                    do_my_log("Image ".$attachment_id." not attached to any post - attach it to this (".$post_id.").");
+                                    do_my_log("Image " . $attachment_id . " not attached to any post - attach it to this (" . $post_id . ").");
                                     // Set the post_parent of the image to the post ID
                                     $update_args = array(
                                         'ID' => $attachment_id,
@@ -761,7 +721,7 @@ function fix_body_img_paths($post_id) {
                             do_my_log("Image belongs to another post. Will not move it, update its metadata or attach it to this post.");
                         }
                     } else {
-                        do_my_log("Image is in user\'s intended location.");
+                        do_my_log("Image is in user's intended location.");
                     }
 
                 } else {
@@ -769,58 +729,38 @@ function fix_body_img_paths($post_id) {
                     do_my_log("Could not find attachment object.");
                 }
 
-
             } else {
                 // No attachment ID found
                 echo 'No attachment ID found.';
             }
 
-            
-
             // TODO: Else: maybe it exists in the *right* place (so the body URL alone is wrong)...
             // $expected_filepath = trailingslashit(wp_upload_dir()['basedir']) . trailingslashit($new_image_details['subdir']) . basename($found_img_src);
             // $expected_filepath."\n";
-            
 
         } else {
             // ❌ File is not even at src location                                  // /Users/robert/Sites/context.local/wp-content/uploads/media/folio/clients/wired/tom_heather.jpg
             do_my_log("File does not exist.");
         }
 
-
-
-
-
-
-
-        
-
-
-
         /*
-        // Is the img src path in user's preferred format?
-        if (strpos($found_img_src, $new_image_details['subdir_stem']) !== false) {
-            // ✅ URL is in user's expected format
-        } else {
-            // ❌ URL not in user's expected format
-            // echo "Image URL not in correct format";
+    // Is the img src path in user's preferred format?
+    if (strpos($found_img_src, $new_image_details['subdir_stem']) !== false) {
+    // ✅ URL is in user's expected format
+    } else {
+    // ❌ URL not in user's expected format
+    // echo "Image URL not in correct format";
 
-            // 1. If it's where specified, move it
-        }
-        */
+    // 1. If it's where specified, move it
+    }
+     */
 
     }
 
     do_my_log("Finished fix_body_img_paths().");
     // print_r($content);
 
-
 }
-
-
-
-
-
 
 /**
  * Generate Existing Image Details
@@ -852,9 +792,6 @@ function old_image_details($post_attachment)
     return $old_image;
 
 }
-
-
-
 
 /**
  * Generate New Image Details
@@ -931,9 +868,6 @@ function new_image_details($post_id, $post_attachment)
 
 }
 
-
-
-
 /**
  * Move Media File
  *
@@ -943,7 +877,8 @@ function new_image_details($post_id, $post_attachment)
  * @param array $old_image_details An associative array containing details of the image's old location (e.g., 'dirname', 'filepath', 'subdir', 'filename').
  * @return bool True if the move and database updates were successful, false otherwise.
  */
-function move_main_file($attachment_id, $old_image_details, $new_image_details) {
+function move_main_file($attachment_id, $old_image_details, $new_image_details)
+{
 
     do_my_log("🔧 move_main_file()...");
 
@@ -953,7 +888,7 @@ function move_main_file($attachment_id, $old_image_details, $new_image_details) 
     $uploads_dir_path = $uploads_dir['basedir']; // eg. /Users/robert/Sites/context.local/wp-content/uploads
     // Create the new sub-folder if it doesn't exist
     if (!file_exists($new_image_details['dirname'])) {
-        do_my_log("Making directory ".$new_image_details['dirname']);
+        do_my_log("Making directory " . $new_image_details['dirname']);
         wp_mkdir_p($new_image_details['dirname']);
     }
     // If folder now exists
@@ -961,7 +896,7 @@ function move_main_file($attachment_id, $old_image_details, $new_image_details) 
 
         // If source file actually exists
         if (file_exists($old_image_details['filepath'])) {
-            do_my_log("Source file exists at given location - ".$old_image_details['filepath']);
+            do_my_log("Source file exists at given location - " . $old_image_details['filepath']);
 
             // Move file
             do_my_log("Move to " . $new_image_details['filepath']);
@@ -1010,9 +945,6 @@ function move_main_file($attachment_id, $old_image_details, $new_image_details) 
 
 }
 
-
-
-
 /**
  * Move File Sizes
  *
@@ -1025,9 +957,10 @@ function move_main_file($attachment_id, $old_image_details, $new_image_details) 
  * @return bool $success Whether or not the move was successful.
  */
 
-function move_sizes_files($attachment_id, $old_image_details, $new_image_details) {
+function move_sizes_files($attachment_id, $old_image_details, $new_image_details)
+{
 
-    do_my_log("🔧 move_sizes_files() - " .$attachment_id . "...");
+    do_my_log("🔧 move_sizes_files() - " . $attachment_id . "...");
 
     // Get the _wp_attachment_metadata serialised array
     $attachment_metadata = wp_get_attachment_metadata($attachment_id);
@@ -1035,21 +968,21 @@ function move_sizes_files($attachment_id, $old_image_details, $new_image_details
     // Any [sizes]?
     $success = false;
     if (isset($attachment_metadata['sizes'])) {
-        do_my_log("Metadata has [sizes]. Number of sizes: ".count($attachment_metadata['sizes']));
-        $num_sizes=0;
+        do_my_log("Metadata has [sizes]. Number of sizes: " . count($attachment_metadata['sizes']));
+        $num_sizes = 0;
         foreach ($attachment_metadata['sizes'] as $size => $data) {
             $num_sizes++;
-            do_my_log("Size: ".$data['file']);
+            do_my_log("Size: " . $data['file']);
             // A. Move files
             // Generate the old and new filepaths for size variants
             $old_size_filename = trailingslashit($old_image_details['dirname']) . $data['file'];
             $new_size_filename = trailingslashit($new_image_details['dirname']) . $data['file'];
             // Do the move
             $result = rename($old_size_filename, $new_size_filename);
-            do_my_log("Move result: ".$result);
+            do_my_log("Move result: " . $result);
             if ($result) {
                 // Great
-                do_my_log("Moved ".$data['file']);
+                do_my_log("Moved " . $data['file']);
                 $success = true;
             } else {
                 // Error
@@ -1059,7 +992,7 @@ function move_sizes_files($attachment_id, $old_image_details, $new_image_details
             // B. Update database
             // No metadata to update - [sizes] filenames do not contain folders, only filenames.
         }
-        do_my_log("Sizes handled: ".$num_sizes);
+        do_my_log("Sizes handled: " . $num_sizes);
         // I want to access $success here
         return $success;
     } else {
@@ -1070,9 +1003,6 @@ function move_sizes_files($attachment_id, $old_image_details, $new_image_details
 
 }
 
-
-
-
 /**
  * Move Original File
  *
@@ -1081,7 +1011,7 @@ function move_sizes_files($attachment_id, $old_image_details, $new_image_details
  * Since WordPress 5.3, large image uploads generate a filename-scaled.jpeg as the primary
  * file for delivery. The originally remains as initially named, whose value is stored as
  * [original_image] in the wp_postmeta _wp_attachment_metadata serialised array.
- * 
+ *
  * A. Move file.
  * B. Update database - wp_postmeta: like [sizes], [original_image] is a filename only,
  *    with no initial folder specified. No update is required.
@@ -1095,7 +1025,8 @@ function move_sizes_files($attachment_id, $old_image_details, $new_image_details
  * @param array $new_image_details An array of details about the attachment's new location.
  * @return void
  */
-function move_original_file($attachment_id, $old_image_details, $new_image_details) {
+function move_original_file($attachment_id, $old_image_details, $new_image_details)
+{
 
     do_my_log("🔧 move_original_file()...");
 
@@ -1118,7 +1049,7 @@ function move_original_file($attachment_id, $old_image_details, $new_image_detai
             $result = rename($old_original_filename, $new_original_filename);
             if ($result) {
                 // Move succeeded
-                do_my_log("Moved ".$old_original_filename." to ". $new_original_filename);
+                do_my_log("Moved " . $old_original_filename . " to " . $new_original_filename);
             } else {
                 // Move failed
                 do_my_log("Move failed.");
@@ -1138,15 +1069,14 @@ function move_original_file($attachment_id, $old_image_details, $new_image_detai
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-
 /**
  * Remove save_post On Trash
- * 
+ *
  * Removes the 'save_post' action from the 'post.php' page when a post is trashed, and restores it when a post is untrashed.
  * This function is hooked to the 'admin_init' and 'untrash_post' actions. When a post is trashed, it removes the 'save_post'
  * action from the 'post.php' page, which is responsible for saving post data. When a post is untrashed, it restores the
  * 'save_post' action so that the post data can be saved again.
- * 
+ *
  * @return void
  */
 function remove_save_post_on_trash()
@@ -1158,15 +1088,14 @@ function remove_save_post_on_trash()
 }
 add_action('admin_init', 'remove_save_post_on_trash');
 
-
 /**
  * Restore save_post On Untrash
- * 
+ *
  * Restores the 'save_post' action when a post is untrashed.
  * This function is triggered by the 'untrash_post' action hook and checks if the post being untrashed was previously
  * in the trash. If it was, it adds the 'save_post' action back to the 'post.php' page, allowing post data to be saved
  * again.
- * 
+ *
  * @param int $post_id The ID of the post being untrashed.
  * @return void
  */
@@ -1179,17 +1108,9 @@ function restore_save_post_on_untrash($post_id)
 }
 add_action('untrash_post', 'restore_save_post_on_untrash');
 
-
-
-
-
-
-
-
-
 /**
  * Remove Attachments On Post Delete
- * 
+ *
  * Deletes all attached images for a given post when it is deleted.
  * This function is triggered by the before_delete_post action hook and checks if the post being deleted
  * is in the trash and if the delete request is coming from the WordPress admin panel. It then checks if any
@@ -1199,7 +1120,8 @@ add_action('untrash_post', 'restore_save_post_on_untrash');
  * @param int $post_id The ID of the post being deleted.
  * @return void
  */
-function delete_attached_images_on_post_delete($post_id) {
+function delete_attached_images_on_post_delete($post_id)
+{
 
     if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'delete') {
         if (!isset($_REQUEST['delete_all']) && !wp_check_post_lock($post_id)) {
@@ -1211,11 +1133,10 @@ function delete_attached_images_on_post_delete($post_id) {
                 $current_screen = get_current_screen();
                 $screen_id = $current_screen ? $current_screen->id : '';
 
-                do_my_log("Screen ID: ".$screen_id);
+                do_my_log("Screen ID: " . $screen_id);
                 $attachments = get_attached_media('', $post_id);
-                do_my_log("Attachments: ".count($attachments));
+                do_my_log("Attachments: " . count($attachments));
 
-                
                 foreach ($attachments as $attachment) {
                     // Check if the image is used by another post
                     do_my_log("Check if image is used by another post.");
@@ -1248,7 +1169,7 @@ function delete_attached_images_on_post_delete($post_id) {
                                     break;
                                 }
                             }
-                            
+
                         }
                     } else {
                         $used_by_other_post = true;
@@ -1261,12 +1182,12 @@ function delete_attached_images_on_post_delete($post_id) {
                         $metadata = wp_get_attachment_metadata($attachment_id);
                         foreach ($metadata['sizes'] as $size => $value) {
                             $file = $metadata['sizes'][$size]['file'];
-                            $path = dirname($attachment_path).'/'.$file;
-                            do_my_log("Size for deletion: ".$path);
+                            $path = dirname($attachment_path) . '/' . $file;
+                            do_my_log("Size for deletion: " . $path);
                             unlink($path);
                         }
                         if (isset($metadata['original_image'])) {
-                            $path = dirname($attachment_path).'/'.$metadata['original_image'];
+                            $path = dirname($attachment_path) . '/' . $metadata['original_image'];
                             do_my_log("Original image for deletion: " . $path);
                             unlink($path);
                         }
@@ -1276,9 +1197,9 @@ function delete_attached_images_on_post_delete($post_id) {
                         $dir = dirname($attachment_path);
                         if (is_dir($dir) && count(glob("$dir/*")) === 0) {
                             rmdir($dir);
-                            do_my_log("Directory ".$dir." deleted because it was empty.");
+                            do_my_log("Directory " . $dir . " deleted because it was empty.");
                         } else {
-                            do_my_log("Directory ".$dir." not empty, will not delete.");
+                            do_my_log("Directory " . $dir . " not empty, will not delete.");
                         }
                     }
                 }
@@ -1289,19 +1210,6 @@ function delete_attached_images_on_post_delete($post_id) {
     }
 }
 add_action('before_delete_post', 'delete_attached_images_on_post_delete');
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 /**
  * Notice Query Sender
@@ -1342,7 +1250,7 @@ function my_trigger_notice($key = '')
  *
  * @return void
  */
-function my_admin_notices() 
+function my_admin_notices()
 {
     if (!isset($_GET['notice_key'])) {
         return;
