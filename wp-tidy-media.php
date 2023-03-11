@@ -333,15 +333,20 @@ function tidy_media_organizer_options_page()
                                             </th>
                                             <td>
                                                 <?php echo home_url(); ?>
-                                                <p class="description">eg. <strike><?php echo home_url(); ?></strike>/wp-content/uploads/path/to/image.jpeg</p></td>
+                                                <p class="description">eg.
+                                                    <strike><?php echo home_url(); ?></strike>/wp-content/uploads/path/to/image.jpeg
+                                                </p>
+                                            </td>
                                         </tr>
                                         <tr>
                                             <th scope="row">
                                                 <label for="organize_post_img_by_type">Additional domains</label>
                                             </th>
                                             <td>
-                                                 <input type="text" name="domains_to_replace" id="domains_to_replace" size="75" value="<?php echo $domains_to_replace; ?>" />                                            
-                                                 <p class="description">Separate multiple hostnames by comma (eg. "http://www.oldsite.com, "https://testsite:8080")</p>
+                                                <input type="text" name="domains_to_replace" id="domains_to_replace"
+                                                    size="75" value="<?php echo $domains_to_replace; ?>" />
+                                                <p class="description">Separate multiple hostnames by comma (eg.
+                                                    "http://www.oldsite.com, "https://testsite:8080")</p>
                                             </td>
                                         </tr>
                                     </tbody>
@@ -1132,6 +1137,168 @@ function move_original_file($attachment_id, $old_image_details, $new_image_detai
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+
+/**
+ * Remove save_post On Trash
+ * 
+ * Removes the 'save_post' action from the 'post.php' page when a post is trashed, and restores it when a post is untrashed.
+ * This function is hooked to the 'admin_init' and 'untrash_post' actions. When a post is trashed, it removes the 'save_post'
+ * action from the 'post.php' page, which is responsible for saving post data. When a post is untrashed, it restores the
+ * 'save_post' action so that the post data can be saved again.
+ * 
+ * @return void
+ */
+function remove_save_post_on_trash()
+{
+    global $pagenow;
+    if ($pagenow === 'post.php' && isset($_GET['action']) && $_GET['action'] === 'trash') {
+        remove_action('save_post', 'do_saved_post');
+    }
+}
+add_action('admin_init', 'remove_save_post_on_trash');
+
+
+/**
+ * Restore save_post On Untrash
+ * 
+ * Restores the 'save_post' action when a post is untrashed.
+ * This function is triggered by the 'untrash_post' action hook and checks if the post being untrashed was previously
+ * in the trash. If it was, it adds the 'save_post' action back to the 'post.php' page, allowing post data to be saved
+ * again.
+ * 
+ * @param int $post_id The ID of the post being untrashed.
+ * @return void
+ */
+function restore_save_post_on_untrash($post_id)
+{
+    $post_status = get_post_status($post_id);
+    if ($post_status === 'trash') {
+        add_action('save_post', 'do_saved_post');
+    }
+}
+add_action('untrash_post', 'restore_save_post_on_untrash');
+
+
+
+
+
+
+
+
+
+/**
+ * Remove Attachments On Post Delete
+ * 
+ * Deletes all attached images for a given post when it is deleted.
+ * This function is triggered by the before_delete_post action hook and checks if the post being deleted
+ * is in the trash and if the delete request is coming from the WordPress admin panel. It then checks if any
+ * of the images attached to the post are used by another post. If the image is not used by any other post, it
+ * deletes the image and its associated metadata from the file system and the WordPress database. If the directory
+ * containing the image is empty after the deletion, it is also deleted.
+ * @param int $post_id The ID of the post being deleted.
+ * @return void
+ */
+function delete_attached_images_on_post_delete($post_id) {
+
+    if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'delete') {
+        if (!isset($_REQUEST['delete_all']) && !wp_check_post_lock($post_id)) {
+            $post = get_post($post_id);
+            if ($post->post_status == 'trash') {
+
+                do_my_log("🗑 delete_attached_images_on_post_delete()...");
+
+                $current_screen = get_current_screen();
+                $screen_id = $current_screen ? $current_screen->id : '';
+
+                do_my_log("Screen ID: ".$screen_id);
+                $attachments = get_attached_media('', $post_id);
+                do_my_log("Attachments: ".count($attachments));
+
+                
+                foreach ($attachments as $attachment) {
+                    // Check if the image is used by another post
+                    do_my_log("Check if image is used by another post.");
+                    $used_by_other_post = false;
+                    $attachment_id = $attachment->ID;
+                    $attachment_post_id = $attachment->post_parent;
+                    $post_type = get_post_type($attachment_post_id);
+                    if ($post_type == 'post') {
+                        $other_attachments = get_attached_media('', $attachment_post_id);
+                        foreach ($other_attachments as $other_attachment) {
+                            if ($other_attachment->ID != $attachment_id) {
+                                $used_by_other_post = true;
+                                break;
+                            }
+                        }
+                        if (!$used_by_other_post) {
+                            $args = array(
+                                'post_type' => 'post',
+                                'post_status' => 'publish',
+                                'posts_per_page' => -1,
+                                'fields' => 'ids',
+                            );
+                            $posts = get_posts($args);
+                            foreach ($posts as $post) {
+                                $content = get_post_field('post_content', $post);
+                                $attachment_meta = get_post_meta($attachment_id, '_wp_attached_file', true);
+                                if (strpos($content, $attachment_meta) !== false) {
+                                    $used_by_other_post = true;
+                                    do_my_log("Image in use by another post. Will not delete.");
+                                    break;
+                                }
+                            }
+                            
+                        }
+                    } else {
+                        $used_by_other_post = true;
+                        do_my_log("Image in use by another post. Will not delete.");
+                    }
+                    if (!$used_by_other_post) {
+                        // Delete the image if it is not used by another post
+                        $attachment_path = get_attached_file($attachment_id);
+                        do_my_log("Image " . $attachment_path . " only used by this post. Will be deleted.");
+                        $metadata = wp_get_attachment_metadata($attachment_id);
+                        foreach ($metadata['sizes'] as $size => $value) {
+                            $file = $metadata['sizes'][$size]['file'];
+                            $path = dirname($attachment_path).'/'.$file;
+                            do_my_log("Size for deletion: ".$path);
+                            unlink($path);
+                        }
+                        if (isset($metadata['original_image'])) {
+                            $path = dirname($attachment_path).'/'.$metadata['original_image'];
+                            do_my_log("Original image for deletion: " . $path);
+                            unlink($path);
+                        }
+                        wp_delete_attachment($attachment_id, true);
+                        do_my_log("Deletion should be complete.");
+                        // Delete the directory if it is empty
+                        $dir = dirname($attachment_path);
+                        if (is_dir($dir) && count(glob("$dir/*")) === 0) {
+                            rmdir($dir);
+                            do_my_log("Directory ".$dir." deleted because it was empty.");
+                        } else {
+                            do_my_log("Directory ".$dir." not empty, will not delete.");
+                        }
+                    }
+                }
+            }
+        } else {
+            // Second time firing
+        }
+    }
+}
+add_action('before_delete_post', 'delete_attached_images_on_post_delete');
+
+
+
+
+
+
+
+
+
+
 
 
 
