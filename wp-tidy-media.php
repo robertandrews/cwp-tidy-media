@@ -8,8 +8,8 @@ Author: Robert Andrews
 Author URI: https:/www.robertandrews.co.uk
  */
 
-
-function do_my_log($log_message) {
+function do_my_log($log_message)
+{
     /**
      * Do My Log.
      *
@@ -29,8 +29,8 @@ function do_my_log($log_message) {
     }
 }
 
-
-function tidy_media_organizer_create_table() {
+function tidy_media_organizer_create_table()
+{
     /**
      * Database Setup.
      *
@@ -55,8 +55,8 @@ function tidy_media_organizer_create_table() {
 }
 register_activation_hook(__FILE__, 'tidy_media_organizer_create_table');
 
-
-function tidy_media_organizer_delete_table() {
+function tidy_media_organizer_delete_table()
+{
     /**
      * Clean On Deletion.
      *
@@ -75,8 +75,8 @@ function tidy_media_organizer_delete_table() {
 }
 register_uninstall_hook(__FILE__, 'tidy_media_organizer_delete_table');
 
-
-function tidy_media_organizer_admin_page() {
+function tidy_media_organizer_admin_page()
+{
     /**
      * Admin Menus.
      *
@@ -103,10 +103,8 @@ function tidy_media_organizer_admin_page() {
 }
 add_action('admin_menu', 'tidy_media_organizer_admin_page');
 
-
-
-
-function tidy_media_organizer_main_page() {
+function tidy_media_organizer_main_page()
+{
     /**
      * Admin Main Page.
      *
@@ -121,8 +119,8 @@ function tidy_media_organizer_main_page() {
 <?php
 }
 
-
-function tidy_media_organizer_options_page() {
+function tidy_media_organizer_options_page()
+{
     /**
      * Admin Options Page.
      *
@@ -152,6 +150,12 @@ function tidy_media_organizer_options_page() {
                 // TODO: Save/retrieve a serialised array, not a single text string.
                 // TODO: Use dynamic input entry/array consolidation
                 array('setting_name' => 'domains_to_replace', 'setting_value' => isset($_POST['domains_to_replace']) ? sanitize_text_field($_POST['domains_to_replace']) : ''),
+                array('setting_name' => 'use_relative', 'setting_value' => isset($_POST['use_relative']) ? sanitize_text_field($_POST['use_relative']) : ''),
+                array('setting_name' => 'use_custom', 'setting_value' => isset($_POST['use_custom']) ? sanitize_text_field($_POST['use_custom']) : ''),
+                array('setting_name' => 'use_fix', 'setting_value' => isset($_POST['use_fix']) ? sanitize_text_field($_POST['use_fix']) : ''),
+                array('setting_name' => 'use_localise', 'setting_value' => isset($_POST['use_localise']) ? sanitize_text_field($_POST['use_localise']) : ''),
+                array('setting_name' => 'use_delete', 'setting_value' => isset($_POST['use_delete']) ? sanitize_text_field($_POST['use_delete']) : ''),
+                array('setting_name' => 'use_log', 'setting_value' => isset($_POST['use_log']) ? sanitize_text_field($_POST['use_log']) : ''),
             );
             foreach ($settings as $setting) {
                 $existing_row = $wpdb->get_row("SELECT * FROM $table_name WHERE setting_name = '{$setting['setting_name']}'");
@@ -181,6 +185,12 @@ function tidy_media_organizer_options_page() {
         $organize_post_img_by_type = isset($settings_arr['organize_post_img_by_type']) ? $settings_arr['organize_post_img_by_type'] : 0;
         $organize_post_img_by_taxonomy = isset($settings_arr['organize_post_img_by_taxonomy']) ? $settings_arr['organize_post_img_by_taxonomy'] : '';
         $domains_to_replace = isset($settings_arr['domains_to_replace']) ? $settings_arr['domains_to_replace'] : '';
+        $use_relative = isset($settings_arr['use_relative']) ? $settings_arr['use_relative'] : 0;
+        $use_custom = isset($settings_arr['use_custom']) ? $settings_arr['use_custom'] : 0;
+        $use_fix = isset($settings_arr['use_fix']) ? $settings_arr['use_fix'] : 0;
+        $use_localise = isset($settings_arr['use_localise']) ? $settings_arr['use_localise'] : 0;
+        $use_delete = isset($settings_arr['use_delete']) ? $settings_arr['use_delete'] : 0;
+        $use_log = isset($settings_arr['use_log']) ? $settings_arr['use_log'] : 0;
 
     } else {
         // Show an error message
@@ -214,10 +224,97 @@ function tidy_media_organizer_options_page() {
                 <div id="post-body-content">
                     <div class="meta-box-sortables ui-sortable">
 
-                        <!-- Post media folders -->
                         <div class="postbox">
                             <div class="postbox-header">
-                                <h2>Post media folders</h2>
+                                <h2>Components</h2>
+                            </div>
+                            <div class="inside">
+                                <table class="form-table">
+                                    <tbody>
+                                        <tr>
+                                            <th scope="row">
+                                                <label for="organize_post_img_by_type">Choose functions</label>
+                                            </th>
+                                            <td>
+                                                <label style="margin: 0.35em 0 0.5em!important; display: inline-block;">
+                                                    <input type="checkbox" name="use_custom" id="use_custom" value="1"
+                                                        <?php checked($use_relative, 1);?>>
+                                                    Custom attachment filepath
+                                                    <p class="description">Force WordPress to store post-attached images
+                                                        in a folder
+                                                        structure that can mimic your content structure.</p>
+                                                </label>
+                                                <br>
+                                                <label style="margin: 0.35em 0 0.5em!important; display: inline-block;">
+                                                    <input type="checkbox" name="use_relative" id="use_relative"
+                                                        value="1" <?php checked($use_relative, 1);?>>
+                                                    Make body <code>img src</code> URLs relative
+                                                    <p class="description">In post content, any of your own images
+                                                        called via absolute URLs (eg.
+                                                        <code>&lt;img src="http://www.yourblog.com/wp-content/uploads/2023/03/image.jpeg"&gt;</code>)
+                                                        will be replaced by a corresponding relative URL (eg.
+                                                        <code>&lt;img src="/wp-content/uploads/2023/03/image.jpeg"&gt;</code>).
+                                                    </p>
+                                                </label>
+                                                <br>
+                                                <label style="margin: 0.35em 0 0.5em!important; display: inline-block;">
+                                                    <input type="checkbox" name="use_fix" id="use_fix" value="1"
+                                                        <?php checked($use_fix, 1);?>>
+                                                    Fix body image paths
+                                                    <p class="description">In post content, all local image URLs (ie.
+                                                        relative <code>&lt;img src</code>
+                                                        URLs) will be checked. Files not in custom location
+                                                        will be moved there and <code>src</code> in post body will be
+                                                        udpated accordingly.</p>
+                                                </label>
+                                                <br>
+                                                <label style="margin: 0.35em 0 0.5em!important; display: inline-block;">
+                                                    <input type="checkbox" name="use_localise" id="use_localise"
+                                                        value="1" <?php checked($use_localise, 1);?>>
+                                                    Localise remote body images
+                                                    <p class="description">In post content, all off-site images
+                                                        (ie. <code>&lt;img src</code> URLs starting
+                                                        <code>http://</code>) will be pulled to your
+                                                        site. Organisation will be as per the other settings.
+                                                    </p>
+                                                </label>
+                                                <br>
+                                                <label style="margin: 0.35em 0 0.5em!important; display: inline-block;">
+                                                    <input type="checkbox" name="use_delete" id="use_delete" value="1"
+                                                        <?php checked($use_delete, 1);?>>
+                                                    Delete attachments with posts
+                                                    <p class="description">When a post is deleted, any attachments will
+                                                        also be deleted. Only deletes if attachment is unused elsewhere.
+                                                    </p>
+                                                </label>
+                                                <br>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th scope="row">
+                                                <label for="organize_post_img_by_type">Logging</label>
+                                            </th>
+                                            <td>
+                                                <label style="margin: 0.35em 0 0.5em!important; display: inline-block;">
+                                                    <input type="checkbox" name="use_log" id="use_log" value="1"
+                                                        <?php checked($use_log, 1);?>>
+                                                    Log operations
+                                                    <p class="description">Keep a log of all operations in
+                                                        <code><?php echo plugin_dir_path(__FILE__); ?><a href="<?php echo plugins_url('/', __FILE__); ?>/wp-tidy-media.log" target="_new">wp-tidy-media.log</a></code>
+                                                    </p>
+                                                </label>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+
+                        <!-- Post media folders -->
+                        <div class="postbox" id="media_folders_box">
+                            <div class="postbox-header">
+                                <h2>Custom attachment filepath</h2>
                             </div>
                             <div class="inside">
 
@@ -230,7 +327,8 @@ function tidy_media_organizer_options_page() {
                                             <td>
                                                 <input type="checkbox" name="organize_post_img_by_type"
                                                     id="organize_post_img_by_type" value="1"
-                                                    <?php checked($organize_post_img_by_type, 1);?>>
+                                                    <?php checked($organize_post_img_by_type, 1);?>
+                                                    class="media-folder-input">
                                                 <?php
 // Show post types
     $args = array(
@@ -255,7 +353,8 @@ function tidy_media_organizer_options_page() {
                                             <td>
                                                 <label style="margin: 0.35em 0 0.5em!important; display: inline-block;">
                                                     <input type="radio" name="organize_post_img_by_taxonomy" value=""
-                                                        <?php checked($organize_post_img_by_taxonomy, '');?>>
+                                                        <?php checked($organize_post_img_by_taxonomy, '');?>
+                                                        class="media-folder-input">
                                                     None
                                                 </label><br>
                                                 <?php
@@ -265,7 +364,8 @@ $taxonomies = get_taxonomies(array('public' => true));
                                                 <label style="margin: 0.35em 0 0.5em!important; display: inline-block;">
                                                     <input type="radio" name="organize_post_img_by_taxonomy"
                                                         value="<?php echo esc_attr($taxonomy); ?>"
-                                                        <?php checked($organize_post_img_by_taxonomy, $taxonomy);?>>
+                                                        <?php checked($organize_post_img_by_taxonomy, $taxonomy);?>
+                                                        class="media-folder-input">
                                                     <code><?php echo esc_html($taxonomy); ?></code>
                                                 </label>
                                                 <br>
@@ -302,7 +402,7 @@ $taxonomies = get_taxonomies(array('public' => true));
                         <!-- Body image URLs-->
                         <div class="postbox">
                             <div class="postbox-header">
-                                <h2>Use relative image URLs in post body</h2>
+                                <h2>Make body <code>img src</code> URLs relative</h2>
                             </div>
                             <div class="inside">
                                 <table class="form-table">
@@ -320,13 +420,15 @@ $taxonomies = get_taxonomies(array('public' => true));
                                         </tr>
                                         <tr>
                                             <th scope="row">
-                                                <label for="organize_post_img_by_type">Additional domains</label>
+                                                <label for="organize_post_img_by_type">Additional domains to
+                                                    remove</label>
                                             </th>
                                             <td>
                                                 <input type="text" name="domains_to_replace" id="domains_to_replace"
                                                     size="75" value="<?php echo $domains_to_replace; ?>" />
                                                 <p class="description">Separate multiple hostnames by comma (eg.
-                                                    "http://www.oldsite.com, "https://testsite:8080")</p>
+                                                    "http://www.oldsite.com, "https://testsite:8080") - no trailing
+                                                    slash.</p>
                                             </td>
                                         </tr>
                                     </tbody>
@@ -370,10 +472,13 @@ $taxonomies = get_taxonomies(array('public' => true));
             var month = today.getMonth() + 1;
             var dateFolders = year + '/' + (month < 10 ? '0' + month : month);
         }
+        // TODO: Preview does not show if date folders is off?
         // If dateFolders exists, append it to the path
         if (dateFolders) {
-            path += '/<strong>' + dateFolders + '</strong>';
+            path += '/' + dateFolders;
         }
+
+        path += '/image.jpeg';
 
 
         document.querySelector('#planned-path').innerHTML = path;
@@ -392,6 +497,32 @@ $taxonomies = get_taxonomies(array('public' => true));
     });
     </script>
 
+
+    <script>
+    jQuery(document).ready(function($) {
+        var mediaFoldersBox = $('#media_folders_box');
+        var mediaFolderInputs = mediaFoldersBox.find('.media-folder-input');
+        var useCustomCheckbox = $('#use_custom');
+
+        // Disable or enable media folder inputs based on use_custom checkbox
+        function toggleMediaFolderInputs() {
+            if (useCustomCheckbox.prop('checked')) {
+                mediaFolderInputs.prop('disabled', false);
+            } else {
+                mediaFolderInputs.prop('disabled', true);
+            }
+        }
+
+        // Initialize the state of the media folder inputs
+        toggleMediaFolderInputs();
+
+        // Listen for changes in the use_custom checkbox
+        useCustomCheckbox.change(function() {
+            toggleMediaFolderInputs();
+        });
+    });
+    </script>
+
 </div>
 
 
@@ -399,9 +530,8 @@ $taxonomies = get_taxonomies(array('public' => true));
 
 }
 
-
-
-function do_saved_post($post_id) {
+function do_saved_post($post_id)
+{
     /**
      * Catch Saved Posts.
      *
@@ -427,11 +557,11 @@ function do_saved_post($post_id) {
         if (in_array($my_post_type, $post_types)) {
             do_my_log("Save is valid for action.");
             localise_remote_images($post_id);
-            // TODO: Consider switching order - onyl tidy (move posts) when all links are set?
             make_body_imgs_relative($post_id);
-            fix_body_img_paths($post_id); // TODO: Avoid infinite loop
+            fix_body_img_paths($post_id);
             tidy_post_attachments($post_id);
-            do_my_log("Complete.");
+            // delete_attached_images_on_post_delete($post_id);
+            do_my_log("🏁 Complete.");
         } else {
             // error: disallowed post type
         }
@@ -440,8 +570,8 @@ function do_saved_post($post_id) {
 }
 add_action('save_post', 'do_saved_post', 10, 1);
 
-
-function tidy_post_attachments($post_id) {
+function tidy_post_attachments($post_id)
+{
     /**
      * Tidy Post Attachments.
      *
@@ -492,8 +622,8 @@ function tidy_post_attachments($post_id) {
 
 }
 
-
-function make_body_imgs_relative($post_id) {
+function make_body_imgs_relative($post_id)
+{
     /**
      * Make In-Line Image URLs relative
      *
@@ -573,8 +703,8 @@ function make_body_imgs_relative($post_id) {
 
 }
 
-
-function fix_body_img_paths($post_id) {
+function fix_body_img_paths($post_id)
+{
     /**
      * Fix Body Img Paths
      *
@@ -762,11 +892,11 @@ function fix_body_img_paths($post_id) {
 
 }
 
-
-function localise_remote_images($post_id) {
+function localise_remote_images($post_id)
+{
     /**
      * Localise Remote Images
-     * 
+     *
      * Slurps any remote images in a given post by downloading them to the media library
      * and updating the image src attribute to use a relative URL.
      *
@@ -800,7 +930,7 @@ function localise_remote_images($post_id) {
             // Generate uploads directory info
             $upload_dir = wp_upload_dir();
             $image_file = $upload_dir['path'] . '/' . $image_name;
-            
+
             do_my_log("Slurp to " . $image_file);
 
             if (file_put_contents($image_file, $image_data) !== false) {
@@ -810,7 +940,7 @@ function localise_remote_images($post_id) {
                 // Create attachment post object
                 do_my_log("Creating attachment for this...");
                 $attachment = array(
-                    'guid'           => $upload_dir['url'] . '/' . $image_name,
+                    'guid' => $upload_dir['url'] . '/' . $image_name,
                     'post_title' => $image_name,
                     'post_mime_type' => wp_check_filetype($image_name)['type'],
                     'post_content' => '',
@@ -826,7 +956,7 @@ function localise_remote_images($post_id) {
                 wp_update_attachment_metadata($attach_id, $attach_data);
 
                 // Replace the image src with the new attachment URL
-                do_my_log("Replacing original src with local URL ".wp_get_attachment_url($attach_id));
+                do_my_log("Replacing original src with local URL " . wp_get_attachment_url($attach_id));
                 $image_tag->setAttribute('src', wp_get_attachment_url($attach_id));
             } else {
                 do_my_log("Remote slurp failed.");
@@ -847,10 +977,8 @@ function localise_remote_images($post_id) {
 
 }
 
-
-
-
-function old_image_details($post_attachment) {
+function old_image_details($post_attachment)
+{
     /**
      * Generate Existing Image Details
      *
@@ -878,7 +1006,8 @@ function old_image_details($post_attachment) {
 
 }
 
-function new_image_details($post_id, $post_attachment) {
+function new_image_details($post_id, $post_attachment)
+{
     /**
      * Generate New Image Details
      *
@@ -951,8 +1080,8 @@ function new_image_details($post_id, $post_attachment) {
 
 }
 
-
-function move_main_file($attachment_id, $old_image_details, $new_image_details) {
+function move_main_file($attachment_id, $old_image_details, $new_image_details)
+{
     /**
      * Move Media File
      *
@@ -1028,9 +1157,8 @@ function move_main_file($attachment_id, $old_image_details, $new_image_details) 
 
 }
 
-
-
-function move_sizes_files($attachment_id, $old_image_details, $new_image_details) {
+function move_sizes_files($attachment_id, $old_image_details, $new_image_details)
+{
     /**
      * Move File Sizes
      *
@@ -1086,8 +1214,8 @@ function move_sizes_files($attachment_id, $old_image_details, $new_image_details
 
 }
 
-
-function move_original_file($attachment_id, $old_image_details, $new_image_details) {
+function move_original_file($attachment_id, $old_image_details, $new_image_details)
+{
     /**
      * Move Original File
      *
@@ -1149,9 +1277,8 @@ function move_original_file($attachment_id, $old_image_details, $new_image_detai
 
 }
 
-
-
-function remove_save_post_on_trash() {
+function remove_save_post_on_trash()
+{
     /**
      * Remove save_post On Trash
      *
@@ -1169,8 +1296,8 @@ function remove_save_post_on_trash() {
 }
 add_action('admin_init', 'remove_save_post_on_trash');
 
-
-function restore_save_post_on_untrash($post_id) {
+function restore_save_post_on_untrash($post_id)
+{
     /**
      * Restore save_post On Untrash
      *
@@ -1190,8 +1317,8 @@ function restore_save_post_on_untrash($post_id) {
 }
 add_action('untrash_post', 'restore_save_post_on_untrash');
 
-
-function delete_attached_images_on_post_delete($post_id) {
+function delete_attached_images_on_post_delete($post_id)
+{
     /**
      * Remove Attachments On Post Delete
      *
@@ -1292,8 +1419,8 @@ function delete_attached_images_on_post_delete($post_id) {
 }
 add_action('before_delete_post', 'delete_attached_images_on_post_delete');
 
-
-function my_trigger_notice($key = '') {
+function my_trigger_notice($key = '')
+{
     /**
      * Notice Query Sender
      *
@@ -1322,8 +1449,8 @@ function my_trigger_notice($key = '') {
 
 }
 
-
-function my_admin_notices() {
+function my_admin_notices()
+{
     /**
      * Notify Post Moved.
      *
