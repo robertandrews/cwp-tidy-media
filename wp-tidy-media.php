@@ -115,10 +115,10 @@ function tidy_media_organizer_main_page() {
      * @return void
      */
     ?>
-    <div class="wrap">
-        <h1>Tidy Media Organizer</h1>
-    </div>
-    <?php
+<div class="wrap">
+    <h1>Tidy Media Organizer</h1>
+</div>
+<?php
 }
 
 
@@ -426,6 +426,7 @@ function do_saved_post($post_id) {
 
         if (in_array($my_post_type, $post_types)) {
             do_my_log("Save is valid for action.");
+            localise_remote_images($post_id);
             // TODO: Consider switching order - onyl tidy (move posts) when all links are set?
             make_body_imgs_relative($post_id);
             fix_body_img_paths($post_id); // TODO: Avoid infinite loop
@@ -656,13 +657,13 @@ function fix_body_img_paths($post_id) {
                     // 😩 But this is the _wrong_ location - move it, and update post and metadata
                     if ($old_image_details['subdir'] !== $new_image_details['subdir']) {
 
-                        do_my_log("File not in user's designated folder.");
+                        do_my_log("🚨 File not in user's designated folder.");
                         do_my_log("Considering file for move and body update...");
 
                         // If image belongs to this post or is as yet unattached,
                         if ($post_attachment->post_parent == $post_id || $post_attachment->post_parent == 0) {
 
-                            do_my_log("File is not attached to any other post. Safe to move file and attach to this post (" . $post_id . ").");
+                            do_my_log("💡 File is not attached to any other post. Safe to move file and attach to this post (" . $post_id . ").");
                             do_my_log("Move from " . $old_image_details['filepath'] . " to " . $new_image_details['filepath'] . "...");
 
                             // 1. Move the file
@@ -760,6 +761,92 @@ function fix_body_img_paths($post_id) {
     // print_r($content);
 
 }
+
+
+function localise_remote_images($post_id) {
+    /**
+     * Localise Remote Images
+     * 
+     * Slurps any remote images in a given post by downloading them to the media library
+     * and updating the image src attribute to use a relative URL.
+     *
+     * @param int $post_id The ID of the post to be checked for remote images.
+     *
+     * @return void
+     *
+     * @throws Exception If there is an error downloading an image or updating the post.
+     */
+
+    do_my_log("🌐 localise_remote_images()...");
+
+    $post_content = get_post_field('post_content', $post_id);
+    $dom = new DOMDocument();
+    @$dom->loadHTML($post_content);
+
+    $image_tags = $dom->getElementsByTagName('img');
+
+    foreach ($image_tags as $image_tag) {
+        $image_src = $image_tag->getAttribute('src');
+
+        if (strpos($image_src, 'http') === 0) {
+
+            do_my_log("🎆 Found " . $image_src);
+
+            // Download the image file contents
+            $image_data = file_get_contents($image_src);
+            // Generate path info
+            $image_info = pathinfo($image_src);
+            $image_name = $image_info['basename'];
+            // Generate uploads directory info
+            $upload_dir = wp_upload_dir();
+            $image_file = $upload_dir['path'] . '/' . $image_name;
+            
+            do_my_log("Slurp to " . $image_file);
+
+            if (file_put_contents($image_file, $image_data) !== false) {
+
+                do_my_log("Remote slurp worked.");
+
+                // Create attachment post object
+                do_my_log("Creating attachment for this...");
+                $attachment = array(
+                    'guid'           => $upload_dir['url'] . '/' . $image_name,
+                    'post_title' => $image_name,
+                    'post_mime_type' => wp_check_filetype($image_name)['type'],
+                    'post_content' => '',
+                    'post_status' => 'inherit',
+                    'post_parent' => $post_id,
+                );
+                // Insert the attachment into the media library
+                $attach_id = wp_insert_attachment($attachment, $image_file, $post_id);
+
+                // Set the attachment metadata
+                do_my_log("Set attachment metadata..");
+                $attach_data = wp_generate_attachment_metadata($attach_id, $image_file);
+                wp_update_attachment_metadata($attach_id, $attach_data);
+
+                // Replace the image src with the new attachment URL
+                do_my_log("Replacing original src with local URL ".wp_get_attachment_url($attach_id));
+                $image_tag->setAttribute('src', wp_get_attachment_url($attach_id));
+            } else {
+                do_my_log("Remote slurp failed.");
+            }
+        } else {
+            do_my_log("No remote images to pull.\n");
+        }
+    }
+
+    // Unhook do_saved_post(), or wp_update_post() would cause an infinite loop
+    remove_action('save_post', 'do_saved_post', 10, 1);
+    // Update the post content
+    $post_content = $dom->saveHTML();
+    wp_update_post(array('ID' => $post_id, 'post_content' => $post_content));
+    do_my_log("Updated post.");
+    // Hook it back up
+    add_action('save_post', 'do_saved_post', 10, 1);
+
+}
+
 
 
 
@@ -940,6 +1027,7 @@ function move_main_file($attachment_id, $old_image_details, $new_image_details) 
     }
 
 }
+
 
 
 function move_sizes_files($attachment_id, $old_image_details, $new_image_details) {
