@@ -444,57 +444,46 @@ $taxonomies = get_taxonomies(array('public' => true));
 
     <script>
     // Update the planned path in real-time based on the user's selections
-    function updatePlannedPath() {
-        var basedir = '<?php echo esc_js(wp_upload_dir()['basedir']); ?>';
-        var postTypeEnabled = document.querySelector('[name="organize_post_img_by_type"]').checked;
-        var taxonomySlug = document.querySelector('[name="organize_post_img_by_taxonomy"]:checked');
+ function updatePlannedPath() {
+    var basedir = '<?php echo esc_js(wp_upload_dir()['basedir']); ?>';
+    var postTypeEnabled = document.querySelector('[name="organize_post_img_by_type"]').checked;
+    var taxonomySlug = document.querySelector('[name="organize_post_img_by_taxonomy"]:checked');
 
-        var path = basedir;
+    var path = basedir;
 
-        if (postTypeEnabled) {
-            path += '/<strong>{post_type}</strong>';
-        }
-
-        if (taxonomySlug && taxonomySlug.value !== '') {
-            path += '/<strong>' + taxonomySlug.value + '/{term_slug}</strong>';
-        }
-
-
-        // Get the value of the 'uploads_use_yearmonth_folders' option using PHP and assign it to a JavaScript variable
-        var uploadsUseYearMonthFolders = <?php echo get_option('uploads_use_yearmonth_folders'); ?>;
-
-        // Check if the value of the 'uploads_use_yearmonth_folders' option is 1
-        if (uploadsUseYearMonthFolders === 1) {
-            // Create a new Date object with today's date
-            var today = new Date();
-            // Get the year and month from the Date object and format them as 'YYYY/MM'
-            var year = today.getFullYear();
-            var month = today.getMonth() + 1;
-            var dateFolders = year + '/' + (month < 10 ? '0' + month : month);
-        }
-        // TODO: Preview does not show if date folders is off?
-        // If dateFolders exists, append it to the path
-        if (dateFolders) {
-            path += '/' + dateFolders;
-        }
-
-        path += '/image.jpeg';
-
-
-        document.querySelector('#planned-path').innerHTML = path;
+    if (postTypeEnabled) {
+        path += '/<strong>{post_type}</strong>';
     }
 
-    // Listen for changes to the form and update the planned path
-    document.addEventListener('DOMContentLoaded', function() {
-        document.querySelector('[name="organize_post_img_by_type"]').addEventListener('change',
-            updatePlannedPath);
-        var radioButtons = document.querySelectorAll('[name="organize_post_img_by_taxonomy"]');
-        for (var i = 0; i < radioButtons.length; i++) {
-            radioButtons[i].addEventListener('change', updatePlannedPath);
-        }
+    if (taxonomySlug && taxonomySlug.value !== '') {
+        path += '/<strong>{' + taxonomySlug.value + '_slug</strong>}';
+    }
 
-        updatePlannedPath();
-    });
+    var uploadsUseYearMonthFolders = <?php echo get_option('uploads_use_yearmonth_folders') === '1' ? 'true' : 'false'; ?>;
+
+    if (uploadsUseYearMonthFolders) {
+        var today = new Date();
+        var year = today.getFullYear();
+        var month = today.getMonth() + 1;
+        var dateFolders = year + '/' + (month < 10 ? '0' + month : month);
+        path += '/' + dateFolders;
+    }
+
+    path += '/image.jpeg';
+
+    document.querySelector('#planned-path').innerHTML = path;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelector('[name="organize_post_img_by_type"]').addEventListener('change', updatePlannedPath);
+    var radioButtons = document.querySelectorAll('[name="organize_post_img_by_taxonomy"]');
+    for (var i = 0; i < radioButtons.length; i++) {
+        radioButtons[i].addEventListener('change', updatePlannedPath);
+    }
+
+    updatePlannedPath();
+});
+
     </script>
 
 
@@ -606,7 +595,6 @@ function tidy_post_attachments($post_id)
                 do_my_log("🚨 Path looks incorrect - " . $old_image_details['filepath']);
                 $move_main_file_success = move_main_file($post_attachment->ID, $old_image_details, $new_image_details);
                 if ($move_main_file_success == true) {
-                    // TODO: Shouldn't these two be conditional on the first file being moved successfully, as per original code... ?
                     $move_sizes_files_success = move_sizes_files($post_attachment->ID, $old_image_details, $new_image_details);
                     $move_original_file_success = move_original_file($post_attachment->ID, $old_image_details, $new_image_details);
                 }
