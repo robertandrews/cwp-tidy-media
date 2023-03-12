@@ -8,17 +8,17 @@ Author: Robert Andrews
 Author URI: https:/www.robertandrews.co.uk
  */
 
-/**
- * Do My Log.
- *
- * Write a log message to a log file.
- * This function writes a log message to a log file, with the current timestamp and the message.
- *
- * @param string $log_message The log message to be written to the log file.
- * @return void
- */
-function do_my_log($log_message)
-{
+
+function do_my_log($log_message) {
+    /**
+     * Do My Log.
+     *
+     * Write a log message to a log file.
+     * This function writes a log message to a log file, with the current timestamp and the message.
+     *
+     * @param string $log_message The log message to be written to the log file.
+     * @return void
+     */
     $logging = true;
     if ($logging == true) {
         $log_file = plugin_dir_path(__FILE__) . 'wp-tidy-media.log';
@@ -29,16 +29,16 @@ function do_my_log($log_message)
     }
 }
 
-/**
- * Database Setup.
- *
- * Creates a new database table for storing Tidy Media Organizer plugin settings.
- *
- * @global object $wpdb The WordPress database object.
- * @return void
- */
-function tidy_media_organizer_create_table()
-{
+
+function tidy_media_organizer_create_table() {
+    /**
+     * Database Setup.
+     *
+     * Creates a new database table for storing Tidy Media Organizer plugin settings.
+     *
+     * @global object $wpdb The WordPress database object.
+     * @return void
+     */
     global $wpdb;
     $table_name = $wpdb->prefix . 'tidy_media_organizer';
     if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") != $table_name) {
@@ -55,17 +55,17 @@ function tidy_media_organizer_create_table()
 }
 register_activation_hook(__FILE__, 'tidy_media_organizer_create_table');
 
-/**
- * Clean On Deletion.
- *
- * Deletes the database table used by the Tidy Media Organizer plugin.
- *
- * This function deletes the database table used by the Tidy Media Organizer plugin when the plugin is uninstalled.
- *
- * @since 1.0.0
- */
-function tidy_media_organizer_delete_table()
-{
+
+function tidy_media_organizer_delete_table() {
+    /**
+     * Clean On Deletion.
+     *
+     * Deletes the database table used by the Tidy Media Organizer plugin.
+     *
+     * This function deletes the database table used by the Tidy Media Organizer plugin when the plugin is uninstalled.
+     *
+     * @since 1.0.0
+     */
     global $wpdb;
     global $table_name;
 
@@ -75,15 +75,15 @@ function tidy_media_organizer_delete_table()
 }
 register_uninstall_hook(__FILE__, 'tidy_media_organizer_delete_table');
 
-/**
- * Admin Menus.
- *
- * Registers the Tidy Media Organizer admin menu and sub-menu pages in the WordPress dashboard.
- *
- * @return void
- */
-function tidy_media_organizer_admin_page()
-{
+
+function tidy_media_organizer_admin_page() {
+    /**
+     * Admin Menus.
+     *
+     * Registers the Tidy Media Organizer admin menu and sub-menu pages in the WordPress dashboard.
+     *
+     * @return void
+     */
     add_menu_page(
         'Tidy Media Organizer',
         'Tidy Media Organizer',
@@ -103,35 +103,37 @@ function tidy_media_organizer_admin_page()
 }
 add_action('admin_menu', 'tidy_media_organizer_admin_page');
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-/**
- * Admin Main Page.
- *
- * Displays the main page content for the Tidy Media Organizer plugin in the WordPress dashboard.
- *
- * @return void
- */
-function tidy_media_organizer_main_page()
-{?>
-<div class="wrap">
-    <h1>Tidy Media Organizer</h1>
-</div>
-<?php }
 
-/**
- * Admin Options Page.
- *
- * This function creates the options page for the Tidy Media Organizer plugin.
- *
- * It checks if the user is authorized to access the options page and saves form data when the Save button is clicked.
- *
- * It retrieves the current settings from the database and outputs the form HTML.
- *
- * @since 1.0.0
- */
-function tidy_media_organizer_options_page()
-{
+
+function tidy_media_organizer_main_page() {
+    /**
+     * Admin Main Page.
+     *
+     * Displays the main page content for the Tidy Media Organizer plugin in the WordPress dashboard.
+     *
+     * @return void
+     */
+    ?>
+    <div class="wrap">
+        <h1>Tidy Media Organizer</h1>
+    </div>
+    <?php
+}
+
+
+function tidy_media_organizer_options_page() {
+    /**
+     * Admin Options Page.
+     *
+     * This function creates the options page for the Tidy Media Organizer plugin.
+     *
+     * It checks if the user is authorized to access the options page and saves form data when the Save button is clicked.
+     *
+     * It retrieves the current settings from the database and outputs the form HTML.
+     *
+     * @since 1.0.0
+     */
     // Check if the user is authorized to access the options page
     if (!current_user_can('manage_options')) {
         wp_die('Unauthorized access');
@@ -397,20 +399,18 @@ $taxonomies = get_taxonomies(array('public' => true));
 
 }
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-/**
- * Catch Saved Posts.
- *
- * This function is triggered when a post is saved in WordPress. It checks whether the post is not a revision
- * and then proceeds to call the tidy_post_attachments function, passing in the post ID as a parameter.
- *
- * @param int $post_id The ID of the post being saved.
- * @return void
- */
-function do_saved_post($post_id)
-{
 
+function do_saved_post($post_id) {
+    /**
+     * Catch Saved Posts.
+     *
+     * This function is triggered when a post is saved in WordPress. It checks whether the post is not a revision
+     * and then proceeds to call the tidy_post_attachments function, passing in the post ID as a parameter.
+     *
+     * @param int $post_id The ID of the post being saved.
+     * @return void
+     */
     do_my_log("💾 do_saved_post() - " . $post_id . " " . get_post_field('post_type', $post_id) . ": " . get_the_title($post_id));
 
     if (!wp_is_post_revision($post_id)) {
@@ -439,18 +439,18 @@ function do_saved_post($post_id)
 }
 add_action('save_post', 'do_saved_post', 10, 1);
 
-/**
- * Tidy Post Attachments.
- *
- * This main function is responsible for tidying up post attachments after a post is saved in WordPress. It retrieves all
- * the attachments related to the post, and checks if they are located in the preferred path. If an attachment is found
- * in a non-preferred path, it will be moved to the preferred path.
- *
- * @param int $post_id The ID of the post to tidy up its attachments.
- * @return boolean Returns false if no attachments are found, or if any errors occur during the attachment move process.
- */
-function tidy_post_attachments($post_id)
-{
+
+function tidy_post_attachments($post_id) {
+    /**
+     * Tidy Post Attachments.
+     *
+     * This main function is responsible for tidying up post attachments after a post is saved in WordPress. It retrieves all
+     * the attachments related to the post, and checks if they are located in the preferred path. If an attachment is found
+     * in a non-preferred path, it will be moved to the preferred path.
+     *
+     * @param int $post_id The ID of the post to tidy up its attachments.
+     * @return boolean Returns false if no attachments are found, or if any errors occur during the attachment move process.
+     */
 
     do_my_log('🧹 tidy_post_attachments()...');
 
@@ -491,20 +491,20 @@ function tidy_post_attachments($post_id)
 
 }
 
-/**
- * Make In-Line Image URLs relative
- *
- * This function takes a WordPress post ID and modifies the post's content by
- * making all local image URLs relative to the site's root directory. It does this by
- * removing any specified domains from the image URLs.
- *
- * The function only removes the site's own scheme domain (eg. "http://www.myblog.com").
- *
- * @param int $post_id The ID of the WordPress post to modify.
- * @return void
- */
-function make_body_imgs_relative($post_id)
-{
+
+function make_body_imgs_relative($post_id) {
+    /**
+     * Make In-Line Image URLs relative
+     *
+     * This function takes a WordPress post ID and modifies the post's content by
+     * making all local image URLs relative to the site's root directory. It does this by
+     * removing any specified domains from the image URLs.
+     *
+     * The function only removes the site's own scheme domain (eg. "http://www.myblog.com").
+     *
+     * @param int $post_id The ID of the WordPress post to modify.
+     * @return void
+     */
 
     do_my_log("🔗 make_body_imgs_relative()...");
 
@@ -572,23 +572,22 @@ function make_body_imgs_relative($post_id)
 
 }
 
-/**
- * Fix Body Img Paths
- *
- * Fixes all relative image URLs in the post's body to point to the expected location, based on the post's ID.
- * eg. Maybe /wp-content/uploads/image.jpeg should be /wp-content/uploads/post/taxonomy/term/image.jpeg
- *
- * When a malformed img src is found, function will:
- *  - Check if it exists in specified location form - move it and change the URL.
- *  - Check if it exists in intended location form  - just update URL to reflect.
- *
- * @param int $post_id The ID of the post whose body should be fixed.
- *
- * @return void
- */
 
-function fix_body_img_paths($post_id)
-{
+function fix_body_img_paths($post_id) {
+    /**
+     * Fix Body Img Paths
+     *
+     * Fixes all relative image URLs in the post's body to point to the expected location, based on the post's ID.
+     * eg. Maybe /wp-content/uploads/image.jpeg should be /wp-content/uploads/post/taxonomy/term/image.jpeg
+     *
+     * When a malformed img src is found, function will:
+     *  - Check if it exists in specified location form - move it and change the URL.
+     *  - Check if it exists in intended location form  - just update URL to reflect.
+     *
+     * @param int $post_id The ID of the post whose body should be fixed.
+     *
+     * @return void
+     */
 
     do_my_log("🎯 fix_body_img_paths()...");
 
@@ -721,7 +720,7 @@ function fix_body_img_paths($post_id)
                             do_my_log("Image belongs to another post. Will not move it, update its metadata or attach it to this post.");
                         }
                     } else {
-                        do_my_log("Image is in user's intended location.");
+                        do_my_log("✅ Image is in user's intended location.");
                     }
 
                 } else {
@@ -762,20 +761,19 @@ function fix_body_img_paths($post_id)
 
 }
 
-/**
- * Generate Existing Image Details
- *
- * Retrieves various details of an old image attachment for a post.
- * This is designed to make the partial folder and filepath parts available to other functions
- * in a singular array. This avoids needing to generate those parts in those functions.
- *
- * @param WP_Post $post_attachment The WordPress post object representing the attachment (i.e., the image).
- * @return array An associative array containing details of the image's old location (e.g., 'dirname', 'filepath', 'subdir', 'filename', 'guid').
- */
 
-function old_image_details($post_attachment)
-{
 
+function old_image_details($post_attachment) {
+    /**
+     * Generate Existing Image Details
+     *
+     * Retrieves various details of an old image attachment for a post.
+     * This is designed to make the partial folder and filepath parts available to other functions
+     * in a singular array. This avoids needing to generate those parts in those functions.
+     *
+     * @param WP_Post $post_attachment The WordPress post object representing the attachment (i.e., the image).
+     * @return array An associative array containing details of the image's old location (e.g., 'dirname', 'filepath', 'subdir', 'filename', 'guid').
+     */
     $filepath = get_attached_file($post_attachment->ID);
     $upload_dir = wp_upload_dir();
     $subdir = str_replace($upload_dir['basedir'], '', dirname($filepath));
@@ -793,21 +791,19 @@ function old_image_details($post_attachment)
 
 }
 
-/**
- * Generate New Image Details
- *
- * Formulates various details of the new image attachment for a post.
- *
- * This is designed to make the partial folder and filepath parts available to other functions
- * in a singular array. This avoids needing to generate those parts in those functions.
- *
- * @param int $post_id The ID of the post where the image is attached.
- * @param object $post_attachment The WP_Post object representing the attached image.
- * @return array An associative array containing the details of the new image.
- */
-function new_image_details($post_id, $post_attachment)
-{
-
+function new_image_details($post_id, $post_attachment) {
+    /**
+     * Generate New Image Details
+     *
+     * Formulates various details of the new image attachment for a post.
+     *
+     * This is designed to make the partial folder and filepath parts available to other functions
+     * in a singular array. This avoids needing to generate those parts in those functions.
+     *
+     * @param int $post_id The ID of the post where the image is attached.
+     * @param object $post_attachment The WP_Post object representing the attached image.
+     * @return array An associative array containing the details of the new image.
+     */
     // Get user's path preferences from database
     global $wpdb;
     $table_name = $wpdb->prefix . 'tidy_media_organizer';
@@ -868,17 +864,17 @@ function new_image_details($post_id, $post_attachment)
 
 }
 
-/**
- * Move Media File
- *
- * Move the main image file from its old location to a new location and update related metadata in the WordPress database.
- *
- * @param int $attachment_id The ID of the attachment (i.e., the image).
- * @param array $old_image_details An associative array containing details of the image's old location (e.g., 'dirname', 'filepath', 'subdir', 'filename').
- * @return bool True if the move and database updates were successful, false otherwise.
- */
-function move_main_file($attachment_id, $old_image_details, $new_image_details)
-{
+
+function move_main_file($attachment_id, $old_image_details, $new_image_details) {
+    /**
+     * Move Media File
+     *
+     * Move the main image file from its old location to a new location and update related metadata in the WordPress database.
+     *
+     * @param int $attachment_id The ID of the attachment (i.e., the image).
+     * @param array $old_image_details An associative array containing details of the image's old location (e.g., 'dirname', 'filepath', 'subdir', 'filename').
+     * @return bool True if the move and database updates were successful, false otherwise.
+     */
 
     do_my_log("🔧 move_main_file()...");
 
@@ -945,20 +941,19 @@ function move_main_file($attachment_id, $old_image_details, $new_image_details)
 
 }
 
-/**
- * Move File Sizes
- *
- * Moves files for all files found in an attachment object's [sizes] array.
- * The function then moves the files from the old directory to the new directory for each size variant.
- *
- * @param int $attachment_id The attachment ID of the image.
- * @param array $old_image_details An array of the old image details generated by the old_image_details function.
- * @param array $new_image_details An array of the new image details generated by the new_image_details function.
- * @return bool $success Whether or not the move was successful.
- */
 
-function move_sizes_files($attachment_id, $old_image_details, $new_image_details)
-{
+function move_sizes_files($attachment_id, $old_image_details, $new_image_details) {
+    /**
+     * Move File Sizes
+     *
+     * Moves files for all files found in an attachment object's [sizes] array.
+     * The function then moves the files from the old directory to the new directory for each size variant.
+     *
+     * @param int $attachment_id The attachment ID of the image.
+     * @param array $old_image_details An array of the old image details generated by the old_image_details function.
+     * @param array $new_image_details An array of the new image details generated by the new_image_details function.
+     * @return bool $success Whether or not the move was successful.
+     */
 
     do_my_log("🔧 move_sizes_files() - " . $attachment_id . "...");
 
@@ -1003,31 +998,30 @@ function move_sizes_files($attachment_id, $old_image_details, $new_image_details
 
 }
 
-/**
- * Move Original File
- *
- * Move the [original_image] file for a WordPress attachment to a new location.
- *
- * Since WordPress 5.3, large image uploads generate a filename-scaled.jpeg as the primary
- * file for delivery. The originally remains as initially named, whose value is stored as
- * [original_image] in the wp_postmeta _wp_attachment_metadata serialised array.
- *
- * A. Move file.
- * B. Update database - wp_postmeta: like [sizes], [original_image] is a filename only,
- *    with no initial folder specified. No update is required.
- * C. Update database - wp_post: we already update the image's 'guid' in move_main_file() by
- *    simply correcting the subdir. This leaves in place the initial filename, whether
- *    it is filename-scaled.jpeg or filename.jpeg (original). In short, no need to udpate
- *    the 'guid'.
- *
- * @param int $attachment_id The ID of the attachment to move.
- * @param array $old_image_details An array of details about the attachment's current location.
- * @param array $new_image_details An array of details about the attachment's new location.
- * @return void
- */
-function move_original_file($attachment_id, $old_image_details, $new_image_details)
-{
 
+function move_original_file($attachment_id, $old_image_details, $new_image_details) {
+    /**
+     * Move Original File
+     *
+     * Move the [original_image] file for a WordPress attachment to a new location.
+     *
+     * Since WordPress 5.3, large image uploads generate a filename-scaled.jpeg as the primary
+     * file for delivery. The originally remains as initially named, whose value is stored as
+     * [original_image] in the wp_postmeta _wp_attachment_metadata serialised array.
+     *
+     * A. Move file.
+     * B. Update database - wp_postmeta: like [sizes], [original_image] is a filename only,
+     *    with no initial folder specified. No update is required.
+     * C. Update database - wp_post: we already update the image's 'guid' in move_main_file() by
+     *    simply correcting the subdir. This leaves in place the initial filename, whether
+     *    it is filename-scaled.jpeg or filename.jpeg (original). In short, no need to udpate
+     *    the 'guid'.
+     *
+     * @param int $attachment_id The ID of the attachment to move.
+     * @param array $old_image_details An array of details about the attachment's current location.
+     * @param array $new_image_details An array of details about the attachment's new location.
+     * @return void
+     */
     do_my_log("🔧 move_original_file()...");
 
     // Get the _wp_attachment_metadata serialised array
@@ -1067,20 +1061,19 @@ function move_original_file($attachment_id, $old_image_details, $new_image_detai
 
 }
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-/**
- * Remove save_post On Trash
- *
- * Removes the 'save_post' action from the 'post.php' page when a post is trashed, and restores it when a post is untrashed.
- * This function is hooked to the 'admin_init' and 'untrash_post' actions. When a post is trashed, it removes the 'save_post'
- * action from the 'post.php' page, which is responsible for saving post data. When a post is untrashed, it restores the
- * 'save_post' action so that the post data can be saved again.
- *
- * @return void
- */
-function remove_save_post_on_trash()
-{
+
+function remove_save_post_on_trash() {
+    /**
+     * Remove save_post On Trash
+     *
+     * Removes the 'save_post' action from the 'post.php' page when a post is trashed, and restores it when a post is untrashed.
+     * This function is hooked to the 'admin_init' and 'untrash_post' actions. When a post is trashed, it removes the 'save_post'
+     * action from the 'post.php' page, which is responsible for saving post data. When a post is untrashed, it restores the
+     * 'save_post' action so that the post data can be saved again.
+     *
+     * @return void
+     */
     global $pagenow;
     if ($pagenow === 'post.php' && isset($_GET['action']) && $_GET['action'] === 'trash') {
         remove_action('save_post', 'do_saved_post');
@@ -1088,19 +1081,20 @@ function remove_save_post_on_trash()
 }
 add_action('admin_init', 'remove_save_post_on_trash');
 
-/**
- * Restore save_post On Untrash
- *
- * Restores the 'save_post' action when a post is untrashed.
- * This function is triggered by the 'untrash_post' action hook and checks if the post being untrashed was previously
- * in the trash. If it was, it adds the 'save_post' action back to the 'post.php' page, allowing post data to be saved
- * again.
- *
- * @param int $post_id The ID of the post being untrashed.
- * @return void
- */
-function restore_save_post_on_untrash($post_id)
-{
+
+function restore_save_post_on_untrash($post_id) {
+    /**
+     * Restore save_post On Untrash
+     *
+     * Restores the 'save_post' action when a post is untrashed.
+     * This function is triggered by the 'untrash_post' action hook and checks if the post being untrashed was previously
+     * in the trash. If it was, it adds the 'save_post' action back to the 'post.php' page, allowing post data to be saved
+     * again.
+     *
+     * @param int $post_id The ID of the post being untrashed.
+     * @return void
+     */
+
     $post_status = get_post_status($post_id);
     if ($post_status === 'trash') {
         add_action('save_post', 'do_saved_post');
@@ -1108,21 +1102,20 @@ function restore_save_post_on_untrash($post_id)
 }
 add_action('untrash_post', 'restore_save_post_on_untrash');
 
-/**
- * Remove Attachments On Post Delete
- *
- * Deletes all attached images for a given post when it is deleted.
- * This function is triggered by the before_delete_post action hook and checks if the post being deleted
- * is in the trash and if the delete request is coming from the WordPress admin panel. It then checks if any
- * of the images attached to the post are used by another post. If the image is not used by any other post, it
- * deletes the image and its associated metadata from the file system and the WordPress database. If the directory
- * containing the image is empty after the deletion, it is also deleted.
- * @param int $post_id The ID of the post being deleted.
- * @return void
- */
-function delete_attached_images_on_post_delete($post_id)
-{
 
+function delete_attached_images_on_post_delete($post_id) {
+    /**
+     * Remove Attachments On Post Delete
+     *
+     * Deletes all attached images for a given post when it is deleted.
+     * This function is triggered by the before_delete_post action hook and checks if the post being deleted
+     * is in the trash and if the delete request is coming from the WordPress admin panel. It then checks if any
+     * of the images attached to the post are used by another post. If the image is not used by any other post, it
+     * deletes the image and its associated metadata from the file system and the WordPress database. If the directory
+     * containing the image is empty after the deletion, it is also deleted.
+     * @param int $post_id The ID of the post being deleted.
+     * @return void
+     */
     if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'delete') {
         if (!isset($_REQUEST['delete_all']) && !wp_check_post_lock($post_id)) {
             $post = get_post($post_id);
@@ -1211,19 +1204,19 @@ function delete_attached_images_on_post_delete($post_id)
 }
 add_action('before_delete_post', 'delete_attached_images_on_post_delete');
 
-/**
- * Notice Query Sender
- *
- * my_trigger_notice - Adds a query arg to the redirect post location URL to trigger a notice.
- *
- *  This function adds a filter to the 'redirect_post_location' hook that modifies the URL of the post redirect location by adding a query arg with the specified notice key. This is useful for triggering notices after a post has been updated or created.
- *
- * @param string $key The notice key to add to the URL. Default is an empty string.
- *
- * @return void
- */
-function my_trigger_notice($key = '')
-{
+
+function my_trigger_notice($key = '') {
+    /**
+     * Notice Query Sender
+     *
+     * my_trigger_notice - Adds a query arg to the redirect post location URL to trigger a notice.
+     *
+     *  This function adds a filter to the 'redirect_post_location' hook that modifies the URL of the post redirect location by adding a query arg with the specified notice key. This is useful for triggering notices after a post has been updated or created.
+     *
+     * @param string $key The notice key to add to the URL. Default is an empty string.
+     *
+     * @return void
+     */
 
     global $pagenow;
 
@@ -1241,17 +1234,18 @@ function my_trigger_notice($key = '')
 
 }
 
-/**
- * Notify Post Moved.
- *
- * Displays an admin notice with a specific message based on the notice key provided in the URL parameter.
- *
- * @since 1.0.0
- *
- * @return void
- */
-function my_admin_notices()
-{
+
+function my_admin_notices() {
+    /**
+     * Notify Post Moved.
+     *
+     * Displays an admin notice with a specific message based on the notice key provided in the URL parameter.
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
+
     if (!isset($_GET['notice_key'])) {
         return;
     }
