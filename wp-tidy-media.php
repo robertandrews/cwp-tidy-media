@@ -19,8 +19,24 @@ function do_my_log($log_message)
      * @param string $log_message The log message to be written to the log file.
      * @return void
      */
-    $logging = true;
-    if ($logging == true) {
+    // $logging = true;
+    // Retrieve current settings from database
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'tidy_media_organizer';
+    if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") == $table_name) {
+        $settings = $wpdb->get_results("SELECT * FROM $table_name");
+        $settings_arr = array();
+        foreach ($settings as $setting) {
+            $settings_arr[$setting->setting_name] = $setting->setting_value;
+        }
+        $use_log = isset($settings_arr['use_log']) ? $settings_arr['use_log'] : 0;
+
+    } else {
+        // Show an error message
+        echo '<div class="notice notice-error"><p><strong>Plugin issue</strong>: <code>' . $table_name . '</code> not found in database. Cannot store settings. Try reactivating the plugin.</p></div>';
+    }
+
+    if ($logging == 1) {
         $log_file = plugin_dir_path(__FILE__) . 'wp-tidy-media.log';
         $log_timestamp = gmdate('d-M-Y H:i:s T');
 
@@ -119,6 +135,44 @@ function tidy_media_organizer_main_page()
 <?php
 }
 
+function get_tidy_media_settings()
+{
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'tidy_media_organizer';
+    if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") == $table_name) {
+        $settings = $wpdb->get_results("SELECT * FROM $table_name");
+        $settings_arr = array();
+        foreach ($settings as $setting) {
+            $settings_arr[$setting->setting_name] = $setting->setting_value;
+        }
+        $organize_post_img_by_type = isset($settings_arr['organize_post_img_by_type']) ? $settings_arr['organize_post_img_by_type'] : 0;
+        $organize_post_img_by_taxonomy = isset($settings_arr['organize_post_img_by_taxonomy']) ? $settings_arr['organize_post_img_by_taxonomy'] : '';
+        $domains_to_replace = isset($settings_arr['domains_to_replace']) ? $settings_arr['domains_to_replace'] : '';
+        $use_relative = isset($settings_arr['use_relative']) ? $settings_arr['use_relative'] : 0;
+        $use_custom = isset($settings_arr['use_custom']) ? $settings_arr['use_custom'] : 0;
+        $use_fix = isset($settings_arr['use_fix']) ? $settings_arr['use_fix'] : 0;
+        $use_localise = isset($settings_arr['use_localise']) ? $settings_arr['use_localise'] : 0;
+        $use_delete = isset($settings_arr['use_delete']) ? $settings_arr['use_delete'] : 0;
+        $use_log = isset($settings_arr['use_log']) ? $settings_arr['use_log'] : 0;
+
+        return array(
+            'organize_post_img_by_type' => $organize_post_img_by_type,
+            'organize_post_img_by_taxonomy' => $organize_post_img_by_taxonomy,
+            'domains_to_replace' => $domains_to_replace,
+            'use_relative' => $use_relative,
+            'use_custom' => $use_custom,
+            'use_fix' => $use_fix,
+            'use_localise' => $use_localise,
+            'use_delete' => $use_delete,
+            'use_log' => $use_log,
+        );
+    } else {
+        // Show an error message
+        echo '<div class="notice notice-error"><p><strong>Plugin issue</strong>: <code>' . $table_name . '</code> not found in database. Cannot store settings. Try reactivating the plugin.</p></div>';
+        return array();
+    }
+}
+
 function tidy_media_organizer_options_page()
 {
     /**
@@ -174,28 +228,7 @@ function tidy_media_organizer_options_page()
     }
 
     // Retrieve current settings from database
-    global $wpdb;
-    $table_name = $wpdb->prefix . 'tidy_media_organizer';
-    if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") == $table_name) {
-        $settings = $wpdb->get_results("SELECT * FROM $table_name");
-        $settings_arr = array();
-        foreach ($settings as $setting) {
-            $settings_arr[$setting->setting_name] = $setting->setting_value;
-        }
-        $organize_post_img_by_type = isset($settings_arr['organize_post_img_by_type']) ? $settings_arr['organize_post_img_by_type'] : 0;
-        $organize_post_img_by_taxonomy = isset($settings_arr['organize_post_img_by_taxonomy']) ? $settings_arr['organize_post_img_by_taxonomy'] : '';
-        $domains_to_replace = isset($settings_arr['domains_to_replace']) ? $settings_arr['domains_to_replace'] : '';
-        $use_relative = isset($settings_arr['use_relative']) ? $settings_arr['use_relative'] : 0;
-        $use_custom = isset($settings_arr['use_custom']) ? $settings_arr['use_custom'] : 0;
-        $use_fix = isset($settings_arr['use_fix']) ? $settings_arr['use_fix'] : 0;
-        $use_localise = isset($settings_arr['use_localise']) ? $settings_arr['use_localise'] : 0;
-        $use_delete = isset($settings_arr['use_delete']) ? $settings_arr['use_delete'] : 0;
-        $use_log = isset($settings_arr['use_log']) ? $settings_arr['use_log'] : 0;
-
-    } else {
-        // Show an error message
-        echo '<div class="notice notice-error"><p><strong>Plugin issue</strong>: <code>' . $table_name . '</code> not found in database. Cannot store settings. Try reactivating the plugin.</p></div>';
-    }
+    $settings = get_tidy_media_settings();
 
     // Output form HTML
     ?>
@@ -238,7 +271,7 @@ function tidy_media_organizer_options_page()
                                             <td>
                                                 <label style="margin: 0.35em 0 0.5em!important; display: inline-block;">
                                                     <input type="checkbox" name="use_custom" id="use_custom" value="1"
-                                                        <?php checked($use_relative, 1);?>>
+                                                        <?php checked($settings['use_relative'], 1);?>>
                                                     Custom attachment filepath
                                                     <p class="description">Force WordPress to store post-attached images
                                                         in a folder
@@ -247,7 +280,7 @@ function tidy_media_organizer_options_page()
                                                 <br>
                                                 <label style="margin: 0.35em 0 0.5em!important; display: inline-block;">
                                                     <input type="checkbox" name="use_relative" id="use_relative"
-                                                        value="1" <?php checked($use_relative, 1);?>>
+                                                        value="1" <?php checked($settings['use_relative'], 1);?>>
                                                     Make body <code>img src</code> URLs relative
                                                     <p class="description">In post content, any of your own images
                                                         called via absolute URLs (eg.
@@ -259,7 +292,7 @@ function tidy_media_organizer_options_page()
                                                 <br>
                                                 <label style="margin: 0.35em 0 0.5em!important; display: inline-block;">
                                                     <input type="checkbox" name="use_fix" id="use_fix" value="1"
-                                                        <?php checked($use_fix, 1);?>>
+                                                        <?php checked($settings['use_fix'], 1);?>>
                                                     Fix body image paths
                                                     <p class="description">In post content, all local image URLs (ie.
                                                         relative <code>&lt;img src</code>
@@ -270,7 +303,7 @@ function tidy_media_organizer_options_page()
                                                 <br>
                                                 <label style="margin: 0.35em 0 0.5em!important; display: inline-block;">
                                                     <input type="checkbox" name="use_localise" id="use_localise"
-                                                        value="1" <?php checked($use_localise, 1);?>>
+                                                        value="1" <?php checked($settings['use_localise'], 1);?>>
                                                     Localise remote body images
                                                     <p class="description">In post content, all off-site images
                                                         (ie. <code>&lt;img src</code> URLs starting
@@ -281,7 +314,7 @@ function tidy_media_organizer_options_page()
                                                 <br>
                                                 <label style="margin: 0.35em 0 0.5em!important; display: inline-block;">
                                                     <input type="checkbox" name="use_delete" id="use_delete" value="1"
-                                                        <?php checked($use_delete, 1);?>>
+                                                        <?php checked($settings['use_delete'], 1);?>>
                                                     Delete attachments with posts
                                                     <p class="description">When a post is deleted, any attachments will
                                                         also be deleted. Only deletes if attachment is unused elsewhere.
@@ -297,7 +330,7 @@ function tidy_media_organizer_options_page()
                                             <td>
                                                 <label style="margin: 0.35em 0 0.5em!important; display: inline-block;">
                                                     <input type="checkbox" name="use_log" id="use_log" value="1"
-                                                        <?php checked($use_log, 1);?>>
+                                                        <?php checked($settings['use_log'], 1);?>>
                                                     Log operations
                                                     <p class="description">Keep a log of all operations in
                                                         <code><?php echo plugin_dir_path(__FILE__); ?><a href="<?php echo plugins_url('/', __FILE__); ?>/wp-tidy-media.log" target="_new">wp-tidy-media.log</a></code>
@@ -327,7 +360,7 @@ function tidy_media_organizer_options_page()
                                             <td>
                                                 <input type="checkbox" name="organize_post_img_by_type"
                                                     id="organize_post_img_by_type" value="1"
-                                                    <?php checked($organize_post_img_by_type, 1);?>
+                                                    <?php checked($settings['organize_post_img_by_type'], 1);?>
                                                     class="media-folder-input">
                                                 <?php
 // Show post types
@@ -353,7 +386,7 @@ function tidy_media_organizer_options_page()
                                             <td>
                                                 <label style="margin: 0.35em 0 0.5em!important; display: inline-block;">
                                                     <input type="radio" name="organize_post_img_by_taxonomy" value=""
-                                                        <?php checked($organize_post_img_by_taxonomy, '');?>
+                                                        <?php checked($settings['organize_post_img_by_taxonomy'], '');?>
                                                         class="media-folder-input">
                                                     None
                                                 </label><br>
@@ -364,7 +397,7 @@ $taxonomies = get_taxonomies(array('public' => true));
                                                 <label style="margin: 0.35em 0 0.5em!important; display: inline-block;">
                                                     <input type="radio" name="organize_post_img_by_taxonomy"
                                                         value="<?php echo esc_attr($taxonomy); ?>"
-                                                        <?php checked($organize_post_img_by_taxonomy, $taxonomy);?>
+                                                        <?php checked($settings['organize_post_img_by_taxonomy'], $taxonomy);?>
                                                         class="media-folder-input">
                                                     <code><?php echo esc_html($taxonomy); ?></code>
                                                 </label>
@@ -425,7 +458,7 @@ $taxonomies = get_taxonomies(array('public' => true));
                                             </th>
                                             <td>
                                                 <input type="text" name="domains_to_replace" id="domains_to_replace"
-                                                    size="75" value="<?php echo $domains_to_replace; ?>" />
+                                                    size="75" value="<?php echo $settings['domains_to_replace']; ?>" />
                                                 <p class="description">Separate multiple hostnames by comma (eg.
                                                     "http://www.oldsite.com, "https://testsite:8080") - no trailing
                                                     slash.</p>
@@ -444,46 +477,47 @@ $taxonomies = get_taxonomies(array('public' => true));
 
     <script>
     // Update the planned path in real-time based on the user's selections
- function updatePlannedPath() {
-    var basedir = '<?php echo esc_js(wp_upload_dir()['basedir']); ?>';
-    var postTypeEnabled = document.querySelector('[name="organize_post_img_by_type"]').checked;
-    var taxonomySlug = document.querySelector('[name="organize_post_img_by_taxonomy"]:checked');
+    function updatePlannedPath() {
+        var basedir = '<?php echo esc_js(wp_upload_dir()['basedir']); ?>';
+        var postTypeEnabled = document.querySelector('[name="organize_post_img_by_type"]').checked;
+        var taxonomySlug = document.querySelector('[name="organize_post_img_by_taxonomy"]:checked');
 
-    var path = basedir;
+        var path = basedir;
 
-    if (postTypeEnabled) {
-        path += '/<strong>{post_type}</strong>';
+        if (postTypeEnabled) {
+            path += '/<strong>{post_type}</strong>';
+        }
+
+        if (taxonomySlug && taxonomySlug.value !== '') {
+            path += '/<strong>{' + taxonomySlug.value + '_slug</strong>}';
+        }
+
+        var uploadsUseYearMonthFolders =
+            <?php echo get_option('uploads_use_yearmonth_folders') === '1' ? 'true' : 'false'; ?>;
+
+        if (uploadsUseYearMonthFolders) {
+            var today = new Date();
+            var year = today.getFullYear();
+            var month = today.getMonth() + 1;
+            var dateFolders = year + '/' + (month < 10 ? '0' + month : month);
+            path += '/' + dateFolders;
+        }
+
+        path += '/image.jpeg';
+
+        document.querySelector('#planned-path').innerHTML = path;
     }
 
-    if (taxonomySlug && taxonomySlug.value !== '') {
-        path += '/<strong>{' + taxonomySlug.value + '_slug</strong>}';
-    }
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelector('[name="organize_post_img_by_type"]').addEventListener('change',
+            updatePlannedPath);
+        var radioButtons = document.querySelectorAll('[name="organize_post_img_by_taxonomy"]');
+        for (var i = 0; i < radioButtons.length; i++) {
+            radioButtons[i].addEventListener('change', updatePlannedPath);
+        }
 
-    var uploadsUseYearMonthFolders = <?php echo get_option('uploads_use_yearmonth_folders') === '1' ? 'true' : 'false'; ?>;
-
-    if (uploadsUseYearMonthFolders) {
-        var today = new Date();
-        var year = today.getFullYear();
-        var month = today.getMonth() + 1;
-        var dateFolders = year + '/' + (month < 10 ? '0' + month : month);
-        path += '/' + dateFolders;
-    }
-
-    path += '/image.jpeg';
-
-    document.querySelector('#planned-path').innerHTML = path;
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    document.querySelector('[name="organize_post_img_by_type"]').addEventListener('change', updatePlannedPath);
-    var radioButtons = document.querySelectorAll('[name="organize_post_img_by_taxonomy"]');
-    for (var i = 0; i < radioButtons.length; i++) {
-        radioButtons[i].addEventListener('change', updatePlannedPath);
-    }
-
-    updatePlannedPath();
-});
-
+        updatePlannedPath();
+    });
     </script>
 
 
@@ -544,13 +578,27 @@ function do_saved_post($post_id)
         $my_post_type = get_post_type($post_id);
 
         if (in_array($my_post_type, $post_types)) {
+
             do_my_log("Save is valid for action.");
-            localise_remote_images($post_id);
-            make_body_imgs_relative($post_id);
-            fix_body_img_paths($post_id);
-            tidy_post_attachments($post_id);
+
+            // Retrieve current settings from database
+            $settings = get_tidy_media_organizer_settings();
+
+            if ($settings['use_localise'] == 1) {
+                localise_remote_images($post_id);
+            }
+            if ($settings['use_relative'] == 1) {
+                make_body_imgs_relative($post_id);
+            }
+            if ($settings['use_fix'] == 1) {
+                fix_body_img_paths($post_id);
+            }
+            if ($settings['use_custom'] == 1) {
+                tidy_post_attachments($post_id);
+            }
             // delete_attached_images_on_post_delete($post_id);
             do_my_log("🏁 Complete.");
+
         } else {
             // error: disallowed post type
         }
