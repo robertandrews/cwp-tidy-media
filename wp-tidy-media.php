@@ -21,22 +21,9 @@ function do_my_log($log_message)
      */
     // $logging = true;
     // Retrieve current settings from database
-    global $wpdb;
-    $table_name = $wpdb->prefix . 'tidy_media_organizer';
-    if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") == $table_name) {
-        $settings = $wpdb->get_results("SELECT * FROM $table_name");
-        $settings_arr = array();
-        foreach ($settings as $setting) {
-            $settings_arr[$setting->setting_name] = $setting->setting_value;
-        }
-        $use_log = isset($settings_arr['use_log']) ? $settings_arr['use_log'] : 0;
+    $settings = get_tidy_media_settings();
 
-    } else {
-        // Show an error message
-        echo '<div class="notice notice-error"><p><strong>Plugin issue</strong>: <code>' . $table_name . '</code> not found in database. Cannot store settings. Try reactivating the plugin.</p></div>';
-    }
-
-    if ($logging == 1) {
+    if ($settings['use_log'] == 1) {
         $log_file = plugin_dir_path(__FILE__) . 'wp-tidy-media.log';
         $log_timestamp = gmdate('d-M-Y H:i:s T');
 
@@ -489,7 +476,7 @@ $taxonomies = get_taxonomies(array('public' => true));
         }
 
         if (taxonomySlug && taxonomySlug.value !== '') {
-            path += '/<strong>{' + taxonomySlug.value + '_slug</strong>}';
+            path += '/<strong>' + taxonomySlug.value + '/{' + taxonomySlug.value + '_slug</strong>}';
         }
 
         var uploadsUseYearMonthFolders =
@@ -582,8 +569,9 @@ function do_saved_post($post_id)
             do_my_log("Save is valid for action.");
 
             // Retrieve current settings from database
-            $settings = get_tidy_media_organizer_settings();
+            $settings = get_tidy_media_settings();
 
+            // Core functions
             if ($settings['use_localise'] == 1) {
                 localise_remote_images($post_id);
             }
@@ -713,7 +701,7 @@ function make_body_imgs_relative($post_id)
             $num_changes++;
         }
     }
-    do_my_log("Changes made: " . $num_changes++);
+    do_my_log("🪄 Changes made: " . $num_changes++);
 
     // If any URLs were modified, re-save the post
     if ($modified == true) { // was if ($new_content) {
@@ -818,7 +806,7 @@ function fix_body_img_paths($post_id)
                     // Generate actual and intended path pieces, used for comparison
                     $old_image_details = old_image_details($post_attachment);
                     $new_image_details = new_image_details($post_id, $post_attachment);
-                    do_my_log("Comparing found " . $old_image_details['subdir'] . " vs user-specified pattern " . $new_image_details['subdir']);
+                    do_my_log("🔬 Comparing found " . $old_image_details['subdir'] . " vs user-specified pattern " . $new_image_details['subdir']);
 
                     // 😩 But this is the _wrong_ location - move it, and update post and metadata
                     if ($old_image_details['subdir'] !== $new_image_details['subdir']) {
@@ -834,7 +822,7 @@ function fix_body_img_paths($post_id)
 
                             // 1. Move the file
                             $move_result = move_main_file($post_attachment->ID, $old_image_details, $new_image_details);
-                            do_my_log("Move result: " . $move_result);
+                            do_my_log("🪄 Move result: " . $move_result);
                             if ($move_result === true) {
                                 // Also move image variants
                                 do_my_log("Also move any image variants...");
@@ -880,7 +868,7 @@ function fix_body_img_paths($post_id)
                                 }
 
                             } else {
-                                do_my_log("Move failed.");
+                                do_my_log("❌ Move failed.");
                             }
 
                         } else {
@@ -906,7 +894,7 @@ function fix_body_img_paths($post_id)
 
         } else {
             // ❌ File is not even at src location                                  // /Users/robert/Sites/context.local/wp-content/uploads/media/folio/clients/wired/tom_heather.jpg
-            do_my_log("File does not exist.");
+            do_my_log("❌ File does not exist.");
         }
 
         /*
@@ -971,11 +959,12 @@ function localise_remote_images($post_id)
 
             if (file_put_contents($image_file, $image_data) !== false) {
 
-                do_my_log("Remote slurp worked.");
+                do_my_log("✅ Remote slurp worked.");
 
                 // Create attachment post object
                 do_my_log("Creating attachment for this...");
                 $attachment = array(
+                    // TODO: Ensure the correct URL is used for guid
                     'guid' => $upload_dir['url'] . '/' . $image_name,
                     'post_title' => $image_name,
                     'post_mime_type' => wp_check_filetype($image_name)['type'],
@@ -995,10 +984,10 @@ function localise_remote_images($post_id)
                 do_my_log("Replacing original src with local URL " . wp_get_attachment_url($attach_id));
                 $image_tag->setAttribute('src', wp_get_attachment_url($attach_id));
             } else {
-                do_my_log("Remote slurp failed.");
+                do_my_log("❌ Remote slurp failed.");
             }
         } else {
-            do_my_log("No remote images to pull.\n");
+            do_my_log("❌ No remote images to pull. ");
         }
     }
 
@@ -1036,6 +1025,7 @@ function old_image_details($post_attachment)
     $old_image['dirname'] = dirname($filepath); // /Users/robert/Sites/context.local/wp-content/uploads/post/client/contentnext/2011/12/
     $old_image['subdir'] = $subdir; // post/client/contentnext/2011/12
     $old_image['filename'] = basename($filepath); // netflix-on-tv-in-living-room-o.jpg
+    // TODO: Ensure the correct URL is used for guid
     $old_image['guid'] = $guid; // http://context.local:8888/wp-content/uploads/post/client/contentnext/2011/12/netflix-on-tv-in-living-room-o.jpg
     // print_r($old_image);
     return $old_image;
@@ -1110,6 +1100,7 @@ function new_image_details($post_id, $post_attachment)
     $new_image['filepath'] = trailingslashit(trailingslashit($upload_dir['basedir']) . $subdir) . basename($filepath); // /Users/robert/Sites/context.local/wp-content/uploads/post/client/contentnext/2011/12/netflix-on-tv-in-living-room-o.jpg
     $new_image['dirname'] = trailingslashit($upload_dir['basedir']) . $subdir; // /Users/robert/Sites/context.local/wp-content/uploads/post/client/contentnext/2011/12/
     $new_image['filename'] = basename($filepath); // netflix-on-tv-in-living-room-o.jpg
+    // TODO: Ensure the correct URL is used for guid
     $new_image['guid'] = trailingslashit(trailingslashit($upload_dir['baseurl']) . $subdir) . basename($filepath); // /Users/robert/Sites/context.local/wp-content/uploads/post/client/contentnext/2011/12/netflix-on-tv-in-living-room-o.jpg
     // print_r($new_image);
     return $new_image;
@@ -1151,7 +1142,7 @@ function move_main_file($attachment_id, $old_image_details, $new_image_details)
             $result = rename($old_image_details['filepath'], $new_image_details['filepath']);
 
             if ($result) {
-                do_my_log("Moved: " . $result);
+                do_my_log("🪄 Moved: " . $result);
                 do_my_log("Updating attachment's database fields.");
 
                 // B. Update database
@@ -1164,6 +1155,7 @@ function move_main_file($attachment_id, $old_image_details, $new_image_details)
 
                 // Update database #3 - image wp_postmeta, guid - does not alter hostname part
                 $old_guid_full = get_post_field('guid', $attachment_id);
+                // TODO: Ensure the correct URL is used for guid
                 $new_guid_full = str_replace($old_image_details['subdir'], $new_image_details['subdir'], $old_image_details['guid']);
                 global $wpdb;
                 $wpdb->update(
@@ -1313,6 +1305,114 @@ function move_original_file($attachment_id, $old_image_details, $new_image_detai
 
 }
 
+function delete_attached_images_on_post_delete($post_id)
+{
+    /**
+     * Remove Attachments On Post Delete
+     *
+     * Deletes all attached images for a given post when it is deleted.
+     * This function is triggered by the before_delete_post action hook and checks if the post being deleted
+     * is in the trash and if the delete request is coming from the WordPress admin panel. It then checks if any
+     * of the images attached to the post are used by another post. If the image is not used by any other post, it
+     * deletes the image and its associated metadata from the file system and the WordPress database. If the directory
+     * containing the image is empty after the deletion, it is also deleted.
+     * @param int $post_id The ID of the post being deleted.
+     * @return void
+     */
+
+    // Retrieve current settings from database
+    $settings = get_tidy_media_settings();
+    if ($settings['use_delete'] == 1) {
+
+        if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'delete') {
+            if (!isset($_REQUEST['delete_all']) && !wp_check_post_lock($post_id)) {
+                $post = get_post($post_id);
+                if ($post->post_status == 'trash') {
+
+                    do_my_log("🗑 delete_attached_images_on_post_delete()...");
+
+                    $current_screen = get_current_screen();
+                    $screen_id = $current_screen ? $current_screen->id : '';
+
+                    do_my_log("Screen ID: " . $screen_id);
+                    $attachments = get_attached_media('', $post_id);
+                    do_my_log("Attachments: " . count($attachments));
+
+                    foreach ($attachments as $attachment) {
+                        // Check if the image is used by another post
+                        do_my_log("Check if image is used by another post.");
+                        $used_by_other_post = false;
+                        $attachment_id = $attachment->ID;
+                        $attachment_post_id = $attachment->post_parent;
+                        $post_type = get_post_type($attachment_post_id);
+                        if ($post_type == 'post') {
+                            $other_attachments = get_attached_media('', $attachment_post_id);
+                            foreach ($other_attachments as $other_attachment) {
+                                if ($other_attachment->ID != $attachment_id) {
+                                    $used_by_other_post = true;
+                                    break;
+                                }
+                            }
+                            if (!$used_by_other_post) {
+                                $args = array(
+                                    'post_type' => 'post',
+                                    'post_status' => 'publish',
+                                    'posts_per_page' => -1,
+                                    'fields' => 'ids',
+                                );
+                                $posts = get_posts($args);
+                                foreach ($posts as $post) {
+                                    $content = get_post_field('post_content', $post);
+                                    $attachment_meta = get_post_meta($attachment_id, '_wp_attached_file', true);
+                                    if (strpos($content, $attachment_meta) !== false) {
+                                        $used_by_other_post = true;
+                                        do_my_log("Image in use by another post. Will not delete.");
+                                        break;
+                                    }
+                                }
+
+                            }
+                        } else {
+                            $used_by_other_post = true;
+                            do_my_log("Image in use by another post. Will not delete.");
+                        }
+                        if (!$used_by_other_post) {
+                            // Delete the image if it is not used by another post
+                            $attachment_path = get_attached_file($attachment_id);
+                            do_my_log("Image " . $attachment_path . " only used by this post. Will be deleted.");
+                            $metadata = wp_get_attachment_metadata($attachment_id);
+                            foreach ($metadata['sizes'] as $size => $value) {
+                                $file = $metadata['sizes'][$size]['file'];
+                                $path = dirname($attachment_path) . '/' . $file;
+                                do_my_log("Size for deletion: " . $path);
+                                unlink($path);
+                            }
+                            if (isset($metadata['original_image'])) {
+                                $path = dirname($attachment_path) . '/' . $metadata['original_image'];
+                                do_my_log("Original image for deletion: " . $path);
+                                unlink($path);
+                            }
+                            wp_delete_attachment($attachment_id, true);
+                            do_my_log("Deletion should be complete.");
+                            // Delete the directory if it is empty
+                            $dir = dirname($attachment_path);
+                            if (is_dir($dir) && count(glob("$dir/*")) === 0) {
+                                rmdir($dir);
+                                do_my_log("Directory " . $dir . " deleted because it was empty.");
+                            } else {
+                                do_my_log("Directory " . $dir . " not empty, will not delete.");
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Second time firing
+            }
+        }
+    }
+}
+add_action('before_delete_post', 'delete_attached_images_on_post_delete');
+
 function remove_save_post_on_trash()
 {
     /**
@@ -1353,107 +1453,6 @@ function restore_save_post_on_untrash($post_id)
 }
 add_action('untrash_post', 'restore_save_post_on_untrash');
 
-function delete_attached_images_on_post_delete($post_id)
-{
-    /**
-     * Remove Attachments On Post Delete
-     *
-     * Deletes all attached images for a given post when it is deleted.
-     * This function is triggered by the before_delete_post action hook and checks if the post being deleted
-     * is in the trash and if the delete request is coming from the WordPress admin panel. It then checks if any
-     * of the images attached to the post are used by another post. If the image is not used by any other post, it
-     * deletes the image and its associated metadata from the file system and the WordPress database. If the directory
-     * containing the image is empty after the deletion, it is also deleted.
-     * @param int $post_id The ID of the post being deleted.
-     * @return void
-     */
-    if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'delete') {
-        if (!isset($_REQUEST['delete_all']) && !wp_check_post_lock($post_id)) {
-            $post = get_post($post_id);
-            if ($post->post_status == 'trash') {
-
-                do_my_log("🗑 delete_attached_images_on_post_delete()...");
-
-                $current_screen = get_current_screen();
-                $screen_id = $current_screen ? $current_screen->id : '';
-
-                do_my_log("Screen ID: " . $screen_id);
-                $attachments = get_attached_media('', $post_id);
-                do_my_log("Attachments: " . count($attachments));
-
-                foreach ($attachments as $attachment) {
-                    // Check if the image is used by another post
-                    do_my_log("Check if image is used by another post.");
-                    $used_by_other_post = false;
-                    $attachment_id = $attachment->ID;
-                    $attachment_post_id = $attachment->post_parent;
-                    $post_type = get_post_type($attachment_post_id);
-                    if ($post_type == 'post') {
-                        $other_attachments = get_attached_media('', $attachment_post_id);
-                        foreach ($other_attachments as $other_attachment) {
-                            if ($other_attachment->ID != $attachment_id) {
-                                $used_by_other_post = true;
-                                break;
-                            }
-                        }
-                        if (!$used_by_other_post) {
-                            $args = array(
-                                'post_type' => 'post',
-                                'post_status' => 'publish',
-                                'posts_per_page' => -1,
-                                'fields' => 'ids',
-                            );
-                            $posts = get_posts($args);
-                            foreach ($posts as $post) {
-                                $content = get_post_field('post_content', $post);
-                                $attachment_meta = get_post_meta($attachment_id, '_wp_attached_file', true);
-                                if (strpos($content, $attachment_meta) !== false) {
-                                    $used_by_other_post = true;
-                                    do_my_log("Image in use by another post. Will not delete.");
-                                    break;
-                                }
-                            }
-
-                        }
-                    } else {
-                        $used_by_other_post = true;
-                        do_my_log("Image in use by another post. Will not delete.");
-                    }
-                    if (!$used_by_other_post) {
-                        // Delete the image if it is not used by another post
-                        $attachment_path = get_attached_file($attachment_id);
-                        do_my_log("Image " . $attachment_path . " only used by this post. Will be deleted.");
-                        $metadata = wp_get_attachment_metadata($attachment_id);
-                        foreach ($metadata['sizes'] as $size => $value) {
-                            $file = $metadata['sizes'][$size]['file'];
-                            $path = dirname($attachment_path) . '/' . $file;
-                            do_my_log("Size for deletion: " . $path);
-                            unlink($path);
-                        }
-                        if (isset($metadata['original_image'])) {
-                            $path = dirname($attachment_path) . '/' . $metadata['original_image'];
-                            do_my_log("Original image for deletion: " . $path);
-                            unlink($path);
-                        }
-                        wp_delete_attachment($attachment_id, true);
-                        do_my_log("Deletion should be complete.");
-                        // Delete the directory if it is empty
-                        $dir = dirname($attachment_path);
-                        if (is_dir($dir) && count(glob("$dir/*")) === 0) {
-                            rmdir($dir);
-                            do_my_log("Directory " . $dir . " deleted because it was empty.");
-                        } else {
-                            do_my_log("Directory " . $dir . " not empty, will not delete.");
-                        }
-                    }
-                }
-            }
-        } else {
-            // Second time firing
-        }
-    }
-}
-add_action('before_delete_post', 'delete_attached_images_on_post_delete');
 
 function my_trigger_notice($key = '')
 {
