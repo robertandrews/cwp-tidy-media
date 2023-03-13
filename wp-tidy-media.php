@@ -963,6 +963,8 @@ function localise_remote_images($post_id)
 
                 // Create attachment post object
                 do_my_log("Creating attachment for this...");
+                // Get the post date of the parent post
+                $post_date = get_post_field('post_date', $post_id);
                 $attachment = array(
                     // TODO: Ensure the correct URL is used for guid
                     'guid' => $upload_dir['url'] . '/' . $image_name,
@@ -971,6 +973,7 @@ function localise_remote_images($post_id)
                     'post_content' => '',
                     'post_status' => 'inherit',
                     'post_parent' => $post_id,
+                    'post_date' => $post_date,
                 );
                 // Insert the attachment into the media library
                 $attach_id = wp_insert_attachment($attachment, $image_file, $post_id);
