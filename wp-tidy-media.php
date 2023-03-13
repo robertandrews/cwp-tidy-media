@@ -948,47 +948,64 @@ function localise_remote_images($post_id)
 
             // Download the image file contents
             $image_data = file_get_contents($image_src);
-            // Generate path info
-            $image_info = pathinfo($image_src);
-            $image_name = $image_info['basename'];
-            // Generate uploads directory info
-            $upload_dir = wp_upload_dir();
-            $image_file = $upload_dir['path'] . '/' . $image_name;
 
-            do_my_log("Slurp to " . $image_file);
+            if ($image_data) {
+                do_my_log("Downloaded file.");
 
-            if (file_put_contents($image_file, $image_data) !== false) {
+                // Check if the downloaded file is an image
+                $image_info = getimagesizefromstring($image_data);
+                if (!$image_info) {
+                    do_my_log("❌ Not an image.");
+                    continue;
+                }
 
-                do_my_log("✅ Remote slurp worked.");
+                // Generate path info
+                $image_info = pathinfo($image_src);
+                $image_name = $image_info['basename'];
+                // Generate uploads directory info
+                $upload_dir = wp_upload_dir();
+                $image_file = $upload_dir['path'] . '/' . $image_name;
 
-                // Create attachment post object
-                do_my_log("Creating attachment for this...");
-                // Get the post date of the parent post
-                $post_date = get_post_field('post_date', $post_id);
-                $attachment = array(
-                    // TODO: Ensure the correct URL is used for guid
-                    'guid' => $upload_dir['url'] . '/' . $image_name,
-                    'post_title' => $image_name,
-                    'post_mime_type' => wp_check_filetype($image_name)['type'],
-                    'post_content' => '',
-                    'post_status' => 'inherit',
-                    'post_parent' => $post_id,
-                    'post_date' => $post_date,
-                );
-                // Insert the attachment into the media library
-                $attach_id = wp_insert_attachment($attachment, $image_file, $post_id);
+                do_my_log("Slurp to " . $image_file);
 
-                // Set the attachment metadata
-                do_my_log("Set attachment metadata..");
-                $attach_data = wp_generate_attachment_metadata($attach_id, $image_file);
-                wp_update_attachment_metadata($attach_id, $attach_data);
+                if (file_put_contents($image_file, $image_data) !== false) {
 
-                // Replace the image src with the new attachment URL
-                do_my_log("Replacing original src with local URL " . wp_get_attachment_url($attach_id));
-                $image_tag->setAttribute('src', wp_get_attachment_url($attach_id));
+                    do_my_log("✅ File slurp and save worked.");
+
+                    // Create attachment post object
+                    do_my_log("Creating attachment for this...");
+                    $attachment = array(
+                        // TODO: Ensure the correct URL is used for guid
+                        'guid' => $upload_dir['url'] . '/' . $image_name,
+                        'post_title' => $image_name,
+                        'post_mime_type' => wp_check_filetype($image_name)['type'],
+                        'post_content' => '',
+                        'post_status' => 'inherit',
+                        'post_parent' => $post_id,
+                    );
+                    // Insert the attachment into the media library
+                    $attach_id = wp_insert_attachment($attachment, $image_file, $post_id);
+
+                    // Set the attachment metadata
+                    do_my_log("Set attachment metadata..");
+                    $attach_data = wp_generate_attachment_metadata($attach_id, $image_file);
+                    wp_update_attachment_metadata($attach_id, $attach_data);
+
+                    // Replace the image src with the new attachment URL
+                    do_my_log("Replacing original src with local URL " . wp_get_attachment_url($attach_id));
+                    $image_tag->setAttribute('src', wp_get_attachment_url($attach_id));
+                } else {
+                    do_my_log("❌ File save failed.");
+                }
+
+
+
+
             } else {
-                do_my_log("❌ Remote slurp failed.");
+                do_my_log("❌ File download failed.");
+
             }
+
         } else {
             do_my_log("❌ No remote images to pull. ");
         }
@@ -1455,7 +1472,6 @@ function restore_save_post_on_untrash($post_id)
     }
 }
 add_action('untrash_post', 'restore_save_post_on_untrash');
-
 
 function my_trigger_notice($key = '')
 {
