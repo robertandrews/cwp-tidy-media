@@ -259,16 +259,27 @@ function tidy_media_organizer_options_page()
                                                 <label style="margin: 0.35em 0 0.5em!important; display: inline-block;">
                                                     <input type="checkbox" name="use_custom" id="use_custom" value="1"
                                                         <?php checked($settings['use_relative'], 1);?>>
-                                                    Custom attachment filepath
+                                                    Tidy post attachments
                                                     <p class="description">Force WordPress to store post-attached images
                                                         in a folder
-                                                        structure that can mimic your content structure.</p>
+                                                        structure that mirrors your content structure.</p>
+                                                </label>
+                                                <br>
+                                                <label style="margin: 0.35em 0 0.5em!important; display: inline-block;">
+                                                    <input type="checkbox" name="use_fix" id="use_fix" value="1"
+                                                        <?php checked($settings['use_fix'], 1);?>>
+                                                    Tidy body image URLs
+                                                    <p class="description">In post content, all local image URLs (ie.
+                                                        relative <code>&lt;img src</code>
+                                                        URLs) will be checked. Files not in custom folder structure
+                                                        will be moved there. <code>src</code> in post body will be
+                                                        udpated accordingly.</p>
                                                 </label>
                                                 <br>
                                                 <label style="margin: 0.35em 0 0.5em!important; display: inline-block;">
                                                     <input type="checkbox" name="use_relative" id="use_relative"
                                                         value="1" <?php checked($settings['use_relative'], 1);?>>
-                                                    Make body <code>img src</code> URLs relative
+                                                    Convert body image URLs from absolute to relative
                                                     <p class="description">In post content, any of your own images
                                                         called via absolute URLs (eg.
                                                         <code>&lt;img src="http://www.yourblog.com/wp-content/uploads/2023/03/image.jpeg"&gt;</code>)
@@ -278,20 +289,9 @@ function tidy_media_organizer_options_page()
                                                 </label>
                                                 <br>
                                                 <label style="margin: 0.35em 0 0.5em!important; display: inline-block;">
-                                                    <input type="checkbox" name="use_fix" id="use_fix" value="1"
-                                                        <?php checked($settings['use_fix'], 1);?>>
-                                                    Fix body image paths
-                                                    <p class="description">In post content, all local image URLs (ie.
-                                                        relative <code>&lt;img src</code>
-                                                        URLs) will be checked. Files not in custom location
-                                                        will be moved there and <code>src</code> in post body will be
-                                                        udpated accordingly.</p>
-                                                </label>
-                                                <br>
-                                                <label style="margin: 0.35em 0 0.5em!important; display: inline-block;">
                                                     <input type="checkbox" name="use_localise" id="use_localise"
                                                         value="1" <?php checked($settings['use_localise'], 1);?>>
-                                                    Localise remote body images
+                                                    Pull down remote body images
                                                     <p class="description">In post content, all off-site images
                                                         (ie. <code>&lt;img src</code> URLs starting
                                                         <code>http://</code>) will be pulled to your
@@ -476,7 +476,7 @@ $taxonomies = get_taxonomies(array('public' => true));
         }
 
         if (taxonomySlug && taxonomySlug.value !== '') {
-            path += '/<strong>' + taxonomySlug.value + '/{' + taxonomySlug.value + '_slug</strong>}';
+            path += '/<strong>' + taxonomySlug.value + '</strong>/{<strong></strong>term_slug</strong>}';
         }
 
         var uploadsUseYearMonthFolders =
@@ -627,7 +627,6 @@ function tidy_post_attachments($post_id)
                 my_trigger_notice(3);
                 // return false
             } else {
-                // print_r("Paths are different! Need to move.\n");
                 do_my_log("🚨 Path looks incorrect - " . $old_image_details['filepath']);
                 $move_main_file_success = move_main_file($post_attachment->ID, $old_image_details, $new_image_details);
                 if ($move_main_file_success == true) {
@@ -643,87 +642,6 @@ function tidy_post_attachments($post_id)
         return false;
     }
     do_my_log("Finished tidy_post_attachments().");
-
-}
-
-function make_body_imgs_relative($post_id)
-{
-    /**
-     * Make In-Line Image URLs relative
-     *
-     * This function takes a WordPress post ID and modifies the post's content by
-     * making all local image URLs relative to the site's root directory. It does this by
-     * removing any specified domains from the image URLs.
-     *
-     * The function only removes the site's own scheme domain (eg. "http://www.myblog.com").
-     *
-     * @param int $post_id The ID of the WordPress post to modify.
-     * @return void
-     */
-
-    do_my_log("🔗 make_body_imgs_relative()...");
-
-    // Get the post content
-    $content = get_post_field('post_content', $post_id);
-    $modified = false;
-
-    // TODO: Check this is actually being set - may only be in scope on options page
-    // Set up list of domains to strip from links - site URL is added by default
-    global $wpdb;
-    $setting_name = 'domains_to_replace';
-    $table_name = $wpdb->prefix . 'tidy_media_organizer';
-    $query = $wpdb->prepare("SELECT setting_value FROM $table_name WHERE setting_name = %s", $setting_name);
-    $domains_to_replace = $wpdb->get_var($query);
-
-    $domains_to_remove = array_map('trim', explode(",", $domains_to_replace));
-    if (!in_array(get_site_url(), $domains_to_remove)) {
-        array_push($domains_to_remove, get_site_url());
-
-    }
-
-    // For each domain we're removing
-    $num_changes = 0;
-    foreach ($domains_to_remove as $domain) {
-        do_my_log("Checking for any <img src=\"" . $domain . "...");
-
-        // Find any strings like "<img src="http://www.domain.com"
-        $pattern = '/<img[^>]*src=["\']' . preg_quote($domain, '/') . '(.*?)["\']/i';
-        // Replace the leading portion only, ie. "<img src="{match}"
-        $replacement = '<img src="$1"';
-        // Perform the replacement
-        $new_content = preg_replace($pattern, $replacement, $content);
-
-        // If the content has changed, set the modified flag to true
-        if ($new_content !== $content) {
-            $modified = true;
-            do_my_log("Changed a link.");
-            $content = $new_content;
-            $num_changes++;
-        }
-    }
-    do_my_log("🪄 Changes made: " . $num_changes++);
-
-    // If any URLs were modified, re-save the post
-    if ($modified == true) { // was if ($new_content) {
-
-        do_my_log("Need to save post...");
-
-        // Unhook do_saved_post(), or wp_update_post() would cause an infinite loop
-        remove_action('save_post', 'do_saved_post', 10, 1);
-        // Re-save the post
-        wp_update_post(array(
-            'ID' => $post_id,
-            'post_content' => $new_content,
-        ));
-        do_my_log("Post updated.");
-        my_trigger_notice(4);
-        // Hook it back up
-        add_action('save_post', 'do_saved_post', 10, 1);
-    } else {
-        do_my_log("Post not updated.");
-    }
-
-    do_my_log("Finished make_body_imgs_relative().");
 
 }
 
@@ -751,6 +669,7 @@ function tidy_body_imgs($post_id)
     $content = get_post_field('post_content', $post_id);
 
     do_my_log("Checking for relative img src locations...");
+    // TODO: #13 Also support absolute local URLs
     // Find relative URLs in the content
     $pattern = '/<img[^>]+src=["\']\/([^"\']+)/'; // <img src="/wp-content/uploa...
     preg_match_all($pattern, $content, $matches);
@@ -916,6 +835,87 @@ function tidy_body_imgs($post_id)
 
 }
 
+function make_body_imgs_relative($post_id)
+{
+    /**
+     * Make In-Line Image URLs relative
+     *
+     * This function takes a WordPress post ID and modifies the post's content by
+     * making all local image URLs relative to the site's root directory. It does this by
+     * removing any specified domains from the image URLs.
+     *
+     * The function only removes the site's own scheme domain (eg. "http://www.myblog.com").
+     *
+     * @param int $post_id The ID of the WordPress post to modify.
+     * @return void
+     */
+
+    do_my_log("🔗 make_body_imgs_relative()...");
+
+    // Get the post content
+    $content = get_post_field('post_content', $post_id);
+    $modified = false;
+
+    // TODO: Check this is actually being set - may only be in scope on options page
+    // Set up list of domains to strip from links - site URL is added by default
+    global $wpdb;
+    $setting_name = 'domains_to_replace';
+    $table_name = $wpdb->prefix . 'tidy_media_organizer';
+    $query = $wpdb->prepare("SELECT setting_value FROM $table_name WHERE setting_name = %s", $setting_name);
+    $domains_to_replace = $wpdb->get_var($query);
+
+    $domains_to_remove = array_map('trim', explode(",", $domains_to_replace));
+    if (!in_array(get_site_url(), $domains_to_remove)) {
+        array_push($domains_to_remove, get_site_url());
+
+    }
+
+    // For each domain we're removing
+    $num_changes = 0;
+    foreach ($domains_to_remove as $domain) {
+        do_my_log("Checking for any <img src=\"" . $domain . "...");
+
+        // Find any strings like "<img src="http://www.domain.com"
+        $pattern = '/<img[^>]*src=["\']' . preg_quote($domain, '/') . '(.*?)["\']/i';
+        // Replace the leading portion only, ie. "<img src="{match}"
+        $replacement = '<img src="$1"';
+        // Perform the replacement
+        $new_content = preg_replace($pattern, $replacement, $content);
+
+        // If the content has changed, set the modified flag to true
+        if ($new_content !== $content) {
+            $modified = true;
+            do_my_log("Changed a link.");
+            $content = $new_content;
+            $num_changes++;
+        }
+    }
+    do_my_log("🪄 Changes made: " . $num_changes++);
+
+    // If any URLs were modified, re-save the post
+    if ($modified == true) { // was if ($new_content) {
+
+        do_my_log("Need to save post...");
+
+        // Unhook do_saved_post(), or wp_update_post() would cause an infinite loop
+        remove_action('save_post', 'do_saved_post', 10, 1);
+        // Re-save the post
+        wp_update_post(array(
+            'ID' => $post_id,
+            'post_content' => $new_content,
+        ));
+        do_my_log("Post updated.");
+        my_trigger_notice(4);
+        // Hook it back up
+        add_action('save_post', 'do_saved_post', 10, 1);
+    } else {
+        do_my_log("Post not updated.");
+    }
+
+    do_my_log("Finished make_body_imgs_relative().");
+
+}
+
 function localise_remote_images($post_id)
 {
     /**
@@ -997,9 +997,6 @@ function localise_remote_images($post_id)
                 } else {
                     do_my_log("❌ File save failed.");
                 }
-
-
-
 
             } else {
                 do_my_log("❌ File download failed.");
