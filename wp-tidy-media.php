@@ -157,7 +157,7 @@ function get_tidy_media_settings()
         );
     } else {
         // Show an error message
-        echo '<div class="notice notice-error"><p><strong>Plugin issue</strong>: <code>' . $table_name . '</code> not found in database. Cannot store settings. Try reactivating the plugin.</p></div>';
+        echo '<div class="notice notice-error"><p>Plugin issue: <code>' . $table_name . '</code> not found in database. Cannot store settings. Try reactivating the plugin.</p></div>';
         return array();
     }
 }
@@ -209,10 +209,10 @@ function tidy_media_organizer_options_page()
                     $wpdb->insert($table_name, $setting);
                 }
             }
-            echo '<div class="updated"><p><strong>Settings saved.</strong></p></div>';
+            echo '<div class="updated"><p>Settings saved.</p></div>';
         } else {
             // Show an error message
-            echo '<div class="notice notice-error"><p><strong>Save failed</strong>: <code>' . $table_name . '</code> not found in database. Cannot store settings. Try reactivating the plugin.</p></div>';
+            echo '<div class="notice notice-error"><p>Save failed: <code>' . $table_name . '</code> not found in database. Cannot store settings. Try reactivating the plugin.</p></div>';
         }
 
     }
@@ -297,9 +297,11 @@ function tidy_media_organizer_options_page()
                                                         value="1" <?php checked($settings['use_localise'], 1);?>>
                                                     Localise remote body images
                                                     <p class="description">In post content, all off-site images
-                                                        (ie. <code>&lt;img src</code> URLs starting
-                                                        <code>http://</code>) will be pulled to your
-                                                        site. Organisation will be as per the other settings.
+                                                        will be pulled to your site. Applies to all
+                                                        <code>&lt;img src=</code>
+                                                        URLs except your own site and "additional home domains".
+                                                        Organisation will be as per the
+                                                        other settings.
                                                     </p>
                                                 </label>
                                                 <br>
@@ -401,6 +403,19 @@ $taxonomies = get_taxonomies(array('public' => true));
                                         </tr>
                                         <tr>
                                             <th scope="row">
+                                                <label>Use date folders:</label>
+                                            </th>
+                                            <td><?php
+if (get_option('uploads_use_yearmonth_folders') === '1') {
+        echo "Yes";
+    } else {
+        echo "No";
+    }?>
+                                                (Set in <a href="<?php echo admin_url(); ?>options-media.php">Media
+                                                    Settings</a>)</td>
+                                        </tr>
+                                        <tr>
+                                            <th scope="row">
                                                 <label for="organize_post_img_by_post_slug">Organize by post
                                                     slug?</label>
                                             </th>
@@ -413,13 +428,7 @@ $taxonomies = get_taxonomies(array('public' => true));
                                                     corresponding folder.</p>-->
                                             </td>
                                         </tr>
-                                        <tr>
-                                            <th scope="row">
-                                                <label>Use date folders:</label>
-                                            </th>
-                                            <td>Set in <a href="<?php echo admin_url(); ?>options-media.php">Media
-                                                    Settings</a></td>
-                                        </tr>
+
 
                                         <tr>
                                             <th scope="row">
@@ -457,8 +466,7 @@ $taxonomies = get_taxonomies(array('public' => true));
                                         </tr>
                                         <tr>
                                             <th scope="row">
-                                                <label for="organize_post_img_by_type">Additional domains to
-                                                    remove</label>
+                                                <label for="organize_post_img_by_type">Additional home domains</label>
                                             </th>
                                             <td>
                                                 <input type="text" name="domains_to_replace" id="domains_to_replace"
@@ -490,11 +498,12 @@ $taxonomies = get_taxonomies(array('public' => true));
         var path = basedir;
 
         if (postTypeEnabled) {
-            path += '/<strong>{post_type}</strong>';
+            path += '/<span style="color:#d63638">post_type</span>';
         }
 
         if (taxonomySlug && taxonomySlug.value !== '') {
-            path += '/<strong>' + taxonomySlug.value + '</strong>/{<strong>term_slug</strong>}';
+            path += '/<span style="color:#00a32a">' + taxonomySlug.value +
+                '</span>/<span style="color:#2271b1">term_slug</span>';
         }
 
         var uploadsUseYearMonthFolders =
@@ -509,7 +518,7 @@ $taxonomies = get_taxonomies(array('public' => true));
         }
 
         if (postSlugEnabled) {
-            path += '/<strong>my-awesome-post</strong>';
+            path += '/<span style="color:#dba617">my-awesome-post</span>';
         }
 
         path += '/image.jpeg';
@@ -817,23 +826,17 @@ function relative_body_imgs($post_id)
     $content = get_post_field('post_content', $post_id);
     $modified = false;
 
-    // TODO: Check this is actually being set - may only be in scope on options page
     // Set up list of domains to strip from links - site URL is added by default
-    global $wpdb;
-    $setting_name = 'domains_to_replace';
-    $table_name = $wpdb->prefix . 'tidy_media_organizer';
-    $query = $wpdb->prepare("SELECT setting_value FROM $table_name WHERE setting_name = %s", $setting_name);
-    $domains_to_replace = $wpdb->get_var($query);
-
-    $domains_to_remove = array_map('trim', explode(",", $domains_to_replace));
-    if (!in_array(get_site_url(), $domains_to_remove)) {
-        array_push($domains_to_remove, get_site_url());
-
+    $settings = get_tidy_media_settings();
+    $domains_to_replace = $settings['domains_to_replace'];
+    $local_domains = array_map('trim', explode(",", $domains_to_replace));
+    if (!in_array(get_site_url(), $local_domains)) {
+        array_push($local_domains, get_site_url());
     }
 
     // For each domain we're removing
     $num_changes = 0;
-    foreach ($domains_to_remove as $domain) {
+    foreach ($local_domains as $domain) {
         do_my_log("Checking for any <img src=\"" . $domain . "...");
 
         // Find any strings like "<img src="http://www.domain.com"
@@ -898,13 +901,28 @@ function localise_remote_images($post_id)
     $dom = new DOMDocument();
     @$dom->loadHTML($post_content);
 
+    // Set up list of local domains - ie, the current site's URL and any others specified in settings
+    $settings = get_tidy_media_settings();
+    $domains_to_replace = $settings['domains_to_replace'];
+    $local_domains = array_map('trim', explode(",", $domains_to_replace));
+    if (!in_array(get_site_url(), $local_domains)) {
+        array_push($local_domains, get_site_url());
+    }
+
     $image_tags = $dom->getElementsByTagName('img');
 
     foreach ($image_tags as $image_tag) {
         $image_src = $image_tag->getAttribute('src');
 
-        // TODO: #14 Need to ensure these images are truly off-site - even local images will retain 'http' if tidy_body_imgs() is off
-        if (strpos($image_src, 'http') === 0) {
+        // Don't run this on img src URLs which are for the current/local/chosen site
+        $is_local = false;
+        foreach ($local_domains as $local_domain) {
+            if (strpos($image_src, $local_domain) !== false) {
+                $is_local = true;
+                break;
+            }
+        }
+        if (!$is_local) {
 
             do_my_log("🎆 Found " . $image_src);
 
