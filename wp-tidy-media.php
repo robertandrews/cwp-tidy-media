@@ -579,7 +579,7 @@ function do_saved_post($post_id)
                 make_body_imgs_relative($post_id);
             }
             if ($settings['use_fix'] == 1) {
-                fix_body_img_paths($post_id);
+                tidy_body_imgs($post_id);
             }
             if ($settings['use_custom'] == 1) {
                 tidy_post_attachments($post_id);
@@ -727,7 +727,7 @@ function make_body_imgs_relative($post_id)
 
 }
 
-function fix_body_img_paths($post_id)
+function tidy_body_imgs($post_id)
 {
     /**
      * Fix Body Img Paths
@@ -744,7 +744,7 @@ function fix_body_img_paths($post_id)
      * @return void
      */
 
-    do_my_log("🎯 fix_body_img_paths()...");
+    do_my_log("🎯 tidy_body_imgs()...");
 
     do_my_log("Getting post content...");
     // Get the post content
@@ -911,7 +911,7 @@ function fix_body_img_paths($post_id)
 
     }
 
-    do_my_log("Finished fix_body_img_paths().");
+    do_my_log("Finished tidy_body_imgs().");
     // print_r($content);
 
 }
