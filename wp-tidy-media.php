@@ -134,10 +134,11 @@ function get_tidy_media_settings()
         }
         $organize_post_img_by_type = isset($settings_arr['organize_post_img_by_type']) ? $settings_arr['organize_post_img_by_type'] : 0;
         $organize_post_img_by_taxonomy = isset($settings_arr['organize_post_img_by_taxonomy']) ? $settings_arr['organize_post_img_by_taxonomy'] : '';
+        $organize_post_img_by_post_slug = isset($settings_arr['organize_post_img_by_post_slug']) ? $settings_arr['organize_post_img_by_post_slug'] : 0;
         $domains_to_replace = isset($settings_arr['domains_to_replace']) ? $settings_arr['domains_to_replace'] : '';
+        $use_tidy_attachments = isset($settings_arr['use_tidy_attachments']) ? $settings_arr['use_tidy_attachments'] : 0;
+        $use_tidy_body_imgs = isset($settings_arr['use_tidy_body_imgs']) ? $settings_arr['use_tidy_body_imgs'] : 0;
         $use_relative = isset($settings_arr['use_relative']) ? $settings_arr['use_relative'] : 0;
-        $use_custom = isset($settings_arr['use_custom']) ? $settings_arr['use_custom'] : 0;
-        $use_fix = isset($settings_arr['use_fix']) ? $settings_arr['use_fix'] : 0;
         $use_localise = isset($settings_arr['use_localise']) ? $settings_arr['use_localise'] : 0;
         $use_delete = isset($settings_arr['use_delete']) ? $settings_arr['use_delete'] : 0;
         $use_log = isset($settings_arr['use_log']) ? $settings_arr['use_log'] : 0;
@@ -145,10 +146,11 @@ function get_tidy_media_settings()
         return array(
             'organize_post_img_by_type' => $organize_post_img_by_type,
             'organize_post_img_by_taxonomy' => $organize_post_img_by_taxonomy,
+            'organize_post_img_by_post_slug' => $organize_post_img_by_post_slug,
             'domains_to_replace' => $domains_to_replace,
+            'use_tidy_attachments' => $use_tidy_attachments,
+            'use_tidy_body_imgs' => $use_tidy_body_imgs,
             'use_relative' => $use_relative,
-            'use_custom' => $use_custom,
-            'use_fix' => $use_fix,
             'use_localise' => $use_localise,
             'use_delete' => $use_delete,
             'use_log' => $use_log,
@@ -188,12 +190,13 @@ function tidy_media_organizer_options_page()
             $settings = array(
                 array('setting_name' => 'organize_post_img_by_type', 'setting_value' => isset($_POST['organize_post_img_by_type']) ? 1 : 0),
                 array('setting_name' => 'organize_post_img_by_taxonomy', 'setting_value' => isset($_POST['organize_post_img_by_taxonomy']) ? sanitize_text_field($_POST['organize_post_img_by_taxonomy']) : ''),
+                array('setting_name' => 'organize_post_img_by_post_slug', 'setting_value' => isset($_POST['organize_post_img_by_post_slug']) ? 1 : 0),
                 // TODO: Save/retrieve a serialised array, not a single text string.
                 // TODO: Use dynamic input entry/array consolidation
                 array('setting_name' => 'domains_to_replace', 'setting_value' => isset($_POST['domains_to_replace']) ? sanitize_text_field($_POST['domains_to_replace']) : ''),
+                array('setting_name' => 'use_tidy_attachments', 'setting_value' => isset($_POST['use_tidy_attachments']) ? sanitize_text_field($_POST['use_tidy_attachments']) : ''),
+                array('setting_name' => 'use_tidy_body_imgs', 'setting_value' => isset($_POST['use_tidy_body_imgs']) ? sanitize_text_field($_POST['use_tidy_body_imgs']) : ''),
                 array('setting_name' => 'use_relative', 'setting_value' => isset($_POST['use_relative']) ? sanitize_text_field($_POST['use_relative']) : ''),
-                array('setting_name' => 'use_custom', 'setting_value' => isset($_POST['use_custom']) ? sanitize_text_field($_POST['use_custom']) : ''),
-                array('setting_name' => 'use_fix', 'setting_value' => isset($_POST['use_fix']) ? sanitize_text_field($_POST['use_fix']) : ''),
                 array('setting_name' => 'use_localise', 'setting_value' => isset($_POST['use_localise']) ? sanitize_text_field($_POST['use_localise']) : ''),
                 array('setting_name' => 'use_delete', 'setting_value' => isset($_POST['use_delete']) ? sanitize_text_field($_POST['use_delete']) : ''),
                 array('setting_name' => 'use_log', 'setting_value' => isset($_POST['use_log']) ? sanitize_text_field($_POST['use_log']) : ''),
@@ -257,23 +260,24 @@ function tidy_media_organizer_options_page()
                                             </th>
                                             <td>
                                                 <label style="margin: 0.35em 0 0.5em!important; display: inline-block;">
-                                                    <input type="checkbox" name="use_custom" id="use_custom" value="1"
-                                                        <?php checked($settings['use_relative'], 1);?>>
+                                                    <input type="checkbox" name="use_tidy_attachments"
+                                                        id="use_tidy_attachments" value="1"
+                                                        <?php checked($settings['use_tidy_attachments'], 1);?>>
                                                     Tidy post attachments
-                                                    <p class="description">Force WordPress to store post-attached images
-                                                        in a folder
-                                                        structure that mirrors your content structure.</p>
+                                                    <p class="description">Post-attached images will be moved
+                                                        to a folder structure that mirrors your content structure.
+                                                        Attachment metadata will be updated.</p>
                                                 </label>
                                                 <br>
                                                 <label style="margin: 0.35em 0 0.5em!important; display: inline-block;">
-                                                    <input type="checkbox" name="use_fix" id="use_fix" value="1"
-                                                        <?php checked($settings['use_fix'], 1);?>>
+                                                    <input type="checkbox" name="use_tidy_body_imgs"
+                                                        id="use_tidy_body_imgs" value="1"
+                                                        <?php checked($settings['use_tidy_body_imgs'], 1);?>>
                                                     Tidy body image URLs
-                                                    <p class="description">In post content, all local image URLs (ie.
-                                                        relative <code>&lt;img src</code>
-                                                        URLs) will be checked. Files not in custom folder structure
-                                                        will be moved there. <code>src</code> in post body will be
-                                                        udpated accordingly.</p>
+                                                    <p class="description">Attachments of all local image URLs will be
+                                                        moved to your custom folder structure. <code>src</code> in post
+                                                        body will be
+                                                        updated accordingly.</p>
                                                 </label>
                                                 <br>
                                                 <label style="margin: 0.35em 0 0.5em!important; display: inline-block;">
@@ -332,7 +336,7 @@ function tidy_media_organizer_options_page()
 
 
                         <!-- Post media folders -->
-                        <div class="postbox" id="media_folders_box">
+                        <div class="postbox">
                             <div class="postbox-header">
                                 <h2>Custom attachment filepath</h2>
                             </div>
@@ -395,7 +399,20 @@ $taxonomies = get_taxonomies(array('public' => true));
 
                                             </td>
                                         </tr>
-
+                                        <tr>
+                                            <th scope="row">
+                                                <label for="organize_post_img_by_post_slug">Organize by post
+                                                    slug?</label>
+                                            </th>
+                                            <td>
+                                                <input type="checkbox" name="organize_post_img_by_post_slug"
+                                                    id="organize_post_img_by_post_slug" value="1"
+                                                    <?php checked($settings['organize_post_img_by_post_slug'], 1);?>
+                                                    class="media-folder-input"> (eg. <code>my-awesome-post</code>)
+                                                <!--<p class="description">All uploads attached to posts will be housed in a
+                                                    corresponding folder.</p>-->
+                                            </td>
+                                        </tr>
                                         <tr>
                                             <th scope="row">
                                                 <label>Use date folders:</label>
@@ -468,6 +485,7 @@ $taxonomies = get_taxonomies(array('public' => true));
         var basedir = '<?php echo esc_js(wp_upload_dir()['basedir']); ?>';
         var postTypeEnabled = document.querySelector('[name="organize_post_img_by_type"]').checked;
         var taxonomySlug = document.querySelector('[name="organize_post_img_by_taxonomy"]:checked');
+        var postSlugEnabled = document.querySelector('[name="organize_post_img_by_post_slug"]').checked;
 
         var path = basedir;
 
@@ -476,7 +494,7 @@ $taxonomies = get_taxonomies(array('public' => true));
         }
 
         if (taxonomySlug && taxonomySlug.value !== '') {
-            path += '/<strong>' + taxonomySlug.value + '</strong>/{<strong></strong>term_slug</strong>}';
+            path += '/<strong>' + taxonomySlug.value + '</strong>/{<strong>term_slug</strong>}';
         }
 
         var uploadsUseYearMonthFolders =
@@ -490,6 +508,10 @@ $taxonomies = get_taxonomies(array('public' => true));
             path += '/' + dateFolders;
         }
 
+        if (postSlugEnabled) {
+            path += '/<strong>my-awesome-post</strong>';
+        }
+
         path += '/image.jpeg';
 
         document.querySelector('#planned-path').innerHTML = path;
@@ -498,38 +520,15 @@ $taxonomies = get_taxonomies(array('public' => true));
     document.addEventListener('DOMContentLoaded', function() {
         document.querySelector('[name="organize_post_img_by_type"]').addEventListener('change',
             updatePlannedPath);
+        document.querySelector('[name="organize_post_img_by_post_slug"]').addEventListener('change',
+            updatePlannedPath);
+
         var radioButtons = document.querySelectorAll('[name="organize_post_img_by_taxonomy"]');
         for (var i = 0; i < radioButtons.length; i++) {
             radioButtons[i].addEventListener('change', updatePlannedPath);
         }
 
         updatePlannedPath();
-    });
-    </script>
-
-
-    <script>
-    jQuery(document).ready(function($) {
-        var mediaFoldersBox = $('#media_folders_box');
-        var mediaFolderInputs = mediaFoldersBox.find('.media-folder-input');
-        var useCustomCheckbox = $('#use_custom');
-
-        // Disable or enable media folder inputs based on use_custom checkbox
-        function toggleMediaFolderInputs() {
-            if (useCustomCheckbox.prop('checked')) {
-                mediaFolderInputs.prop('disabled', false);
-            } else {
-                mediaFolderInputs.prop('disabled', true);
-            }
-        }
-
-        // Initialize the state of the media folder inputs
-        toggleMediaFolderInputs();
-
-        // Listen for changes in the use_custom checkbox
-        useCustomCheckbox.change(function() {
-            toggleMediaFolderInputs();
-        });
     });
     </script>
 
@@ -578,10 +577,10 @@ function do_saved_post($post_id)
             if ($settings['use_relative'] == 1) {
                 relative_body_imgs($post_id);
             }
-            if ($settings['use_fix'] == 1) {
+            if ($settings['use_tidy_body_imgs'] == 1) {
                 tidy_body_imgs($post_id);
             }
-            if ($settings['use_custom'] == 1) {
+            if ($settings['use_tidy_attachments'] == 1) {
                 tidy_post_attachments($post_id);
             }
             // delete_attached_images_on_post_delete($post_id);
@@ -750,17 +749,14 @@ function tidy_body_imgs($post_id)
                             add_action('save_post', 'do_saved_post', 10, 1);
                         }
 
-
-
                     }
 
                     /*
-                    // Generate actual and intended path pieces, used for comparison
-                    $old_image_details = old_image_details($post_attachment);
-                    $new_image_details = new_image_details($post_id, $post_attachment);
-                    do_my_log("🔬 Comparing found " . $old_image_details['subdir'] . " vs user-specified pattern " . $new_image_details['subdir']);
-                    */
-                    
+                // Generate actual and intended path pieces, used for comparison
+                $old_image_details = old_image_details($post_attachment);
+                $new_image_details = new_image_details($post_id, $post_attachment);
+                do_my_log("🔬 Comparing found " . $old_image_details['subdir'] . " vs user-specified pattern " . $new_image_details['subdir']);
+                 */
 
                 } else {
                     // No attachment found
@@ -907,6 +903,7 @@ function localise_remote_images($post_id)
     foreach ($image_tags as $image_tag) {
         $image_src = $image_tag->getAttribute('src');
 
+        // TODO: #14 Need to ensure these images are truly off-site - even local images will retain 'http' if tidy_body_imgs() is off
         if (strpos($image_src, 'http') === 0) {
 
             do_my_log("🎆 Found " . $image_src);
@@ -937,6 +934,8 @@ function localise_remote_images($post_id)
 
                     do_my_log("✅ File slurp and save worked.");
 
+                    // Get the post date of the parent post
+                    $post_date = get_post_field('post_date', $post_id);
                     // Create attachment post object
                     do_my_log("Creating attachment for this...");
                     $attachment = array(
@@ -947,6 +946,7 @@ function localise_remote_images($post_id)
                         'post_content' => '',
                         'post_status' => 'inherit',
                         'post_parent' => $post_id,
+                        'post_date' => $post_date,
                     );
                     // Insert the attachment into the media library
                     $attach_id = wp_insert_attachment($attachment, $image_file, $post_id);
@@ -1031,6 +1031,7 @@ function new_image_details($post_id, $post_attachment)
      * @return array An associative array containing the details of the new image.
      */
     // Get user's path preferences from database
+    // TODO: Use get_tidy_media_settings() instead here...
     global $wpdb;
     $table_name = $wpdb->prefix . 'tidy_media_organizer';
     if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") == $table_name) {
@@ -1041,9 +1042,11 @@ function new_image_details($post_id, $post_attachment)
         }
         $organize_post_img_by_type = isset($settings_arr['organize_post_img_by_type']) ? $settings_arr['organize_post_img_by_type'] : 0;
         $organize_post_img_by_taxonomy = isset($settings_arr['organize_post_img_by_taxonomy']) ? $settings_arr['organize_post_img_by_taxonomy'] : '';
+        $organize_post_img_by_post_slug = isset($settings_arr['organize_post_img_by_post_slug']) ? $settings_arr['organize_post_img_by_post_slug'] : 0;
         // These will formulate the preferred path
     } else {
         // No database settings
+        do_my_log("Could not get database settings.");
     }
 
     // Build new subdir
@@ -1062,15 +1065,32 @@ function new_image_details($post_id, $post_attachment)
             $new_subdir .= '/' . $post_terms[0]->slug;
             $new_subdir_stem = $new_subdir;
         }
+    } else {
+        $new_subdir = '';
+        $new_subdir_stem = '';
     }
     // c. Are date-folders in use?
     $wp_use_date_folders = get_option('uploads_use_yearmonth_folders');
     if ($wp_use_date_folders == 1) {
         $post_date = get_post_field('post_date', $post_id);
         $formatted_date = date('Y/m', strtotime($post_date));
-        $new_subdir .= '/' . $formatted_date;
+        if (!empty($new_subdir)) {
+            $new_subdir .= '/' . $formatted_date;
+        } else {
+            $new_subdir .= $formatted_date;
+        }
     }
     // new subdir is now generated
+
+    // d. Use post slug?
+    if ($organize_post_img_by_post_slug == 1) {
+        $post_slug = get_post_field('post_name', get_post());
+        if (!empty($new_subdir)) {
+            $new_subdir .= '/' . $post_slug;
+        } else {
+            $new_subdir .= $post_slug;
+        }
+    }
 
     $filepath = get_attached_file($post_attachment->ID);
 
@@ -1096,13 +1116,13 @@ function custom_path_controller($post_id, $post_attachment)
 
     /**
      * Custom Path Controller
-     * 
+     *
      * Handles the logic for moving image files from one path to another and updating post and metadata.
      * Checks if a given attachment is in the folder intended by the user's specified custom format.
      * If it is not, the main file (plus any sized files and original file) are moved, and attachment
      * metadata is updated accordingly.
      * Files will not be moved if they are already attached to another post.
-     * 
+     *
      * @param int $post_id - The ID of the post to which the attachment belongs.
      * @param object $post_attachment - The attachment object to be moved.
      * @return bool - Returns a boolean value of true if the main file move is successful, otherwise false.
@@ -1112,6 +1132,7 @@ function custom_path_controller($post_id, $post_attachment)
 
     // Generate source and destination path pieces
     $old_image_details = old_image_details($post_attachment);
+    // TODO: Failed to generate any custom-path details
     $new_image_details = new_image_details($post_id, $post_attachment);
     do_my_log("🔬 Comparing " . $old_image_details['filepath'] . " vs " . $new_image_details['filepath']);
 
@@ -1120,7 +1141,7 @@ function custom_path_controller($post_id, $post_attachment)
         do_my_log("👍🏻 Path ok, no need to move.");
         my_trigger_notice(3);
         return false;
-    // Wrong location - move it, and update post and metadata
+        // Wrong location - move it, and update post and metadata
     } else {
         do_my_log("🚨 Path looks incorrect - " . $old_image_details['filepath']);
 
@@ -1138,7 +1159,7 @@ function custom_path_controller($post_id, $post_attachment)
             return $move_main_file_success;
 
         } elseif ($post_attachment->post_parent !== $post_id && $post_attachment->post_parent !== 0 && $post_attachment->post_parent !== '') {
-            do_my_log("🚫 Attachment already a child of ".$post_attachment->post_parent. " - ". get_the_title($post_attachment->post_parent)." - Will not move.");
+            do_my_log("🚫 Attachment already a child of " . $post_attachment->post_parent . " - " . get_the_title($post_attachment->post_parent) . " - Will not move.");
         }
     }
 
