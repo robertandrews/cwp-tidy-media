@@ -643,7 +643,7 @@ function tidy_body_imgs($post_id)
     /**
      * Fix Body Img Paths
      *
-     * Fixes all relative image URLs in the post's body to point to the expected location, based on the post's ID.
+     * Fixes all local image URLs in the post's body to point to the expected location, based on the post's ID.
      * eg. Maybe /wp-content/uploads/image.jpeg should be /wp-content/uploads/post/taxonomy/term/image.jpeg
      *
      * When a malformed img src is found, function will:
@@ -662,14 +662,21 @@ function tidy_body_imgs($post_id)
     $content = get_post_field('post_content', $post_id);
 
     do_my_log("Checking for local img src URLs...");
-    // TODO: #13 Also support absolute local URLs
-    // Find relative URLs in the content
-    $pattern = '/<img[^>]+src=["\']\/([^"\']+)/'; // <img src="/wp-content/uploa...
+    // Set up list of local domains to include in checks
+    $settings = get_tidy_media_settings();
+    $domains_to_replace = $settings['domains_to_replace'];
+    $local_domains = array_map('trim', explode(",", $domains_to_replace));
+    if (!in_array(get_site_url(), $local_domains)) {
+        array_push($local_domains, get_site_url());
+    }
+    // Find relative URLs or local-domain URLs in the content
+    // $pattern = '/<img[^>]+src=["\']\/([^"\']+)/'; // <img src="/wp-content/uploa...
+    $pattern = '/<img[^>]+src=["\'](?:\/|(' . implode('|', $local_domains) . ')\/)([^"\']+)/'; // <img src="/wp-content/uploa...
     preg_match_all($pattern, $content, $matches);
     do_my_log("Local img URLs: " . count($matches[0]));
 
     // For every src found,
-    foreach ($matches[1] as $found_img_src) { // /wp-content/uploads/media/folio/clients/wired/tom_heather.jpg
+    foreach ($matches[2] as $found_img_src) { // /wp-content/uploads/media/folio/clients/wired/tom_heather.jpg
 
         $modified = null;
 
