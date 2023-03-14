@@ -291,7 +291,7 @@ function tidy_media_organizer_options_page()
                                                 <label style="margin: 0.35em 0 0.5em!important; display: inline-block;">
                                                     <input type="checkbox" name="use_localise" id="use_localise"
                                                         value="1" <?php checked($settings['use_localise'], 1);?>>
-                                                    Pull down remote body images
+                                                    Localise remote body images
                                                     <p class="description">In post content, all off-site images
                                                         (ie. <code>&lt;img src</code> URLs starting
                                                         <code>http://</code>) will be pulled to your
@@ -576,7 +576,7 @@ function do_saved_post($post_id)
                 localise_remote_images($post_id);
             }
             if ($settings['use_relative'] == 1) {
-                make_body_imgs_relative($post_id);
+                relative_body_imgs($post_id);
             }
             if ($settings['use_fix'] == 1) {
                 tidy_body_imgs($post_id);
@@ -617,24 +617,9 @@ function tidy_post_attachments($post_id)
 
             do_my_log("🖼 Attachment " . $post_attachment->ID . " - " . $post_attachment->post_title);
 
-            // Generate source and destination path pieces
-            $old_image_details = old_image_details($post_attachment);
-            $new_image_details = new_image_details($post_id, $post_attachment);
-
-            // Check if need to move
-            if ($old_image_details['filepath'] == $new_image_details['filepath']) {
-                do_my_log("Path ok, no need to move.");
-                my_trigger_notice(3);
-                // return false
-            } else {
-                do_my_log("🚨 Path looks incorrect - " . $old_image_details['filepath']);
-                $move_main_file_success = move_main_file($post_attachment->ID, $old_image_details, $new_image_details);
-                if ($move_main_file_success == true) {
-                    $move_sizes_files_success = move_sizes_files($post_attachment->ID, $old_image_details, $new_image_details);
-                    $move_original_file_success = move_original_file($post_attachment->ID, $old_image_details, $new_image_details);
-                }
-                return $move_main_file_success;
-            }
+            // Check file location, move if needed
+            $move_attachment_outcome = custom_path_controller($post_id, $post_attachment);
+            return $move_attachment_outcome;
 
         }
     } else {
@@ -668,12 +653,12 @@ function tidy_body_imgs($post_id)
     // Get the post content
     $content = get_post_field('post_content', $post_id);
 
-    do_my_log("Checking for relative img src locations...");
+    do_my_log("Checking for local img src URLs...");
     // TODO: #13 Also support absolute local URLs
     // Find relative URLs in the content
     $pattern = '/<img[^>]+src=["\']\/([^"\']+)/'; // <img src="/wp-content/uploa...
     preg_match_all($pattern, $content, $matches);
-    do_my_log("Relative img URLs: " . count($matches[0]));
+    do_my_log("Local img URLs: " . count($matches[0]));
 
     // For every src found,
     foreach ($matches[1] as $found_img_src) { // /wp-content/uploads/media/folio/clients/wired/tom_heather.jpg
@@ -689,7 +674,7 @@ function tidy_body_imgs($post_id)
         // ✅ File is where src says - move it and update body
         if (file_exists($found_img_filepath)) {
 
-            do_my_log("File does exist there. Getting its attachment object...");
+            do_my_log("File does exist at src. Getting its attachment object...");
 
             // Upload folder parts, used to generate attachment
             $uploads_base = trailingslashit(wp_upload_dir()['baseurl']); // http://context.local:8888/wp-content/uploads/
@@ -720,82 +705,62 @@ function tidy_body_imgs($post_id)
                 $post_attachment = get_post($attachment_id); // WP_Post object: attachment
 
                 if ($post_attachment) {
-                    do_my_log("🖼 Found attachment object.");
+                    do_my_log("🖼 Found attachment object " . $post_attachment->ID . " - " . $post_attachment->post_title);
 
+                    // 1. Check file location, move if needed
+                    $move_attachment_outcome = custom_path_controller($post_id, $post_attachment);
+                    if ($move_attachment_outcome === true) {
+
+                        // 2. Update the body
+                        do_my_log("Update the body...");
+                        $new_image_details = new_image_details($post_id, $post_attachment);
+                        $new_src = $uploads_folder . trailingslashit($new_image_details['subdir']) . $new_image_details['filename'];
+                        do_my_log("Replace " . $found_img_src . " with " . $new_src);
+                        $new_content = str_replace($found_img_src, $new_src, $content, $num_replacements);
+                        do_my_log("✅ Replacements made: " . $num_replacements);
+                        // If the content has changed, set the modified flag to true
+                        if ($new_content !== $content) {
+                            $modified = true;
+                            $content = $new_content;
+                        }
+                        // TODO: Should the save happen here, repeatedly, or outside?
+                        if ($modified == true) { // was if ($new_content) {
+                            do_my_log("Updating post...");
+                            // Unhook do_saved_post(), or wp_update_post() would cause an infinite loop
+                            remove_action('save_post', 'do_saved_post', 10, 1);
+                            // Re-save the post
+                            wp_update_post(array(
+                                'ID' => $post_id,
+                                'post_content' => $content,
+                            ));
+                            // Hook it back up
+                            add_action('save_post', 'do_saved_post', 10, 1);
+                        }
+
+                        // 3. Attach image to this post if it was unattached
+                        if ($post_attachment->post_parent === 0 || $post_attachment->post_parent === '') {
+                            do_my_log("Image " . $attachment_id . " not attached to any post - attach it to this (" . $post_id . ").");
+                            // Set the post_parent of the image to the post ID
+                            $update_args = array(
+                                'ID' => $attachment_id,
+                                'post_parent' => $post_id,
+                            );
+                            remove_action('save_post', 'do_saved_post', 10, 1);
+                            wp_update_post($update_args);
+                            add_action('save_post', 'do_saved_post', 10, 1);
+                        }
+
+
+
+                    }
+
+                    /*
                     // Generate actual and intended path pieces, used for comparison
                     $old_image_details = old_image_details($post_attachment);
                     $new_image_details = new_image_details($post_id, $post_attachment);
                     do_my_log("🔬 Comparing found " . $old_image_details['subdir'] . " vs user-specified pattern " . $new_image_details['subdir']);
-
-                    // 😩 But this is the _wrong_ location - move it, and update post and metadata
-                    if ($old_image_details['subdir'] !== $new_image_details['subdir']) {
-
-                        do_my_log("🚨 File not in user's designated folder.");
-                        do_my_log("Considering file for move and body update...");
-
-                        // If image belongs to this post or is as yet unattached,
-                        if ($post_attachment->post_parent == $post_id || $post_attachment->post_parent == 0) {
-
-                            do_my_log("💡 File is not attached to any other post. Safe to move file and attach to this post (" . $post_id . ").");
-                            do_my_log("Move from " . $old_image_details['filepath'] . " to " . $new_image_details['filepath'] . "...");
-
-                            // 1. Move the file
-                            $move_result = move_main_file($post_attachment->ID, $old_image_details, $new_image_details);
-                            do_my_log("🪄 Move result: " . $move_result);
-                            if ($move_result === true) {
-                                // Also move image variants
-                                do_my_log("Also move any image variants...");
-                                move_sizes_files($post_attachment->ID, $old_image_details, $new_image_details);
-                                move_original_file($post_attachment->ID, $old_image_details, $new_image_details);
-
-                                // 2. Update the body
-                                do_my_log("Update the body...");
-                                $new_src = $uploads_folder . trailingslashit($new_image_details['subdir']) . $new_image_details['filename'];
-                                do_my_log("Replace " . $found_img_src . " with " . $new_src);
-                                $new_content = str_replace($found_img_src, $new_src, $content, $num_replacements);
-                                do_my_log("Replacements made: " . $num_replacements);
-                                // If the content has changed, set the modified flag to true
-                                if ($new_content !== $content) {
-                                    $modified = true;
-                                    $content = $new_content;
-                                }
-                                // TODO: Should the save happen here, repeatedly, or outside?
-                                if ($modified == true) { // was if ($new_content) {
-                                    do_my_log("Updating post...");
-                                    // Unhook do_saved_post(), or wp_update_post() would cause an infinite loop
-                                    remove_action('save_post', 'do_saved_post', 10, 1);
-                                    // Re-save the post
-                                    wp_update_post(array(
-                                        'ID' => $post_id,
-                                        'post_content' => $content,
-                                    ));
-                                    // Hook it back up
-                                    add_action('save_post', 'do_saved_post', 10, 1);
-                                }
-
-                                // 3. Attach image to this post if it was unattached
-                                if ($post_attachment->post_parent === 0 || $post_attachment->post_parent === '') {
-                                    do_my_log("Image " . $attachment_id . " not attached to any post - attach it to this (" . $post_id . ").");
-                                    // Set the post_parent of the image to the post ID
-                                    $update_args = array(
-                                        'ID' => $attachment_id,
-                                        'post_parent' => $post_id,
-                                    );
-                                    remove_action('save_post', 'do_saved_post', 10, 1);
-                                    wp_update_post($update_args);
-                                    add_action('save_post', 'do_saved_post', 10, 1);
-                                }
-
-                            } else {
-                                do_my_log("❌ Move failed.");
-                            }
-
-                        } else {
-                            do_my_log("Image belongs to another post. Will not move it, update its metadata or attach it to this post.");
-                        }
-                    } else {
-                        do_my_log("✅ Image is in user's intended location.");
-                    }
+                    */
+                    
 
                 } else {
                     // No attachment found
@@ -835,7 +800,7 @@ function tidy_body_imgs($post_id)
 
 }
 
-function make_body_imgs_relative($post_id)
+function relative_body_imgs($post_id)
 {
     /**
      * Make In-Line Image URLs relative
@@ -850,7 +815,7 @@ function make_body_imgs_relative($post_id)
      * @return void
      */
 
-    do_my_log("🔗 make_body_imgs_relative()...");
+    do_my_log("🔗 relative_body_imgs()...");
 
     // Get the post content
     $content = get_post_field('post_content', $post_id);
@@ -904,15 +869,15 @@ function make_body_imgs_relative($post_id)
             'ID' => $post_id,
             'post_content' => $new_content,
         ));
-        do_my_log("Post updated.");
+        do_my_log("✅ Post updated.");
         my_trigger_notice(4);
         // Hook it back up
         add_action('save_post', 'do_saved_post', 10, 1);
     } else {
-        do_my_log("Post not updated.");
+        do_my_log("🚫 Post not updated.");
     }
 
-    do_my_log("Finished make_body_imgs_relative().");
+    do_my_log("Finished relative_body_imgs().");
 
 }
 
@@ -994,6 +959,16 @@ function localise_remote_images($post_id)
                     // Replace the image src with the new attachment URL
                     do_my_log("Replacing original src with local URL " . wp_get_attachment_url($attach_id));
                     $image_tag->setAttribute('src', wp_get_attachment_url($attach_id));
+
+                    // Unhook do_saved_post(), or wp_update_post() would cause an infinite loop
+                    remove_action('save_post', 'do_saved_post', 10, 1);
+                    // Update the post content
+                    $post_content = $dom->saveHTML();
+                    wp_update_post(array('ID' => $post_id, 'post_content' => $post_content));
+                    do_my_log("✅ Updated post.");
+                    // Hook it back up
+                    add_action('save_post', 'do_saved_post', 10, 1);
+
                 } else {
                     do_my_log("❌ File save failed.");
                 }
@@ -1007,15 +982,7 @@ function localise_remote_images($post_id)
             do_my_log("❌ No remote images to pull. ");
         }
     }
-
-    // Unhook do_saved_post(), or wp_update_post() would cause an infinite loop
-    remove_action('save_post', 'do_saved_post', 10, 1);
-    // Update the post content
-    $post_content = $dom->saveHTML();
-    wp_update_post(array('ID' => $post_id, 'post_content' => $post_content));
-    do_my_log("Updated post.");
-    // Hook it back up
-    add_action('save_post', 'do_saved_post', 10, 1);
+    do_my_log("Finished localise_remote_images().");
 
 }
 
@@ -1124,6 +1091,59 @@ function new_image_details($post_id, $post_attachment)
 
 }
 
+function custom_path_controller($post_id, $post_attachment)
+{
+
+    /**
+     * Custom Path Controller
+     * 
+     * Handles the logic for moving image files from one path to another and updating post and metadata.
+     * Checks if a given attachment is in the folder intended by the user's specified custom format.
+     * If it is not, the main file (plus any sized files and original file) are moved, and attachment
+     * metadata is updated accordingly.
+     * Files will not be moved if they are already attached to another post.
+     * 
+     * @param int $post_id - The ID of the post to which the attachment belongs.
+     * @param object $post_attachment - The attachment object to be moved.
+     * @return bool - Returns a boolean value of true if the main file move is successful, otherwise false.
+     */
+
+    do_my_log("custom_path_controller()...");
+
+    // Generate source and destination path pieces
+    $old_image_details = old_image_details($post_attachment);
+    $new_image_details = new_image_details($post_id, $post_attachment);
+    do_my_log("🔬 Comparing " . $old_image_details['filepath'] . " vs " . $new_image_details['filepath']);
+
+    // Check if need to move
+    if ($old_image_details['filepath'] == $new_image_details['filepath']) {
+        do_my_log("👍🏻 Path ok, no need to move.");
+        my_trigger_notice(3);
+        return false;
+    // Wrong location - move it, and update post and metadata
+    } else {
+        do_my_log("🚨 Path looks incorrect - " . $old_image_details['filepath']);
+
+        // If image belongs to this post or is as yet unattached,
+        if ($post_attachment->post_parent == $post_id || $post_attachment->post_parent == 0) {
+
+            do_my_log("💡 File is not attached to any other post. Safe to move file and attach to this post (" . $post_id . ").");
+            do_my_log("Move from " . $old_image_details['filepath'] . " to " . $new_image_details['filepath'] . "...");
+
+            $move_main_file_success = move_main_file($post_attachment->ID, $old_image_details, $new_image_details);
+            if ($move_main_file_success == true) {
+                $move_sizes_files_success = move_sizes_files($post_attachment->ID, $old_image_details, $new_image_details);
+                $move_original_file_success = move_original_file($post_attachment->ID, $old_image_details, $new_image_details);
+            }
+            return $move_main_file_success;
+
+        } elseif ($post_attachment->post_parent !== $post_id && $post_attachment->post_parent !== 0 && $post_attachment->post_parent !== '') {
+            do_my_log("🚫 Attachment already a child of ".$post_attachment->post_parent. " - ". get_the_title($post_attachment->post_parent)." - Will not move.");
+        }
+    }
+
+}
+
 function move_main_file($attachment_id, $old_image_details, $new_image_details)
 {
     /**
@@ -1159,7 +1179,7 @@ function move_main_file($attachment_id, $old_image_details, $new_image_details)
             $result = rename($old_image_details['filepath'], $new_image_details['filepath']);
 
             if ($result) {
-                do_my_log("🪄 Moved: " . $result);
+                do_my_log("✅ Moved: " . $result);
                 do_my_log("Updating attachment's database fields.");
 
                 // B. Update database
