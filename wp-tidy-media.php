@@ -256,7 +256,7 @@ function tidy_media_organizer_options_page()
                                     <tbody>
                                         <tr>
                                             <th scope="row">
-                                                <label for="organize_post_img_by_type">Choose functions</label>
+                                                <label for="organize_post_img_by_type">Core functions</label>
                                             </th>
                                             <td>
                                                 <label style="margin: 0.35em 0 0.5em!important; display: inline-block;">
@@ -280,6 +280,13 @@ function tidy_media_organizer_options_page()
                                                         updated accordingly.</p>
                                                 </label>
                                                 <br>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th scope="row">
+                                                <label for="organize_post_img_by_type">Other functions</label>
+                                            </th>
+                                            <td>
                                                 <label style="margin: 0.35em 0 0.5em!important; display: inline-block;">
                                                     <input type="checkbox" name="use_relative" id="use_relative"
                                                         value="1" <?php checked($settings['use_relative'], 1);?>>
@@ -472,7 +479,7 @@ if (get_option('uploads_use_yearmonth_folders') === '1') {
                                                 <input type="text" name="domains_to_replace" id="domains_to_replace"
                                                     size="75" value="<?php echo $settings['domains_to_replace']; ?>" />
                                                 <p class="description">Separate multiple hostnames by comma (eg.
-                                                    "http://www.oldsite.com, "https://testsite:8080") - no trailing
+                                                    "http://www.oldsite.com, https://testsite:8080") - no trailing
                                                     slash.</p>
                                             </td>
                                         </tr>
