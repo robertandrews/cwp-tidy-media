@@ -697,9 +697,14 @@ function tidy_body_imgs($post_id)
             // Upload folder parts, used to generate attachment
             $uploads_base = trailingslashit(wp_upload_dir()['baseurl']); // http://context.local:8888/wp-content/uploads/
             $uploads_folder = str_replace(trailingslashit(home_url()), '', $uploads_base); // /wp-content/uploads/
+
             // Get file's attachment object
             $found_img_url = trailingslashit(get_site_url()) . $found_img_src; // http://context.local:8888/wp-content/uploads/media/folio/clients/wired/tom_heather.jpg
+            // Correct for double-slash that happens when an abolute URL was input
+            $found_img_url = str_replace('//wp-content', '/wp-content', $found_img_url);
+            // Remove the start to just work with a local child of /uploads/
             $img_path_no_base = str_replace($uploads_base, '', $found_img_url);
+
             do_my_log("Searching database _wp_attachment_metadata to find " . $img_path_no_base);
             $args = array(
                 'post_type' => 'attachment',
@@ -784,7 +789,7 @@ function tidy_body_imgs($post_id)
 
             } else {
                 // No attachment ID found
-                echo 'No attachment ID found.';
+                do_my_log("❌ No attachment ID found.");
             }
 
             // TODO: Else: maybe it exists in the *right* place (so the body URL alone is wrong)...
@@ -922,7 +927,8 @@ function localise_remote_images($post_id)
         $image_src = $image_tag->getAttribute('src');
 
         // TODO: #14 Need to ensure these images are truly off-site - even local images will retain 'http' if tidy_body_imgs() is off
-        if (strpos($image_src, 'http') === 0) {
+        //  if (strpos($image_src, 'http') === 0) {
+        if (strpos($image_src, 'http') === 0 && strpos($image_src, home_url()) === false) {
 
             do_my_log("🎆 Found " . $image_src);
 
@@ -997,7 +1003,7 @@ function localise_remote_images($post_id)
             }
 
         } else {
-            do_my_log("❌ No remote images to pull. ");
+            do_my_log("❌ Not a remote image, will not localise - " . $image_src);
         }
     }
     do_my_log("Finished localise_remote_images().");
