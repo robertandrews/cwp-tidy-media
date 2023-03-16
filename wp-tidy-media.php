@@ -665,16 +665,16 @@ function tidy_body_imgs($post_id)
     do_my_log("🎯 tidy_body_imgs()...");
 
     do_my_log("Getting post content...");
-// Get the post content
+    // Get the post content
     $content = get_post_field('post_content', $post_id);
 
     do_my_log("Checking for local img src URLs...");
-// Find local URLs in the content
+    // Find local URLs in the content - either 1) a relative URL or 2) begins with absolute home URL
     $pattern = '/<img[^>]+src=["\'](?:\/|\b' . preg_quote(home_url(), '/') . ')([^"\']+)/'; // <img src="/wp-content/uploads/... or <img src="https://example.com/wp-content/uploads/...
     preg_match_all($pattern, $content, $matches);
     do_my_log("Local img URLs: " . count($matches[0]));
 
-// For every src found,
+    // For every src found,
     foreach ($matches[1] as $found_img_src) { // /wp-content/uploads/media/folio/clients/wired/tom_heather.jpg or https://example.com/wp-content/uploads/media/folio/clients/wired/tom_heather.jpg
 
         $modified = null;
@@ -847,21 +847,26 @@ function relative_body_imgs($post_id)
     // For each domain we're removing
     $num_changes = 0;
     foreach ($local_domains as $domain) {
-        do_my_log("Checking for any <img src=\"" . $domain . "...");
+        // do_my_log("Checking for any <img src=\"" . $domain . "...");
 
         // Find any strings like "<img src="http://www.domain.com"
         $pattern = '/<img[^>]*src=["\']' . preg_quote($domain, '/') . '(.*?)["\']/i';
         // Replace the leading portion only, ie. "<img src="{match}"
         $replacement = '<img src="$1"';
         // Perform the replacement
-        $new_content = preg_replace($pattern, $replacement, $content);
+        $new_content = preg_replace_callback($pattern, function ($matches) use (&$num_changes) {
+            $num_changes++;
+            do_my_log("Found local image: " . $matches[0]);
+            do_my_log("Replacement: " . $matches[1]);
+            return '<img src="' . $matches[1] . '"';
+        }, $content);
 
         // If the content has changed, set the modified flag to true
         if ($new_content !== $content) {
             $modified = true;
             do_my_log("Changed a link.");
             $content = $new_content;
-            $num_changes++;
+            // $num_changes++;
         }
     }
     do_my_log("🪄 Changes made: " . $num_changes++);
@@ -1574,7 +1579,7 @@ function my_admin_notices()
         1 => 'Moved attached image to preferred folder',
         2 => 'Could not move attached image to preferred folder',
         3 => 'Attached image already in preferred media path - not moved',
-        4 => 'Converted src for local img/s from absolute to <a href="https://www.tutorialspoint.com/difference-between-an-absolute-url-and-a-relative-url">relative URL</a>',
+        4 => 'Converted src for local img/s from absolute to relative URL',
     ];
     if (empty($all_notices[$notice_key])) {
         return;
