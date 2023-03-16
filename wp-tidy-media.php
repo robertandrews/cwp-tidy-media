@@ -582,6 +582,7 @@ function do_saved_post($post_id)
         if (in_array($my_post_type, $post_types)) {
 
             do_my_log("Save is valid for action.");
+            do_my_log("🔚");
 
             // Retrieve current settings from database
             $settings = get_tidy_media_settings();
@@ -623,7 +624,7 @@ function tidy_post_attachments($post_id)
      * @return boolean Returns false if no attachments are found, or if any errors occur during the attachment move process.
      */
 
-    do_my_log('🧹 tidy_post_attachments()...');
+    do_my_log('🧩 tidy_post_attachments()...');
 
     $post_attachments = get_attached_media('', $post_id);
 
@@ -641,7 +642,6 @@ function tidy_post_attachments($post_id)
         do_my_log("No attachments found.");
         return false;
     }
-    do_my_log("Finished tidy_post_attachments().");
 
 }
 
@@ -662,7 +662,7 @@ function tidy_body_imgs($post_id)
      * @return void
      */
 
-    do_my_log("🎯 tidy_body_imgs()...");
+    do_my_log("🧩 tidy_body_imgs()...");
 
     do_my_log("Getting post content...");
     // Get the post content
@@ -672,7 +672,9 @@ function tidy_body_imgs($post_id)
     // Find local URLs in the content - either 1) a relative URL or 2) begins with absolute home URL
     $pattern = '/<img[^>]+src=["\'](?:\/|\b' . preg_quote(home_url(), '/') . ')([^"\']+)/'; // <img src="/wp-content/uploads/... or <img src="https://example.com/wp-content/uploads/...
     preg_match_all($pattern, $content, $matches);
-    do_my_log("Local img URLs: " . count($matches[0]));
+    do_my_log("👀 Local img URLs found: " . count($matches[0]));
+
+    $num_tidied_in_body = 0;
 
     // For every src found,
     foreach ($matches[1] as $found_img_src) { // /wp-content/uploads/media/folio/clients/wired/tom_heather.jpg or https://example.com/wp-content/uploads/media/folio/clients/wired/tom_heather.jpg
@@ -738,13 +740,16 @@ function tidy_body_imgs($post_id)
                         do_my_log("Update the body...");
                         $new_image_details = new_image_details($post_id, $post_attachment);
                         $new_src = $uploads_folder . trailingslashit($new_image_details['subdir']) . $new_image_details['filename'];
+                        // TODO: #13 https://github.com/robertandrews/wp-tidy-media/issues/13#issuecomment-1472329131
+                        // $found_img_src = str_replace('/wp-content', 'wp-content', $found_img_src);
                         do_my_log("Replace " . $found_img_src . " with " . $new_src);
                         $new_content = str_replace($found_img_src, $new_src, $content, $num_replacements);
-                        do_my_log("✅ Replacements made: " . $num_replacements);
+                        // do_my_log("✅ Replacements made: " . $num_replacements);
                         // If the content has changed, set the modified flag to true
                         if ($new_content !== $content) {
                             $modified = true;
                             $content = $new_content;
+                            $num_tidied_in_body++;
                         }
                         // TODO: Should the save happen here, repeatedly, or outside?
                         if ($modified == true) { // was if ($new_content) {
@@ -814,8 +819,11 @@ function tidy_body_imgs($post_id)
      */
 
     }
+    do_my_log("🧮 Tidied from body: " . $num_tidied_in_body);
 
     do_my_log("Finished tidy_body_imgs().");
+    do_my_log("🔚");
+
     // print_r($content);
 
 }
@@ -835,7 +843,7 @@ function relative_body_imgs($post_id)
      * @return void
      */
 
-    do_my_log("🔗 relative_body_imgs()...");
+    do_my_log("🧩 relative_body_imgs()...");
 
     // Get the post content
     $content = get_post_field('post_content', $post_id);
@@ -850,7 +858,7 @@ function relative_body_imgs($post_id)
     }
 
     // For each domain we're removing
-    $num_changes = 0;
+    $num_rel_changes = 0;
     foreach ($local_domains as $domain) {
         // do_my_log("Checking for any <img src=\"" . $domain . "...");
 
@@ -859,10 +867,10 @@ function relative_body_imgs($post_id)
         // Replace the leading portion only, ie. "<img src="{match}"
         $replacement = '<img src="$1"';
         // Perform the replacement
-        $new_content = preg_replace_callback($pattern, function ($matches) use (&$num_changes) {
-            $num_changes++;
-            do_my_log("Found local image: " . $matches[0]);
-            do_my_log("Replacement: " . $matches[1]);
+        $new_content = preg_replace_callback($pattern, function ($matches) use (&$num_rel_changes) {
+            $num_rel_changes++;
+            do_my_log("🌃 Found: " . $matches[0]);
+            do_my_log("📝 Replacement: " . $matches[1]);
             return '<img src="' . $matches[1] . '"';
         }, $content);
 
@@ -871,10 +879,10 @@ function relative_body_imgs($post_id)
             $modified = true;
             do_my_log("Changed a link.");
             $content = $new_content;
-            // $num_changes++;
+            // $num_rel_changes++;
         }
     }
-    do_my_log("🪄 Changes made: " . $num_changes++);
+    do_my_log("🧮 Relative URL conversions: " . $num_rel_changes++);
 
     // If any URLs were modified, re-save the post
     if ($modified == true) { // was if ($new_content) {
@@ -897,6 +905,7 @@ function relative_body_imgs($post_id)
     }
 
     do_my_log("Finished relative_body_imgs().");
+    do_my_log("🔚");
 
 }
 
@@ -915,7 +924,7 @@ function localise_remote_images($post_id)
      * @throws Exception If there is an error downloading an image or updating the post.
      */
 
-    do_my_log("🌐 localise_remote_images()...");
+    do_my_log("🧩 localise_remote_images()...");
 
     $post_content = get_post_field('post_content', $post_id);
     $dom = new DOMDocument();
@@ -923,20 +932,21 @@ function localise_remote_images($post_id)
 
     $image_tags = $dom->getElementsByTagName('img');
 
+    $num_localised = 0;
+
     foreach ($image_tags as $image_tag) {
         $image_src = $image_tag->getAttribute('src');
 
-        // TODO: #14 Need to ensure these images are truly off-site - even local images will retain 'http' if tidy_body_imgs() is off
-        //  if (strpos($image_src, 'http') === 0) {
+        // "Remote" img i) starts with "http" but ii) not including http://www.yoursite.com
         if (strpos($image_src, 'http') === 0 && strpos($image_src, home_url()) === false) {
 
-            do_my_log("🎆 Found " . $image_src);
+            do_my_log("🎆 Found img src " . $image_src);
 
             // Download the image file contents
             $image_data = file_get_contents($image_src);
 
             if ($image_data) {
-                do_my_log("Downloaded file.");
+                do_my_log("🛬 Downloaded file.");
 
                 // Check if the downloaded file is an image
                 $image_info = getimagesizefromstring($image_data);
@@ -952,11 +962,11 @@ function localise_remote_images($post_id)
                 $upload_dir = wp_upload_dir();
                 $image_file = $upload_dir['path'] . '/' . $image_name;
 
-                do_my_log("Slurp to " . $image_file);
+                do_my_log("Save to " . $image_file);
 
                 if (file_put_contents($image_file, $image_data) !== false) {
 
-                    do_my_log("✅ File slurp and save worked.");
+                    do_my_log("Saved file.");
 
                     // Get the post date of the parent post
                     $post_date = get_post_field('post_date', $post_id);
@@ -976,12 +986,15 @@ function localise_remote_images($post_id)
                     $attach_id = wp_insert_attachment($attachment, $image_file, $post_id);
 
                     // Set the attachment metadata
-                    do_my_log("Set attachment metadata..");
+                    do_my_log("Set attachment metadata...");
                     $attach_data = wp_generate_attachment_metadata($attach_id, $image_file);
                     wp_update_attachment_metadata($attach_id, $attach_data);
 
+                    do_my_log("📎 Attachment created.");
+                    $num_localised++;
+
                     // Replace the image src with the new attachment URL
-                    do_my_log("Replacing original src with local URL " . wp_get_attachment_url($attach_id));
+                    do_my_log("📝 Replacing remote src with local URL " . wp_get_attachment_url($attach_id));
                     $image_tag->setAttribute('src', wp_get_attachment_url($attach_id));
 
                     // Unhook do_saved_post(), or wp_update_post() would cause an infinite loop
@@ -1003,10 +1016,12 @@ function localise_remote_images($post_id)
             }
 
         } else {
-            do_my_log("❌ Not a remote image, will not localise - " . $image_src);
+            do_my_log("🚫 Image not remote - " . $image_src);
         }
     }
+    do_my_log("🧮 Localised images: " . $num_localised);
     do_my_log("Finished localise_remote_images().");
+    do_my_log("🔚");
 
 }
 
@@ -1292,28 +1307,28 @@ function move_sizes_files($attachment_id, $old_image_details, $new_image_details
         do_my_log("Metadata has [sizes]. Number of sizes: " . count($attachment_metadata['sizes']));
         $num_sizes = 0;
         foreach ($attachment_metadata['sizes'] as $size => $data) {
-            $num_sizes++;
-            do_my_log("Size: " . $data['file']);
+            do_my_log("📐 Size: " . $data['file']);
             // A. Move files
             // Generate the old and new filepaths for size variants
             $old_size_filename = trailingslashit($old_image_details['dirname']) . $data['file'];
             $new_size_filename = trailingslashit($new_image_details['dirname']) . $data['file'];
             // Do the move
             $result = rename($old_size_filename, $new_size_filename);
-            do_my_log("Move result: " . $result);
+            // do_my_log("Move result: " . $result);
             if ($result) {
                 // Great
-                do_my_log("Moved " . $data['file']);
+                $num_sizes++;
+                do_my_log("✅ Moved " . $data['file']);
                 $success = true;
             } else {
                 // Error
                 $success = false;
-                do_my_log("Failed to move" . $data['file']);
+                do_my_log("❌ Failed to move" . $data['file']);
             }
             // B. Update database
             // No metadata to update - [sizes] filenames do not contain folders, only filenames.
         }
-        do_my_log("Sizes handled: " . $num_sizes);
+        do_my_log("🧮 Sizes handled: " . $num_sizes);
         // I want to access $success here
         return $success;
     } else {
@@ -1369,15 +1384,15 @@ function move_original_file($attachment_id, $old_image_details, $new_image_detai
             $result = rename($old_original_filename, $new_original_filename);
             if ($result) {
                 // Move succeeded
-                do_my_log("Moved " . $old_original_filename . " to " . $new_original_filename);
+                do_my_log("✅ Moved " . $old_original_filename . " to " . $new_original_filename);
             } else {
                 // Move failed
-                do_my_log("Move failed.");
+                do_my_log("❌ Move failed.");
             }
             // echo $result;
         } else {
             // Old original not found.
-            do_my_log("File not found.");
+            do_my_log("❌ File not found.");
         }
 
     } else {
