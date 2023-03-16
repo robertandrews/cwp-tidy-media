@@ -665,31 +665,27 @@ function tidy_body_imgs($post_id)
     do_my_log("🎯 tidy_body_imgs()...");
 
     do_my_log("Getting post content...");
-    // Get the post content
+// Get the post content
     $content = get_post_field('post_content', $post_id);
 
     do_my_log("Checking for local img src URLs...");
-    // Set up list of local domains to include in checks
-    $settings = get_tidy_media_settings();
-    $domains_to_replace = $settings['domains_to_replace'];
-    $local_domains = array_map('trim', explode(",", $domains_to_replace));
-    if (!in_array(get_site_url(), $local_domains)) {
-        array_push($local_domains, get_site_url());
-    }
-    // Find relative URLs or local-domain URLs in the content
-    // $pattern = '/<img[^>]+src=["\']\/([^"\']+)/'; // <img src="/wp-content/uploa...
-    $pattern = '/<img[^>]+src=["\'](?:\/|(' . implode('|', $local_domains) . ')\/)([^"\']+)/'; // <img src="/wp-content/uploa...
+// Find local URLs in the content
+    $pattern = '/<img[^>]+src=["\'](?:\/|\b' . preg_quote(home_url(), '/') . ')([^"\']+)/'; // <img src="/wp-content/uploads/... or <img src="https://example.com/wp-content/uploads/...
     preg_match_all($pattern, $content, $matches);
     do_my_log("Local img URLs: " . count($matches[0]));
 
-    // For every src found,
-    foreach ($matches[2] as $found_img_src) { // /wp-content/uploads/media/folio/clients/wired/tom_heather.jpg
+// For every src found,
+    foreach ($matches[1] as $found_img_src) { // /wp-content/uploads/media/folio/clients/wired/tom_heather.jpg or https://example.com/wp-content/uploads/media/folio/clients/wired/tom_heather.jpg
 
         $modified = null;
 
         // Get found file's details
         do_my_log("🌄 Found src attribute " . $found_img_src);
-        $found_img_filepath = get_home_path() . $found_img_src; // /Users/robert/Sites/context.local/wp-content/uploads/media/folio/clients/wired/tom_heather.jpg
+        if (strpos($found_img_src, home_url()) === 0) {
+            // if URL is an absolute local URL, strip the domain part
+            $found_img_src = preg_replace('/^' . preg_quote(home_url(), '/') . '/', '', $found_img_src);
+        }
+        $found_img_filepath = get_home_path() . ltrim($found_img_src, '/'); // /Users/robert/Sites/context.local/wp-content/uploads/media/folio/clients/wired/tom_heather.jpg
         do_my_log("Filepath would be " . $found_img_filepath);
         $post_attachment = null;
 
@@ -915,28 +911,13 @@ function localise_remote_images($post_id)
     $dom = new DOMDocument();
     @$dom->loadHTML($post_content);
 
-    // Set up list of local domains - ie, the current site's URL and any others specified in settings
-    $settings = get_tidy_media_settings();
-    $domains_to_replace = $settings['domains_to_replace'];
-    $local_domains = array_map('trim', explode(",", $domains_to_replace));
-    if (!in_array(get_site_url(), $local_domains)) {
-        array_push($local_domains, get_site_url());
-    }
-
     $image_tags = $dom->getElementsByTagName('img');
 
     foreach ($image_tags as $image_tag) {
         $image_src = $image_tag->getAttribute('src');
 
-        // Don't run this on img src URLs which are for the current/local/chosen site
-        $is_local = false;
-        foreach ($local_domains as $local_domain) {
-            if (strpos($image_src, $local_domain) !== false) {
-                $is_local = true;
-                break;
-            }
-        }
-        if (!$is_local) {
+        // TODO: #14 Need to ensure these images are truly off-site - even local images will retain 'http' if tidy_body_imgs() is off
+        if (strpos($image_src, 'http') === 0) {
 
             do_my_log("🎆 Found " . $image_src);
 
