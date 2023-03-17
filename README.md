@@ -162,7 +162,7 @@ Removal will not affect changes already made by this plugin - any attachments al
 
 Deletion of the plugin will not revert attachments to their prior state.
 
-<mark>Make a back-up of both files and database before you run this plugin</mark>.
+==Make a back-up of both files and database before you run this plugin==.
 
 ## Changelog
 
