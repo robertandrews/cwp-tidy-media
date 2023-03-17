@@ -162,7 +162,11 @@ Removal will not affect changes already made by this plugin - any attachments al
 
 Deletion of the plugin will not revert attachments to their prior state.
 
-==Make a back-up of both files and database before you run this plugin==.
+Running these operations may pose risks to your Media Library.
+
+Make a back-up of both files and database before you run this plugin.
+
+The author cannot be held liable for any data loss.
 
 ## Changelog
 
