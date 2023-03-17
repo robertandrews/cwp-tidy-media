@@ -54,6 +54,22 @@ function tidy_media_organizer_create_table()
         ) $charset_collate;";
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
         dbDelta($sql);
+
+        // Pre-specify values
+        $pre_specified_values = array(
+            array('setting_name' => 'organize_post_img_by_type', 'setting_value' => '1'),
+            array('setting_name' => 'use_tidy_attachments', 'setting_value' => '1'),
+            array('setting_name' => 'use_tidy_body_imgs', 'setting_value' => '1'),
+            array('setting_name' => 'use_relative', 'setting_value' => '1'),
+            array('setting_name' => 'use_localise', 'setting_value' => '1'),
+            array('setting_name' => 'use_delete', 'setting_value' => '1'),
+            array('setting_name' => 'use_log', 'setting_value' => '1'),
+            array('setting_name' => 'run_on_save', 'setting_value' => '1'),
+        );
+        foreach ($pre_specified_values as $value) {
+            $wpdb->insert($table_name, $value);
+        }
+
     }
 }
 register_activation_hook(__FILE__, 'tidy_media_organizer_create_table');
@@ -142,6 +158,7 @@ function get_tidy_media_settings()
         $use_localise = isset($settings_arr['use_localise']) ? $settings_arr['use_localise'] : 0;
         $use_delete = isset($settings_arr['use_delete']) ? $settings_arr['use_delete'] : 0;
         $use_log = isset($settings_arr['use_log']) ? $settings_arr['use_log'] : 0;
+        $run_on_save = isset($settings_arr['run_on_save']) ? $settings_arr['run_on_save'] : 0;
 
         return array(
             'organize_post_img_by_type' => $organize_post_img_by_type,
@@ -154,6 +171,7 @@ function get_tidy_media_settings()
             'use_localise' => $use_localise,
             'use_delete' => $use_delete,
             'use_log' => $use_log,
+            'run_on_save' => $run_on_save,
         );
     } else {
         // Show an error message
@@ -200,6 +218,7 @@ function tidy_media_organizer_options_page()
                 array('setting_name' => 'use_localise', 'setting_value' => isset($_POST['use_localise']) ? sanitize_text_field($_POST['use_localise']) : ''),
                 array('setting_name' => 'use_delete', 'setting_value' => isset($_POST['use_delete']) ? sanitize_text_field($_POST['use_delete']) : ''),
                 array('setting_name' => 'use_log', 'setting_value' => isset($_POST['use_log']) ? sanitize_text_field($_POST['use_log']) : ''),
+                array('setting_name' => 'run_on_save', 'setting_value' => isset($_POST['run_on_save']) ? sanitize_text_field($_POST['run_on_save']) : ''),
             );
             foreach ($settings as $setting) {
                 $existing_row = $wpdb->get_row("SELECT * FROM $table_name WHERE setting_name = '{$setting['setting_name']}'");
@@ -254,6 +273,34 @@ function tidy_media_organizer_options_page()
                             <div class="inside">
                                 <table class="form-table">
                                     <tbody>
+                                        <tr>
+                                            <th scope="row">
+                                                <label for="organize_post_img_by_type">Operation</label>
+                                            </th>
+                                            <td>
+                                                <label style="margin: 0.35em 0 0.5em!important; display: inline-block;">
+                                                    <input type="checkbox" name="run_on_save" id="run_on_save" value="1"
+                                                        <?php checked($settings['run_on_save'], 1);?>>
+                                                    Run on every post save
+                                                    <p class="description">Fires on <code>save_post</code> for these
+                                                        types:
+                                                        <?php
+// Show post types
+    $args = array(
+        'public' => true,
+        '_builtin' => false, // exclude default post types
+    );
+    $post_types = get_post_types($args);
+    // add back default post types 'post' and 'page'
+    array_push($post_types, 'post', 'page');
+    echo implode(', ', array_map(function ($post_type) {
+        return '<code>' . $post_type . '</code>';
+    }, $post_types));
+    ?>.
+                                                    </p>
+                                                </label>
+                                            </td>
+                                        </tr>
                                         <tr>
                                             <th scope="row">
                                                 <label for="organize_post_img_by_type">Core functions</label>
