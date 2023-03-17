@@ -1186,7 +1186,9 @@ function new_image_details($post_id, $post_attachment)
 
     // d. Use post slug?
     if ($organize_post_img_by_post_slug == 1) {
-        $post_slug = get_post_field('post_name', get_post());
+        $post_slug = get_post_field('post_name', get_post($post_id));
+        do_my_log("Org by post slug - " . $post_slug);
+
         if (!empty($new_subdir)) {
             $new_subdir .= '/' . $post_slug;
         } else {
