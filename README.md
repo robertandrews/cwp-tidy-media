@@ -21,7 +21,9 @@ For example:
 
 WordPress' default media organisation does not scale. My site with 10,794 posts had 9,488 media items. Accounting for the different sizes WordPress generates, this was 22,021 individual files, totalling 2.25Gb, all organised in `YYYY/MM` folders under `/wp-content/uploads`.
 
-Chronology was the natural way organise these images. The posts to which many of these images belong fall into a number of distinct groups. I had already grouped content using taxonomies. I  wanted to batch these images similarly, to make the image folder structure mirror the content structure, and to make potential future migration, perhaps even away from WordPress, smoother.
+Chronology was *not* the natural way organise such a large and disparate set of images.
+
+The posts to which many of these images belong fall into a number of distinct groups. I had already grouped content using taxonomies. I  wanted to batch these images similarly, to make the image folder structure mirror the content structure, and to make potential future migration, perhaps even away from WordPress, smoother.
 
 I once used a combination of existing library management plugins and manual effort to reorganise images. But it was a huge and one-time task that I never wanted to repeat. Instead, I want WordPress to comply with my own media organisation preferences automatically, as I go, and to batch-reorganise images more efficiently.
 
@@ -47,7 +49,7 @@ Any of your own images called via absolute URLs will be replaced by a correspond
 
 ### 4. Localise remote body images
 
-All off-site images found in post body content will be pulled to your site. Applies to all `<img src=`URLs except your own site and specified "additional home domains". Organisation will be as per the other settings.
+All off-site images found in post body content will be pulled to your site. Applies to all `<img src=` URLs except your own site and specified "additional home domains". Organisation will be as per the other settings.
 
 ### 5. Delete attachments with posts
 
@@ -119,21 +121,23 @@ Moving the files alone to your custom folder path is insufficient. This plugin a
 **wp_postmeta**:
 
 - **_wp_attachment_metadata**: Updates the serialised array to reflect new file location.
-- **_wp_attached_**file: Updates the relative image path.
+- **_wp_attached_file**: Updates the relative image path.
 
 **wp_posts**:
 
 - **post_parent**: Where an image is not already attached to another post and is designated to be attached to the current post, this attachment occurs by setting the post's ID as the attachment's post_parent.
 - **post_date**: Where a change is being made to an attachment (ie. a reorganisation, or a new image is added to the Media Library), it will take on the date of the post itself. This is to avoid flooding the Media Library with new items.
-- **guid**: Where an attachment is being moved, its guid field will also be updated. Only the sub-directory portion is changed, the domain is not changed. Note: WordPress developers [advise against](https://wordpress.org/documentation/article/changing-the-site-url/#important-guid-note) changing guid for posts. This plugin runs on "attachment" post objects, for which guid is somewhat inconsequential, and is designed primarily for site overhauls which aim to run correct guids.
+- **guid**: Where an attachment is being moved, its guid (unique indicator) field will also be updated. Only the sub-directory portion is changed, the domain is not changed. Note: WordPress developers [advise against](https://wordpress.org/documentation/article/changing-the-site-url/#important-guid-note) changing guid for posts. This plugin runs on "attachment" post objects, for which guid is somewhat inconsequential, and is designed primarily for site overhauls which aim to run correct guids.
 
 ### Order of operation
 
 Features are run logically in this order:
-- Localise remote imagessdf
-- Convert body images to relative URLs
-- Relocate other images found in posts
-- Relocate post attachments
+- Localise remote images.
+- Convert body images to relative URLs.
+- Relocate other images found in posts.
+- Relocate post attachments.
+
+Attachment deletion with post deletion occurs at time of post deletion, if enabled.
 
 ## Installation
 
@@ -150,9 +154,15 @@ This table is created on plugin activation, and a small number of settings is se
 
 ## Removal
 
-The plugin tidies up after itself. Upon deletion, the table wp_tidy_media_organiser is deleted.
+The plugin tidies up after itself. Upon deletion, the table wp_tidy_media_organiser is deleted. This removes all traces of the plugin.
 
 Removal will not affect changes already made by this plugin - any attachments already moved will remain in their new locations.
+
+## Warning
+
+Deletion of the plugin will not revert attachments to their prior state.
+
+<mark>Make a back-up of both files and database before you run this plugin</mark>.
 
 ## Changelog
 
