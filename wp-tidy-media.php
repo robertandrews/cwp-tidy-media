@@ -103,18 +103,11 @@ function tidy_media_organizer_admin_page()
      *
      * @return void
      */
-    add_menu_page(
-        'Tidy Media Organizer',
-        'Tidy Media Organizer',
-        'manage_options',
-        'tidy-media-organizer',
-        'tidy_media_organizer_main_page'
-    );
 
     add_submenu_page(
-        'tidy-media-organizer',
-        'Options',
-        'Options',
+        'upload.php', // Change the parent slug to 'upload.php' for Media menu
+        'Tidy Media',
+        'Tidy Media',
         'manage_options',
         'tidy-media-organizer-options',
         'tidy_media_organizer_options_page'
@@ -122,21 +115,6 @@ function tidy_media_organizer_admin_page()
 }
 add_action('admin_menu', 'tidy_media_organizer_admin_page');
 
-function tidy_media_organizer_main_page()
-{
-    /**
-     * Admin Main Page.
-     *
-     * Displays the main page content for the Tidy Media Organizer plugin in the WordPress dashboard.
-     *
-     * @return void
-     */
-    ?>
-<div class="wrap">
-    <h1>Tidy Media Organizer</h1>
-</div>
-<?php
-}
 
 function get_tidy_media_settings()
 {

@@ -72,6 +72,8 @@ In either event, the functions you choose in Options will be executed.
 
 ## Options
 
+Access "Tidy Media" settings from beneath the core "Media" menu.
+
 ### Components
 
 | Setting | Option |
@@ -145,18 +147,19 @@ Attachment deletion with post deletion occurs at time of post deletion, if enabl
 
 1. Upload the `wp-tidy-media` folder to the `/wp-content/plugins/` directory.
 2. Activate the plugin through the 'Plugins' menu in WordPress.
+3. Access "Tidy Media" settings from beneath the core "Media" menu.
 
 ## Storage
 
 WP Tidy Media does not store settings in wp_options or any core WordPress database table.
 
-For neatness, it uses its own distinct table, wp_tidy_media_organiser.
+For neatness, it uses its own distinct table, wp_tidy_media_organizer.
 
 This table is created on plugin activation, and a small number of settings is set.
 
 ## Removal
 
-The plugin tidies up after itself. Upon deletion, the table wp_tidy_media_organiser is deleted. This removes all traces of the plugin.
+The plugin tidies up after itself. Upon deletion, the table wp_tidy_media_organizer is deleted. This removes all traces of the plugin.
 
 Removal will not affect changes already made by this plugin - any attachments already moved will remain in their new locations.
 
