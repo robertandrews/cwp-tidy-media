@@ -102,7 +102,8 @@ Access "Tidy Media" settings from beneath the core "Media" menu.
 
 | Setting | Option |
 | --- | --- |
-| Remove home URL | Shows how the hostname will be removed to construct a relative URL.<br>Additional home domains: add any other hostnames/domains to strip out (for users who may have `<img src` URLs from legacy sites). |
+| Remove home URL | Shows how the hostname will be removed to construct a relative URL. |
+| Additional home domains | Add any other hostnames/domains to strip out (for users who may have `<img src` URLs from legacy sites). |
 
 ![Make body img src URLs relative](screenshots/screen_relative.png)
 
@@ -136,6 +137,7 @@ Moving the files alone to your custom folder path is insufficient. This plugin a
 ### Order of operation
 
 Features are run logically in this order:
+
 - Localise remote images.
 - Convert body images to relative URLs.
 - Relocate other images found in posts.
@@ -177,7 +179,7 @@ The author cannot be held liable for any data loss.
 
 ### 1.0.0
 
-* Initial release
+- Initial release
 
 ## License
 
