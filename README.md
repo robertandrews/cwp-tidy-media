@@ -10,6 +10,8 @@ Instead, media folders can mimic a site's content structure, with any of these e
 
 - `/wp-content/uploads/post_type/taxonomy/term_slug/YYYY/MM/slug-of-the-post/image.jpeg`
 
+![Alt text](screenshots/screen_preview.png)
+
 For example:
 
 - `/wp-content/uploads/post/client/acme-inc/image.jpeg`
