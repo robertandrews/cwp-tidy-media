@@ -4,13 +4,15 @@ jQuery(document).ready(function ($) {
             return $(c).val();
         });
         if (postIds.length) {
+            var currentPageUrl = window.location.href; // get the current page URL
             $.ajax({
                 url: tidy_media_params.ajax_url,
                 type: 'POST',
                 data: {
                     action: 'tidy_media',
                     nonce: tidy_media_params.nonce,
-                    post_ids: postIds
+                    post_ids: postIds,
+                    current_page_url: currentPageUrl // add the current page URL to the AJAX request data
                 },
                 beforeSend: function () {
                     $('#tidy-media-button').after('<span class="tidy-media-spinner spinner"></span>');
@@ -18,6 +20,7 @@ jQuery(document).ready(function ($) {
                 success: function (response) {
                     $('.tidy-media-spinner').remove();
                     alert('Media tidy process completed successfully.');
+                    window.location.href = response; // redirect to the current page URL after the AJAX request is completed
                 },
                 error: function (xhr, status, error) {
                     $('.tidy-media-spinner').remove();

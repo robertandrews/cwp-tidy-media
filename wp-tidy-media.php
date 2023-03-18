@@ -115,7 +115,6 @@ function tidy_media_organizer_admin_page()
 }
 add_action('admin_menu', 'tidy_media_organizer_admin_page');
 
-
 function get_tidy_media_settings()
 {
     global $wpdb;
