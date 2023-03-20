@@ -940,61 +940,71 @@ function relative_body_imgs($post_id)
 
     // Get the post content
     $content = get_post_field('post_content', $post_id);
-    $modified = false;
 
-    // Set up list of domains to strip from links - site URL is added by default
-    $settings = get_tidy_media_settings();
-    $domains_to_replace = $settings['domains_to_replace'];
-    $local_domains = array_map('trim', explode(",", $domains_to_replace));
-    if (!in_array(get_site_url(), $local_domains)) {
-        array_push($local_domains, get_site_url());
-    }
+    if ($content) {
 
-    // For each domain we're removing
-    $num_rel_changes = 0;
-    foreach ($local_domains as $domain) {
-        // do_my_log("Checking for any <img src=\"" . $domain . "...");
+        $new_content = $content;
+        // Set starting vars
+        $modified = false;
+        $num_rel_changes = 0;
 
-        // Find any strings like "<img src="http://www.domain.com"
-        $pattern = '/<img[^>]*src=["\']' . preg_quote($domain, '/') . '(.*?)["\']/i';
-        // Replace the leading portion only, ie. "<img src="{match}"
-        $replacement = '<img src="$1"';
-        // Perform the replacement
-        $new_content = preg_replace_callback($pattern, function ($matches) use (&$num_rel_changes) {
-            $num_rel_changes++;
-            do_my_log("🌃 Found: " . $matches[0]);
-            do_my_log("📝 Replacement: " . $matches[1]);
-            return '<img src="' . $matches[1] . '"';
-        }, $content);
-
-        // If the content has changed, set the modified flag to true
-        if ($new_content !== $content) {
-            $modified = true;
-            // do_my_log("Changed a link.");
-            $content = $new_content;
-            // $num_rel_changes++;
+        // Set up list of domains to strip from links - site URL is added by default
+        $settings = get_tidy_media_settings();
+        $domains_to_replace = $settings['domains_to_replace'];
+        $local_domains = array_map('trim', explode(",", $domains_to_replace));
+        if (!in_array(get_site_url(), $local_domains)) {
+            array_push($local_domains, get_site_url());
         }
-    }
-    do_my_log("🧮 Relative URL conversions: " . $num_rel_changes++);
 
-    // If any URLs were modified, re-save the post
-    if ($modified == true) { // was if ($new_content) {
+        foreach ($local_domains as $domain) {
 
-        // do_my_log("Need to save post...");
+            $doc = new DOMDocument();
+            $doc->loadHTML($new_content, LIBXML_NOWARNING | LIBXML_NOERROR | LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+            // Get every img tag
+            $images = $doc->getElementsByTagName('img');
+            foreach ($images as $image) {
+                // Get its src attribute
+                $src = $image->getAttribute('src');
+                // src starts with absolute url
+                if (strpos($src, $domain) === 0) {
+                    // Strip the domain part
+                    $new_src = str_replace($domain, '', $src);
+                    // Change the src in the content
+                    $image->setAttribute('src', $new_src);
+                    // Notice
+                    do_my_log("Replaced: " . $src);
+                    do_my_log("With: " . $new_src);
+                    // Resave the content (to memory)
+                    $new_content = $doc->saveHTML();
+                    $num_rel_changes++;
+                }
+            }
 
-        // Unhook do_saved_post(), or wp_update_post() would cause an infinite loop
-        remove_action('save_post', 'do_saved_post', 10, 1);
-        // Re-save the post
-        wp_update_post(array(
-            'ID' => $post_id,
-            'post_content' => $new_content,
-        ));
-        do_my_log("✅ Post updated.");
-        my_trigger_notice(4);
-        // Hook it back up
-        add_action('save_post', 'do_saved_post', 10, 1);
+            // If the content has changed,
+            if ($new_content !== $content) {
+
+                // do_my_log("Need to save post...");
+
+                // Unhook do_saved_post(), or wp_update_post() would cause an infinite loop
+                remove_action('save_post', 'do_saved_post', 10, 1);
+                // Re-save the post
+                wp_update_post(array(
+                    'ID' => $post_id,
+                    'post_content' => $new_content,
+                ));
+                do_my_log("✅ Post updated.");
+                // Hook it back up
+                add_action('save_post', 'do_saved_post', 10, 1);
+
+                my_trigger_notice(4);
+
+            }
+
+        }
+        do_my_log("🧮 Relative URL conversions: " . $num_rel_changes++);
+
     } else {
-        do_my_log("🚫 Post not updated.");
+        // echo "Post ".$post_id." has no content.\n";
     }
 
     // do_my_log("Finished relative_body_imgs().");
@@ -1282,7 +1292,7 @@ function custom_path_controller($post_id, $post_attachment)
     $new_image_details = new_image_details($post_id, $post_attachment);
     // do_my_log("🔬 Comparing " . $old_image_details['filepath'] . " vs " . $new_image_details['filepath']);
 
-        // Check if need to move
+    // Check if need to move
     if ($old_image_details['filepath'] == $new_image_details['filepath']) {
         // do_my_log("👍🏻 Path ok, no need to move.");
         my_trigger_notice(3);
