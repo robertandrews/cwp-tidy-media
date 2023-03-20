@@ -1135,6 +1135,8 @@ function old_image_details($post_attachment)
     $subdir = str_replace($upload_dir['basedir'], '', dirname($filepath));
     $subdir = ltrim($subdir, '/');
     $guid = $post_attachment->guid;
+    $url_abs = trailingslashit(wp_upload_dir()['baseurl']) . trailingslashit($subdir) . basename($filepath);
+    $url_rel = str_replace(home_url(), '', $url_abs);
 
     $old_image = array();
     $old_image['filepath'] = $filepath; // /Users/robert/Sites/context.local/wp-content/uploads/post/client/contentnext/2011/12/netflix-on-tv-in-living-room-o.jpg
@@ -1143,6 +1145,8 @@ function old_image_details($post_attachment)
     $old_image['filename'] = basename($filepath); // netflix-on-tv-in-living-room-o.jpg
     // TODO: Ensure the correct URL is used for guid
     $old_image['guid'] = $guid; // http://context.local:8888/wp-content/uploads/post/client/contentnext/2011/12/netflix-on-tv-in-living-room-o.jpg
+    $old_image['url_abs'] = $url_abs;
+    $old_image['url_rel'] = $url_rel;
     // print_r($old_image);
     return $old_image;
 
@@ -1233,6 +1237,9 @@ function new_image_details($post_id, $post_attachment)
     $upload_dir = wp_upload_dir();
     $subdir = $new_subdir;
 
+    $url_abs = trailingslashit(wp_upload_dir()['baseurl']) . trailingslashit($subdir) . basename($filepath);
+    $url_rel = str_replace(home_url(), '', $url_abs);
+
     // Populate bits of $new_image
     $new_image = array();
     $new_image['subdir'] = $subdir; // post/client/contentnext/2011/12
@@ -1242,6 +1249,9 @@ function new_image_details($post_id, $post_attachment)
     $new_image['filename'] = basename($filepath); // netflix-on-tv-in-living-room-o.jpg
     // TODO: Ensure the correct URL is used for guid
     $new_image['guid'] = trailingslashit(trailingslashit($upload_dir['baseurl']) . $subdir) . basename($filepath); // /Users/robert/Sites/context.local/wp-content/uploads/post/client/contentnext/2011/12/netflix-on-tv-in-living-room-o.jpg
+    $new_image['url_abs'] = $url_abs;
+    $new_image['url_rel'] = $url_rel;
+
     // print_r($new_image);
     return $new_image;
 
@@ -1272,7 +1282,7 @@ function custom_path_controller($post_id, $post_attachment)
     $new_image_details = new_image_details($post_id, $post_attachment);
     // do_my_log("🔬 Comparing " . $old_image_details['filepath'] . " vs " . $new_image_details['filepath']);
 
-    // Check if need to move
+        // Check if need to move
     if ($old_image_details['filepath'] == $new_image_details['filepath']) {
         // do_my_log("👍🏻 Path ok, no need to move.");
         my_trigger_notice(3);
