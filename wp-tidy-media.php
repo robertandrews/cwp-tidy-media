@@ -760,10 +760,17 @@ function tidy_body_imgs($post_id)
 
     // Get the post content
     $content = get_post_field('post_content', $post_id);
+
+    // Set the encoding of the input HTML string
+    $content = mb_convert_encoding($content, 'HTML-ENTITIES', 'UTF-8');
     // Create a new DOMDocument object
-    $doc = new DOMDocument();
+    $doc = new DOMDocument('1.0', 'UTF-8');
+    $doc->formatOutput = true;
+    $doc->preserveWhiteSpace = false;
+    $doc->encoding = 'UTF-8';
     // Load the post content into the DOMDocument object
     $doc->loadHTML($content, LIBXML_NOWARNING | LIBXML_NOERROR | LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+
     // Find all img tags in the post content
     $images = $doc->getElementsByTagName('img');
 
@@ -823,7 +830,6 @@ function tidy_body_imgs($post_id)
                             $new_src = "/".$uploads_folder . trailingslashit($new_image_details['subdir']) . $new_image_details['filename'];
                         // Absolute URL
                         } else {
-
                             $new_src = $uploads_base . trailingslashit($new_image_details['subdir']) . $new_image_details['filename'];
                         }
 
@@ -882,17 +888,36 @@ function tidy_body_imgs($post_id)
                     $found_attachment = get_attachment_obj_from_filepath($poss_path);
                     $new_attachment_url = wp_get_attachment_image_url($found_attachment->ID, 'full');
                     $settings = get_tidy_media_settings();
+
+                    // $new_image_details = new_image_details($post_id, $post_attachment);
+
+                    $uploads_base = trailingslashit(wp_upload_dir()['baseurl']); // http://context.local:8888/wp-content/uploads/
+                    $uploads_folder = str_replace(trailingslashit(home_url()), '', $uploads_base); // /wp-content/uploads/
+
+                    $settings = get_tidy_media_settings();
+                    // Relative URL
                     if ($settings['use_relative'] == 1) {
-                        $new_attachment_url = str_replace(trailingslashit(home_url()), '/',$new_attachment_url);
+                        $new_attachment_url = str_replace(trailingslashit(home_url()), '/', $new_attachment_url);
+
+                        // Absolute URL
+                    } else {
+                        do_my_log("Absolute URL");
+                        $new_attachment_url = $new_attachment_url;
                     }
-                    // Insert result into body src
-                    $new_content = str_replace($found_img_src, $new_attachment_url, $content, $num_replacements);
+
+
+                    $img->setAttribute('src', $new_attachment_url);
+                    $new_content = $doc->saveHTML();
+                    // do_my_log("✅ Replacements made: " . $num_replacements);
+                    // If the content has changed, set the modified flag to true
                     if ($new_content !== $content) {
                         $modified = true;
                         $content = $new_content;
                         $num_tidied_in_body++;
                     }
-                    if ($modified == true) {
+                    // TODO: Should the save happen here, repeatedly, or outside?
+                    if ($modified == true) { // was if ($new_content) {
+                        // do_my_log("Updating post...");
                         // Unhook do_saved_post(), or wp_update_post() would cause an infinite loop
                         remove_action('save_post', 'do_saved_post', 10, 1);
                         // Re-save the post
@@ -903,6 +928,7 @@ function tidy_body_imgs($post_id)
                         // Hook it back up
                         add_action('save_post', 'do_saved_post', 10, 1);
                     }
+
                     do_my_log("Replaced ".$found_img_src." with ".$new_attachment_url);
 
 
@@ -989,8 +1015,18 @@ function relative_body_imgs($post_id)
 
         foreach ($local_domains as $domain) {
 
-            $doc = new DOMDocument();
-            $doc->loadHTML($new_content, LIBXML_NOWARNING | LIBXML_NOERROR | LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+        // Set the encoding of the input HTML string
+        $new_content = mb_convert_encoding($new_content, 'HTML-ENTITIES', 'UTF-8');
+        // Create a new DOMDocument object
+        $doc = new DOMDocument('1.0', 'UTF-8');
+        $doc->formatOutput = true;
+        $doc->preserveWhiteSpace = false;
+        $doc->encoding = 'UTF-8';
+        // Load content
+        $doc->loadHTML($new_content, LIBXML_NOWARNING | LIBXML_NOERROR | LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+
+        
+
             // Get every img tag
             $images = $doc->getElementsByTagName('img');
             foreach ($images as $image) {
@@ -1393,12 +1429,14 @@ function custom_path_controller($post_id, $post_attachment)
             // do_my_log("Move from " . $old_image_details['filepath'] . " to " . $new_image_details['filepath'] . "...");
 
             $move_main_file_success = move_main_file($post_attachment->ID, $old_image_details, $new_image_details);
+            /*
             if ($move_main_file_success == true) {
                 do_my_log("File was moved.");
                 // TODO: Check and update any other posts
+                update_body_img_urls($post_attachment->ID, $old_image_details, $new_image_details);
             } else {
                 do_my_log("File was NOT moved.");
-            }
+            }*/
             $move_sizes_files_success = move_sizes_files($post_attachment->ID, $old_image_details, $new_image_details);
             $move_original_file_success = move_original_file($post_attachment->ID, $old_image_details, $new_image_details);
             // }
