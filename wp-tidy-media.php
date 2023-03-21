@@ -774,11 +774,10 @@ function tidy_body_imgs($post_id)
 
         $modified = null;
 
-
         // Get the src attribute of the img tag
         $found_img_src = $img->getAttribute('src');
 
-        // Check if the src attribute is a qualifying URL
+        // If the src attribute is either 1) a relative URL or 2) absolute URL on this site
         if (preg_match('/^(\/|' . preg_quote(home_url(), '/') . ')/', $found_img_src)) {
 
             // If the src attribute is an absolute local URL, strip the domain part
@@ -790,159 +789,156 @@ function tidy_body_imgs($post_id)
             $filepath = get_home_path() . ltrim($found_img_src, '/');
 
             // Get found file's details
-
             do_my_log("🌄 Found src attribute " . $found_img_src);
-            if (strpos($found_img_src, home_url()) === 0) {
-                // if URL is an absolute local URL, strip the domain part
-                $found_img_src = preg_replace('/^' . preg_quote(home_url(), '/') . '/', '', $found_img_src);
-            }
+
             $found_img_filepath = get_home_path() . ltrim($found_img_src, '/'); // /Users/robert/Sites/context.local/wp-content/uploads/media/folio/clients/wired/tom_heather.jpg
             // do_my_log("Filepath would be " . $found_img_filepath);
             $post_attachment = null;
 
-            // ✅ File is where src says - move it and update body
+            // ✅ A) File is where src says - move it and update the body
             if (file_exists($found_img_filepath)) {
 
                 // do_my_log("File does exist at src. Getting its attachment object...");
 
-                // Upload folder parts, used to generate attachment
-                $uploads_base = trailingslashit(wp_upload_dir()['baseurl']); // http://context.local:8888/wp-content/uploads/
-                $uploads_folder = str_replace(trailingslashit(home_url()), '', $uploads_base); // /wp-content/uploads/
+                $post_attachment = get_attachment_obj_from_filepath($found_img_src);
 
-                // Get file's attachment object
-                $found_img_url = trailingslashit(get_site_url()) . $found_img_src; // http://context.local:8888/wp-content/uploads/media/folio/clients/wired/tom_heather.jpg
-                // Correct for double-slash that happens when an abolute URL was input
-                $found_img_url = str_replace('//wp-content', '/wp-content', $found_img_url);
-                // Remove the start to just work with a local child of /uploads/
-                $img_path_no_base = str_replace($uploads_base, '', $found_img_url);
+                if ($post_attachment) {
+                    do_my_log("🖼 Found attachment object " . $post_attachment->ID . " - " . $post_attachment->post_title);
 
-                // do_my_log("Searching database _wp_attachment_metadata to find " . $img_path_no_base);
-                $args = array(
-                    'post_type' => 'attachment',
-                    'post_status' => 'inherit',
-                    // 'fields' => 'ids',
-                    'meta_query' => array(
-                        array(
-                            'value' => $img_path_no_base,
-                            'compare' => 'LIKE',
-                            'key' => '_wp_attachment_metadata',
-                        ),
-                    ),
-                );
-                $query = new WP_Query($args);
-                if ($query->have_posts()) {
+                    // 1. Check file location, move if needed
+                    $move_attachment_outcome = custom_path_controller($post_id, $post_attachment);
+                    if ($move_attachment_outcome === true) {
 
-                    $query->the_post();
-                    $attachment_id = get_the_ID(); // 128824
-                    // do_my_log("Found attachment ID " . $attachment_id . ".");
-                    wp_reset_postdata();
-                    $post_attachment = get_post($attachment_id); // WP_Post object: attachment
-
-                    if ($post_attachment) {
-                        do_my_log("🖼 Found attachment object " . $post_attachment->ID . " - " . $post_attachment->post_title);
-
-                        // 1. Check file location, move if needed
-                        $move_attachment_outcome = custom_path_controller($post_id, $post_attachment);
-                        if ($move_attachment_outcome === true) {
-
-                            // 2. Update the body
-                            // do_my_log("Update the body...");
-                            $new_image_details = new_image_details($post_id, $post_attachment);
-                            $new_src = $uploads_folder . trailingslashit($new_image_details['subdir']) . $new_image_details['filename'];
-                            // TODO: #13 https://github.com/robertandrews/wp-tidy-media/issues/13#issuecomment-1472329131
-                            // $found_img_src = str_replace('/wp-content', 'wp-content', $found_img_src);
-                            do_my_log("Replace " . $found_img_src . " with " . $new_src);
-                            $new_content = str_replace($found_img_src, $new_src, $content, $num_replacements);
-                            // do_my_log("✅ Replacements made: " . $num_replacements);
-                            // If the content has changed, set the modified flag to true
-                            if ($new_content !== $content) {
-                                $modified = true;
-                                $content = $new_content;
-                                $num_tidied_in_body++;
-                            }
-                            // TODO: Should the save happen here, repeatedly, or outside?
-                            if ($modified == true) { // was if ($new_content) {
-                                // do_my_log("Updating post...");
-                                // Unhook do_saved_post(), or wp_update_post() would cause an infinite loop
-                                remove_action('save_post', 'do_saved_post', 10, 1);
-                                // Re-save the post
-                                wp_update_post(array(
-                                    'ID' => $post_id,
-                                    'post_content' => $content,
-                                ));
-                                // Hook it back up
-                                add_action('save_post', 'do_saved_post', 10, 1);
-                            }
-
-                            // 3. Attach image to this post if it was unattached
-                            if ($post_attachment->post_parent === 0 || $post_attachment->post_parent === '') {
-                                do_my_log("Image " . $attachment_id . " not attached to any post - attach it to this (" . $post_id . ").");
-                                // Set the post_parent of the image to the post ID
-                                $update_args = array(
-                                    'ID' => $attachment_id,
-                                    'post_parent' => $post_id,
-                                );
-                                remove_action('save_post', 'do_saved_post', 10, 1);
-                                wp_update_post($update_args);
-                                add_action('save_post', 'do_saved_post', 10, 1);
-                            }
-
+                        // 2. Update the body
+                        // do_my_log("Update the body...");
+                        $new_image_details = new_image_details($post_id, $post_attachment);
+                        $new_src = $uploads_folder . trailingslashit($new_image_details['subdir']) . $new_image_details['filename'];
+                        // TODO: #13 https://github.com/robertandrews/wp-tidy-media/issues/13#issuecomment-1472329131
+                        // $found_img_src = str_replace('/wp-content', 'wp-content', $found_img_src);
+                        do_my_log("Replace " . $found_img_src . " with " . $new_src);
+                        $new_content = str_replace($found_img_src, $new_src, $content, $num_replacements);
+                        // do_my_log("✅ Replacements made: " . $num_replacements);
+                        // If the content has changed, set the modified flag to true
+                        if ($new_content !== $content) {
+                            $modified = true;
+                            $content = $new_content;
+                            $num_tidied_in_body++;
+                        }
+                        // TODO: Should the save happen here, repeatedly, or outside?
+                        if ($modified == true) { // was if ($new_content) {
+                            // do_my_log("Updating post...");
+                            // Unhook do_saved_post(), or wp_update_post() would cause an infinite loop
+                            remove_action('save_post', 'do_saved_post', 10, 1);
+                            // Re-save the post
+                            wp_update_post(array(
+                                'ID' => $post_id,
+                                'post_content' => $content,
+                            ));
+                            // Hook it back up
+                            add_action('save_post', 'do_saved_post', 10, 1);
                         }
 
-                        /*
-                    // Generate actual and intended path pieces, used for comparison
-                    $old_image_details = old_image_details($post_attachment);
-                    $new_image_details = new_image_details($post_id, $post_attachment);
-                    do_my_log("🔬 Comparing found " . $old_image_details['subdir'] . " vs user-specified pattern " . $new_image_details['subdir']);
-                    */
+                        // 3. Attach image to this post if it was unattached
+                        if ($post_attachment->post_parent === 0 || $post_attachment->post_parent === '') {
+                            do_my_log("Image " . $attachment_id . " not attached to any post - attach it to this (" . $post_id . ").");
+                            // Set the post_parent of the image to the post ID
+                            $update_args = array(
+                                'ID' => $attachment_id,
+                                'post_parent' => $post_id,
+                            );
+                            remove_action('save_post', 'do_saved_post', 10, 1);
+                            wp_update_post($update_args);
+                            add_action('save_post', 'do_saved_post', 10, 1);
+                        }
 
-                    } else {
-                        // No attachment found
-                        do_my_log("Could not find attachment object.");
                     }
 
                 } else {
-                    // No attachment ID found
-                    do_my_log("❌ No attachment ID found.");
+                    // No attachment found
+                    do_my_log("Could not find attachment object.");
                 }
 
-                // TODO: Else: maybe it exists in the *right* place (so the body URL alone is wrong)...
-                // $expected_filepath = trailingslashit(wp_upload_dir()['basedir']) . trailingslashit($new_image_details['subdir']) . basename($found_img_src);
-                // $expected_filepath."\n";
-
+            // ❌ B) File is not at given src - find it and use that
             } else {
-                // ❌ File is not even at src location                                  // /Users/robert/Sites/context.local/wp-content/uploads/media/folio/clients/wired/tom_heather.jpg
-                do_my_log("❌ File does not exist.");
+                
+                do_my_log("❌ File does not exist at " . $found_img_filepath);
+                // Search for the file
+                $search_results = search_file(basename($found_img_filepath));
+                if ($search_results) {
+                    do_my_log("🔍 ".basename($found_img_filepath) ." found at ".$search_results);
+                    $poss_path = "/".str_replace(get_home_path(), '', $search_results);
+                    $found_attachment = get_attachment_obj_from_filepath($poss_path);
+                    $new_attachment_url = wp_get_attachment_image_url($found_attachment->ID, 'full');
+                    $settings = get_tidy_media_settings();
+                    if ($settings['use_relative'] == 1) {
+                        $new_attachment_url = str_replace(trailingslashit(home_url()), '/',$new_attachment_url);
+                    }
+                    // Insert result into body src
+                    $new_content = str_replace($found_img_src, $new_attachment_url, $content, $num_replacements);
+                    if ($new_content !== $content) {
+                        $modified = true;
+                        $content = $new_content;
+                        $num_tidied_in_body++;
+                    }
+                    if ($modified == true) {
+                        // Unhook do_saved_post(), or wp_update_post() would cause an infinite loop
+                        remove_action('save_post', 'do_saved_post', 10, 1);
+                        // Re-save the post
+                        wp_update_post(array(
+                            'ID' => $post_id,
+                            'post_content' => $content,
+                        ));
+                        // Hook it back up
+                        add_action('save_post', 'do_saved_post', 10, 1);
+                    }
+                    do_my_log("Replaced ".$found_img_src." with ".$new_attachment_url);
+
+
+                    
+                }
             }
-
-            /*
-            // Is the img src path in user's preferred format?
-            if (strpos($found_img_src, $new_image_details['subdir_stem']) !== false) {
-            // ✅ URL is in user's expected format
-            } else {
-            // ❌ URL not in user's expected format
-            // echo "Image URL not in correct format";
-
-            // 1. If it's where specified, move it
-            }
-            */
-
 
         }
     }
 
-    // $num_tidied_in_body = 0;
-    // $post_attachment = null;
-
-
     do_my_log("🧮 Tidied from body: " . $num_tidied_in_body);
-
     // do_my_log("Finished tidy_body_imgs().");
     // do_my_log("🔚");
 
-    // print_r($content);
 
 }
+
+function search_file($filename)
+{
+    /**
+     * Search For File
+     * 
+     * Searches for a file in the WordPress uploads directory and its subdirectories.
+     * 
+     * @param string $filename The name of the file to search for.
+     * @return string|false The absolute path to the first occurrence of the file found, or false if the file was not found.
+    */
+    $wp_upload_dir = wp_upload_dir();
+    $dirs = array($wp_upload_dir['basedir']);
+
+    while (!empty($dirs)) {
+        $dir = array_shift($dirs);
+        $files = glob($dir . DIRECTORY_SEPARATOR . $filename);
+
+        if (count($files) > 0) {
+            return $files[0];
+        }
+
+        foreach (glob($dir . DIRECTORY_SEPARATOR . '*', GLOB_ONLYDIR) as $subdir) {
+            $dirs[] = $subdir;
+        }
+    }
+
+    return false;
+}
+
+
+
 
 function relative_body_imgs($post_id)
 {
@@ -1151,6 +1147,60 @@ function localise_remote_images($post_id)
 
 }
 
+function get_attachment_obj_from_filepath($found_img_src)
+{
+    /**
+     * Get Attachment From Filepath
+     * 
+     * Gets the attachment object for a file given its absolute URL path.
+     * 
+     * @param string $found_img_src The absolute URL path of the file, e.g. /wp-content/uploads/post/client/ghost-foundation/2020/09/rafat-ali-skift.jpg.
+     * @return WP_Post|void The WP_Post object representing the attachment, or void if the attachment ID was not found.
+     */
+
+    // Upload folder parts, used to generate attachment
+    $uploads_base = trailingslashit(wp_upload_dir()['baseurl']); // http://context.local:8888/wp-content/uploads/
+    $uploads_folder = str_replace(trailingslashit(home_url()), '', $uploads_base); // /wp-content/uploads/
+
+    // Get file's attachment object
+    $found_img_url = trailingslashit(get_site_url()) . $found_img_src; // http://context.local:8888/wp-content/uploads/media/folio/clients/wired/tom_heather.jpg
+    // Correct for double-slash that happens when an abolute URL was input
+    $found_img_url = str_replace('//wp-content', '/wp-content', $found_img_url);
+    // Remove the start to just work with a local child of /uploads/
+    $img_path_no_base = str_replace($uploads_base, '', $found_img_url);
+
+    // Use DB metadata to find attachment object
+    $args = array(
+        'post_type' => 'attachment',
+        'post_status' => 'inherit',
+        // 'fields' => 'ids',
+        'meta_query' => array(
+            array(
+                'value' => $img_path_no_base,
+                'compare' => 'LIKE',
+                'key' => '_wp_attachment_metadata',
+            ),
+        ),
+    );
+
+    $query = new WP_Query($args);
+    if ($query->have_posts()) {
+
+        $query->the_post();
+        $attachment_id = get_the_ID(); // 128824
+        // do_my_log("Found attachment ID " . $attachment_id . ".");
+        wp_reset_postdata();
+        $post_attachment = get_post($attachment_id); // WP_Post object: attachment
+
+        return $post_attachment;
+
+    } else {
+        // No attachment ID found
+        do_my_log("❌ No attachment ID found.");
+    }
+
+}
+
 function old_image_details($post_attachment)
 {
     /**
@@ -1343,11 +1393,6 @@ function custom_path_controller($post_id, $post_attachment)
     }
 
 }
-
-
-
-
-
 
 function move_main_file($attachment_id, $old_image_details, $new_image_details)
 {
