@@ -811,12 +811,24 @@ function tidy_body_imgs($post_id)
 
                         // 2. Update the body
                         // do_my_log("Update the body...");
+                        // Upload folder parts, used to generate attachment
                         $new_image_details = new_image_details($post_id, $post_attachment);
-                        $new_src = $uploads_folder . trailingslashit($new_image_details['subdir']) . $new_image_details['filename'];
-                        // TODO: #13 https://github.com/robertandrews/wp-tidy-media/issues/13#issuecomment-1472329131
-                        // $found_img_src = str_replace('/wp-content', 'wp-content', $found_img_src);
-                        do_my_log("Replace " . $found_img_src . " with " . $new_src);
-                        $new_content = str_replace($found_img_src, $new_src, $content, $num_replacements);
+
+                        $uploads_base = trailingslashit(wp_upload_dir()['baseurl']); // http://context.local:8888/wp-content/uploads/
+                        $uploads_folder = str_replace(trailingslashit(home_url()), '', $uploads_base); // /wp-content/uploads/
+                        
+                        $settings = get_tidy_media_settings();
+                        // Relative URL
+                        if ($settings['use_relative'] == 1) {
+                            $new_src = "/".$uploads_folder . trailingslashit($new_image_details['subdir']) . $new_image_details['filename'];
+                        // Absolute URL
+                        } else {
+
+                            $new_src = $uploads_base . trailingslashit($new_image_details['subdir']) . $new_image_details['filename'];
+                        }
+
+                        $img->setAttribute('src', $new_src);
+                        $new_content = $doc->saveHTML();
                         // do_my_log("✅ Replacements made: " . $num_replacements);
                         // If the content has changed, set the modified flag to true
                         if ($new_content !== $content) {
@@ -1381,7 +1393,12 @@ function custom_path_controller($post_id, $post_attachment)
             // do_my_log("Move from " . $old_image_details['filepath'] . " to " . $new_image_details['filepath'] . "...");
 
             $move_main_file_success = move_main_file($post_attachment->ID, $old_image_details, $new_image_details);
-            // if ($move_main_file_success == true) {
+            if ($move_main_file_success == true) {
+                do_my_log("File was moved.");
+                // TODO: Check and update any other posts
+            } else {
+                do_my_log("File was NOT moved.");
+            }
             $move_sizes_files_success = move_sizes_files($post_attachment->ID, $old_image_details, $new_image_details);
             $move_original_file_success = move_original_file($post_attachment->ID, $old_image_details, $new_image_details);
             // }
