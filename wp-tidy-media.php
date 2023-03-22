@@ -1424,13 +1424,13 @@ function custom_path_controller($post_id, $post_attachment)
             $move_main_file_success = move_main_file($post_attachment->ID, $old_image_details, $new_image_details, $post_id);
             /*
             if ($move_main_file_success == true) {
-                do_my_log("File was moved.");
-                // TODO: Check and update any other posts
-                update_body_img_urls($post_id, $post_attachment->ID, $old_image_details, $new_image_details);
+            do_my_log("File was moved.");
+            // TODO: Check and update any other posts
+            update_body_img_urls($post_id, $post_attachment->ID, $old_image_details, $new_image_details);
             } else {
-                do_my_log("File was NOT moved.");
+            do_my_log("File was NOT moved.");
             }
-            */
+             */
 
             $move_sizes_files_success = move_sizes_files($post_attachment->ID, $old_image_details, $new_image_details, $post_id);
             $move_original_file_success = move_original_file($post_attachment->ID, $old_image_details, $new_image_details, $post_id);
@@ -1449,20 +1449,20 @@ function update_body_img_urls($post_id, $post_att_id, $old_image_details, $new_i
 {
 /**
  * Update Body Image URLs
- * 
+ *
  * When a move_* operation updates (moves) a post's image, any _other_ posts which also include the image via <img src...> will
  * find it becomes 404.
  * This function will check for any posts which embed the just-updated image at its previous URL, and will update that
  * URL to the new location.
  * This does not run on the post which instigated the move, ie the sole post which is the post_parent of the attachment,
  * since this should have already been updated by tidy_body_imgs().
- * 
+ *
  * @param int $post_id The ID of the starting post.
  * @param int $post_att_id The ID of the attachment post for the starting post.
  * @param array $old_image_details An array containing the details of the old image to be replaced.
  * @param array $new_image_details An array containing the details of the new image to replace the old image.
  * @return void This function does not return a value.
-*/
+ */
 
     do_my_log("🧩 update_body_img_urls()...");
 
@@ -1486,7 +1486,6 @@ function update_body_img_urls($post_id, $post_att_id, $old_image_details, $new_i
         while ($query->have_posts()) {
             $query->the_post();
 
-
             // Get the post content
             $content = get_post_field('post_content', $post_id);
             // Create a new DOMDocument object
@@ -1496,9 +1495,8 @@ function update_body_img_urls($post_id, $post_att_id, $old_image_details, $new_i
             // Find all img tags in the post content
             $images = $doc->getElementsByTagName('img');
 
-
             foreach ($images as $img) {
- 
+
                 // Get the src attribute of the img tag
                 $src = $img->getAttribute('src');
 
@@ -1508,7 +1506,7 @@ function update_body_img_urls($post_id, $post_att_id, $old_image_details, $new_i
                     // do_my_log("Found old relative URL " . $src ." in '". get_post_field('post_title', get_the_ID()) ."'. Need to replace img src with ".$new_image_details['url_rel']);
                     $new_src = str_replace($old_image_details['url_rel'], $new_image_details['url_rel'], $src);
                     // do_my_log("New is ".$new_src);
-                    do_my_log("Updating img src " . $src ." in '". get_post_field('post_title', get_the_ID()) ."' to ".$new_image_details['url_rel']);
+                    do_my_log("Updating img src " . $src . " in '" . get_post_field('post_title', get_the_ID()) . "' to " . $new_image_details['url_rel']);
 
                     $img->setAttribute('src', $new_src);
                     $new_content = $doc->saveHTML();
@@ -1542,11 +1540,6 @@ function update_body_img_urls($post_id, $post_att_id, $old_image_details, $new_i
     }
 
 }
-
-
-
-
-
 
 function move_main_file($attachment_id, $old_image_details, $new_image_details, $post_id)
 {
@@ -1647,43 +1640,39 @@ function move_sizes_files($attachment_id, $old_image_details, $new_image_details
     // Get the _wp_attachment_metadata serialised array
     $attachment_metadata = wp_get_attachment_metadata($attachment_id);
 
-    // Any [sizes]?
-    $success = false;
-    if (isset($attachment_metadata['sizes'])) {
-        // do_my_log("Metadata has [sizes]. Number of sizes: " . count($attachment_metadata['sizes']));
-        $num_sizes = 0;
-        foreach ($attachment_metadata['sizes'] as $size => $data) {
-            // do_my_log("📐 Size: " . $data['file']);
-            // A. Move files
-            // Generate the old and new filepaths for size variants
-            $old_size_filename = trailingslashit($old_image_details['dirname']) . $data['file'];
-            $new_size_filename = trailingslashit($new_image_details['dirname']) . $data['file'];
-            // Do the move
-            $result = rename($old_size_filename, $new_size_filename);
-            // do_my_log("Move result: " . $result);
-            if ($result) {
-                // Great
-                $num_sizes++;
-                do_my_log("✅ Moved 📐 size " . $data['file']);
-                $success = true;
-                update_body_img_urls($post_id, $attachment_id, $old_image_details, $new_image_details);
-            } else {
-                // TODO: #26 150x150 file move always reports as false but is true
-                // Error
-                $success = false;
-                do_my_log("❌ Failed to move 📐 size " . $data['file']);
-            }
-            // B. Update database
-            // No metadata to update - [sizes] filenames do not contain folders, only filenames.
+    // Keep track of files that have already been moved
+    $moved_files = array();
+    $num_sizes = 0;
+
+
+    // Loop through each size variant
+    foreach ($attachment_metadata['sizes'] as $size => $data) {
+        // Generate the old and new filepaths for size variants
+        $old_size_filename = trailingslashit($old_image_details['dirname']) . $data['file'];
+        $new_size_filename = trailingslashit($new_image_details['dirname']) . $data['file'];
+
+        // Skip files that have already been moved
+        if (in_array($old_size_filename, $moved_files)) {
+            continue;
         }
-        do_my_log("🧮 Sizes handled: " . $num_sizes);
-        // I want to access $success here
-        return $success;
-    } else {
-        // No sizes here
-        do_my_log("No [sizes].");
-        return $success;
+
+        // Move the file
+        $result = rename($old_size_filename, $new_size_filename);
+        if ($result) {
+            $num_sizes++;
+            // Add the moved file to the list
+            $moved_files[] = $old_size_filename;
+            // update_body_img_urls($post_id, $attachment_id, $old_image_details, $new_image_details);
+            do_my_log("✅ Moved $size: " . $data['file']);
+        } else {
+            do_my_log("❌ Failed to move $size: " . $data['file']);
+        }
     }
+
+    do_my_log("🧮 Sizes handled: " . $num_sizes);
+
+    // Return true if at least one file was moved
+    return !empty($moved_files);
 
 }
 
