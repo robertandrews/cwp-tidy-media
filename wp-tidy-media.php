@@ -823,12 +823,12 @@ function tidy_body_imgs($post_id)
 
                         $uploads_base = trailingslashit(wp_upload_dir()['baseurl']); // http://context.local:8888/wp-content/uploads/
                         $uploads_folder = str_replace(trailingslashit(home_url()), '', $uploads_base); // /wp-content/uploads/
-                        
+
                         $settings = get_tidy_media_settings();
                         // Relative URL
                         if ($settings['use_relative'] == 1) {
-                            $new_src = "/".$uploads_folder . trailingslashit($new_image_details['subdir']) . $new_image_details['filename'];
-                        // Absolute URL
+                            $new_src = "/" . $uploads_folder . trailingslashit($new_image_details['subdir']) . $new_image_details['filename'];
+                            // Absolute URL
                         } else {
                             $new_src = $uploads_base . trailingslashit($new_image_details['subdir']) . $new_image_details['filename'];
                         }
@@ -876,15 +876,15 @@ function tidy_body_imgs($post_id)
                     do_my_log("Could not find attachment object.");
                 }
 
-            // ❌ B) File is not at given src - find it and use that
+                // ❌ B) File is not at given src - find it and use that
             } else {
-                
+
                 do_my_log("❌ File does not exist at " . $found_img_filepath);
                 // Search for the file
                 $search_results = search_file(basename($found_img_filepath));
                 if ($search_results) {
-                    do_my_log("🔍 ".basename($found_img_filepath) ." found at ".$search_results);
-                    $poss_path = "/".str_replace(get_home_path(), '', $search_results);
+                    do_my_log("🔍 " . basename($found_img_filepath) . " found at " . $search_results);
+                    $poss_path = "/" . str_replace(get_home_path(), '', $search_results);
                     $found_attachment = get_attachment_obj_from_filepath($poss_path);
                     $new_attachment_url = wp_get_attachment_image_url($found_attachment->ID, 'full');
                     $settings = get_tidy_media_settings();
@@ -904,7 +904,6 @@ function tidy_body_imgs($post_id)
                         do_my_log("Absolute URL");
                         $new_attachment_url = $new_attachment_url;
                     }
-
 
                     $img->setAttribute('src', $new_attachment_url);
                     $new_content = $doc->saveHTML();
@@ -929,10 +928,8 @@ function tidy_body_imgs($post_id)
                         add_action('save_post', 'do_saved_post', 10, 1);
                     }
 
-                    do_my_log("Replaced ".$found_img_src." with ".$new_attachment_url);
+                    do_my_log("Replaced " . $found_img_src . " with " . $new_attachment_url);
 
-
-                    
                 }
             }
 
@@ -943,19 +940,18 @@ function tidy_body_imgs($post_id)
     // do_my_log("Finished tidy_body_imgs().");
     // do_my_log("🔚");
 
-
 }
 
 function search_file($filename)
 {
     /**
      * Search For File
-     * 
+     *
      * Searches for a file in the WordPress uploads directory and its subdirectories.
-     * 
+     *
      * @param string $filename The name of the file to search for.
      * @return string|false The absolute path to the first occurrence of the file found, or false if the file was not found.
-    */
+     */
     $wp_upload_dir = wp_upload_dir();
     $dirs = array($wp_upload_dir['basedir']);
 
@@ -974,9 +970,6 @@ function search_file($filename)
 
     return false;
 }
-
-
-
 
 function relative_body_imgs($post_id)
 {
@@ -1015,17 +1008,17 @@ function relative_body_imgs($post_id)
 
         foreach ($local_domains as $domain) {
 
-        // Set the encoding of the input HTML string
-        $new_content = mb_convert_encoding($new_content, 'HTML-ENTITIES', 'UTF-8');
-        // Create a new DOMDocument object
-        $doc = new DOMDocument('1.0', 'UTF-8');
-        $doc->formatOutput = true;
-        $doc->preserveWhiteSpace = false;
-        $doc->encoding = 'UTF-8';
-        // Load content
-        $doc->loadHTML($new_content, LIBXML_NOWARNING | LIBXML_NOERROR | LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+            // Set the encoding of the input HTML string
+            $content = mb_convert_encoding($content, 'HTML-ENTITIES', 'UTF-8');
+            $new_content = mb_convert_encoding($new_content, 'HTML-ENTITIES', 'UTF-8');
 
-        
+            // Create a new DOMDocument object
+            $doc = new DOMDocument('1.0', 'UTF-8');
+            $doc->formatOutput = true;
+            $doc->preserveWhiteSpace = false;
+            $doc->encoding = 'UTF-8';
+            // Load content
+            $doc->loadHTML($new_content, LIBXML_NOWARNING | LIBXML_NOERROR | LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
 
             // Get every img tag
             $images = $doc->getElementsByTagName('img');
@@ -1199,9 +1192,9 @@ function get_attachment_obj_from_filepath($found_img_src)
 {
     /**
      * Get Attachment From Filepath
-     * 
+     *
      * Gets the attachment object for a file given its absolute URL path.
-     * 
+     *
      * @param string $found_img_src The absolute URL path of the file, e.g. /wp-content/uploads/post/client/ghost-foundation/2020/09/rafat-ali-skift.jpg.
      * @return WP_Post|void The WP_Post object representing the attachment, or void if the attachment ID was not found.
      */
@@ -1428,18 +1421,21 @@ function custom_path_controller($post_id, $post_attachment)
             // do_my_log("💡 File is not attached to any other post. Safe to move file and attach to this post (" . $post_id . ").");
             // do_my_log("Move from " . $old_image_details['filepath'] . " to " . $new_image_details['filepath'] . "...");
 
-            $move_main_file_success = move_main_file($post_attachment->ID, $old_image_details, $new_image_details);
+            $move_main_file_success = move_main_file($post_attachment->ID, $old_image_details, $new_image_details, $post_id);
             /*
             if ($move_main_file_success == true) {
                 do_my_log("File was moved.");
                 // TODO: Check and update any other posts
-                update_body_img_urls($post_attachment->ID, $old_image_details, $new_image_details);
+                update_body_img_urls($post_id, $post_attachment->ID, $old_image_details, $new_image_details);
             } else {
                 do_my_log("File was NOT moved.");
-            }*/
-            $move_sizes_files_success = move_sizes_files($post_attachment->ID, $old_image_details, $new_image_details);
-            $move_original_file_success = move_original_file($post_attachment->ID, $old_image_details, $new_image_details);
+            }
+            */
+
+            $move_sizes_files_success = move_sizes_files($post_attachment->ID, $old_image_details, $new_image_details, $post_id);
+            $move_original_file_success = move_original_file($post_attachment->ID, $old_image_details, $new_image_details, $post_id);
             // }
+
             return $move_main_file_success;
 
         } elseif ($post_attachment->post_parent !== $post_id && $post_attachment->post_parent !== 0 && $post_attachment->post_parent !== '') {
@@ -1449,7 +1445,110 @@ function custom_path_controller($post_id, $post_attachment)
 
 }
 
-function move_main_file($attachment_id, $old_image_details, $new_image_details)
+function update_body_img_urls($post_id, $post_att_id, $old_image_details, $new_image_details)
+{
+/**
+ * Update Body Image URLs
+ * 
+ * When a move_* operation updates (moves) a post's image, any _other_ posts which also include the image via <img src...> will
+ * find it becomes 404.
+ * This function will check for any posts which embed the just-updated image at its previous URL, and will update that
+ * URL to the new location.
+ * This does not run on the post which instigated the move, ie the sole post which is the post_parent of the attachment,
+ * since this should have already been updated by tidy_body_imgs().
+ * 
+ * @param int $post_id The ID of the starting post.
+ * @param int $post_att_id The ID of the attachment post for the starting post.
+ * @param array $old_image_details An array containing the details of the old image to be replaced.
+ * @param array $new_image_details An array containing the details of the new image to replace the old image.
+ * @return void This function does not return a value.
+*/
+
+    do_my_log("🧩 update_body_img_urls()...");
+
+    // 1. Get the old URL we just updated - relative and absolute forms
+    // $old_image_details['url_rel']
+
+    // 2. Do a post query for that string
+    // do_my_log("looking for " . $old_image_details['url_rel']);
+    $args = array(
+        'post_type' => 'post',
+        'posts_per_page' => -1,
+        'post__not_in' => array($post_id), // omit the starting post, which was already updated
+        's' => $old_image_details['url_rel'],
+    );
+    $query = new WP_Query($args);
+
+    // 3. Replace old string
+
+    // The Loop
+    if ($query->have_posts()) {
+        while ($query->have_posts()) {
+            $query->the_post();
+
+
+            // Get the post content
+            $content = get_post_field('post_content', $post_id);
+            // Create a new DOMDocument object
+            $doc = new DOMDocument();
+            // Load the post content into the DOMDocument object
+            $doc->loadHTML($content, LIBXML_NOWARNING | LIBXML_NOERROR | LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+            // Find all img tags in the post content
+            $images = $doc->getElementsByTagName('img');
+
+
+            foreach ($images as $img) {
+ 
+                // Get the src attribute of the img tag
+                $src = $img->getAttribute('src');
+
+                // If old URL form is in the src
+                if (strpos($src, $old_image_details['url_rel']) !== false) { // was: if ($src === $old_image_details['url_rel']) {
+
+                    // do_my_log("Found old relative URL " . $src ." in '". get_post_field('post_title', get_the_ID()) ."'. Need to replace img src with ".$new_image_details['url_rel']);
+                    $new_src = str_replace($old_image_details['url_rel'], $new_image_details['url_rel'], $src);
+                    // do_my_log("New is ".$new_src);
+                    do_my_log("Updating img src " . $src ." in '". get_post_field('post_title', get_the_ID()) ."' to ".$new_image_details['url_rel']);
+
+                    $img->setAttribute('src', $new_src);
+                    $new_content = $doc->saveHTML();
+
+                }
+            }
+
+            // Save the updated post, if updates occurred
+            if ($new_content !== $content) {
+                $modified = true;
+                $content = $new_content;
+            }
+            if ($modified == true) { // was if ($new_content) {
+                // do_my_log("Updating '". get_post_field('post_title', get_the_ID()) ."'");
+                // Unhook do_saved_post(), or wp_update_post() would cause an infinite loop
+                remove_action('save_post', 'do_saved_post', 10, 1);
+                // Re-save the post
+                wp_update_post(array(
+                    'ID' => get_the_ID(),
+                    'post_content' => $content,
+                ));
+                // Hook it back up
+                add_action('save_post', 'do_saved_post', 10, 1);
+                // do_my_log("Done.");
+            }
+
+        }
+    } else {
+        // no posts found
+        // do_my_log("👍🏻 No posts containing old URL.");
+    }
+
+}
+
+
+
+
+
+
+function move_main_file($attachment_id, $old_image_details, $new_image_details, $post_id)
 {
     /**
      * Move Media File
@@ -1509,6 +1608,8 @@ function move_main_file($attachment_id, $old_image_details, $new_image_details)
                 );
                 my_trigger_notice(1);
                 do_my_log("Database fields should now be updated.");
+                update_body_img_urls($post_id, $attachment_id, $old_image_details, $new_image_details);
+
                 return true;
             } else {
                 my_trigger_notice(2);
@@ -1527,7 +1628,7 @@ function move_main_file($attachment_id, $old_image_details, $new_image_details)
 
 }
 
-function move_sizes_files($attachment_id, $old_image_details, $new_image_details)
+function move_sizes_files($attachment_id, $old_image_details, $new_image_details, $post_id)
 {
     /**
      * Move File Sizes
@@ -1565,10 +1666,12 @@ function move_sizes_files($attachment_id, $old_image_details, $new_image_details
                 $num_sizes++;
                 do_my_log("✅ Moved 📐 size " . $data['file']);
                 $success = true;
+                update_body_img_urls($post_id, $attachment_id, $old_image_details, $new_image_details);
             } else {
+                // TODO: #26 150x150 file move always reports as false but is true
                 // Error
                 $success = false;
-                do_my_log("❌ Failed to move 📐 size" . $data['file']);
+                do_my_log("❌ Failed to move 📐 size " . $data['file']);
             }
             // B. Update database
             // No metadata to update - [sizes] filenames do not contain folders, only filenames.
