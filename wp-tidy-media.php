@@ -745,6 +745,29 @@ function tidy_post_attachments($post_id)
 
 }
 
+
+
+
+
+
+
+function do_get_content_as_dom($content) {
+
+    // Set the encoding of the input HTML string
+    $content = mb_convert_encoding($content, 'HTML-ENTITIES', 'UTF-8');
+    // Create a new DOMDocument object
+    $doc = new DOMDocument('1.0', 'UTF-8');
+    $doc->formatOutput = true;
+    $doc->preserveWhiteSpace = false;
+    $doc->encoding = 'UTF-8';
+    // Load the post content into the DOMDocument object
+    $doc->loadHTML($content, LIBXML_NOWARNING | LIBXML_NOERROR | LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+
+    return $doc;
+}
+
+
+
 function tidy_body_imgs($post_id)
 {
     /**
@@ -772,15 +795,8 @@ function tidy_body_imgs($post_id)
         return;
     }
 
-    // Set the encoding of the input HTML string
-    $content = mb_convert_encoding($content, 'HTML-ENTITIES', 'UTF-8');
-    // Create a new DOMDocument object
-    $doc = new DOMDocument('1.0', 'UTF-8');
-    $doc->formatOutput = true;
-    $doc->preserveWhiteSpace = false;
-    $doc->encoding = 'UTF-8';
-    // Load the post content into the DOMDocument object
-    $doc->loadHTML($content, LIBXML_NOWARNING | LIBXML_NOERROR | LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+
+    $doc = do_get_content_as_dom($content);
 
     // Find all img tags in the post content
     $images = $doc->getElementsByTagName('img');
@@ -1023,13 +1039,7 @@ function relative_body_imgs($post_id)
             $content = mb_convert_encoding($content, 'HTML-ENTITIES', 'UTF-8');
             $new_content = mb_convert_encoding($new_content, 'HTML-ENTITIES', 'UTF-8');
 
-            // Create a new DOMDocument object
-            $doc = new DOMDocument('1.0', 'UTF-8');
-            $doc->formatOutput = true;
-            $doc->preserveWhiteSpace = false;
-            $doc->encoding = 'UTF-8';
-            // Load content
-            $doc->loadHTML($new_content, LIBXML_NOWARNING | LIBXML_NOERROR | LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+            $doc = do_get_content_as_dom($content);
 
             // Get every img tag
             $images = $doc->getElementsByTagName('img');
@@ -1101,8 +1111,8 @@ function localise_remote_images($post_id)
     do_my_log("🧩 localise_remote_images()...");
 
     $post_content = get_post_field('post_content', $post_id);
-    $dom = new DOMDocument();
-    @$dom->loadHTML($post_content);
+
+    $dom = do_get_content_as_dom($post_content);
 
     $image_tags = $dom->getElementsByTagName('img');
 
@@ -1499,10 +1509,10 @@ function update_body_img_urls($post_id, $post_att_id, $old_image_details, $new_i
 
             // Get the post content
             $content = get_post_field('post_content', $post_id);
-            // Create a new DOMDocument object
-            $doc = new DOMDocument();
-            // Load the post content into the DOMDocument object
-            $doc->loadHTML($content, LIBXML_NOWARNING | LIBXML_NOERROR | LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+
+            $doc = do_get_content_as_dom($content);
+
+
             // Find all img tags in the post content
             $images = $doc->getElementsByTagName('img');
 
@@ -1853,8 +1863,9 @@ function do_get_all_attachments($post_id)
 
     // Get items in post content
     $content = get_post_field('post_content', $post_id);
-    $doc = new DOMDocument();
-    $doc->loadHTML($content, LIBXML_NOWARNING | LIBXML_NOERROR | LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+
+    $doc = do_get_content_as_dom($content);
+
     $images = $doc->getElementsByTagName('img');
     foreach ($images as $img) {
         $src = $img->getAttribute('src');
