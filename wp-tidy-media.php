@@ -157,6 +157,24 @@ function get_tidy_media_settings()
     }
 }
 
+
+
+function our_post_types() {
+
+    // Available post-like post types, strip out defaults
+    $args = array(
+        'public' => true,
+        '_builtin' => false,
+    );
+    $post_types = get_post_types($args);
+    // Add back 2x default post types - 'post' and 'page'
+    array_push($post_types, 'post', 'page');
+
+    return $post_types;
+
+}
+
+
 function tidy_media_organizer_options_page()
 {
     /**
@@ -262,14 +280,8 @@ function tidy_media_organizer_options_page()
                                                     <p class="description">Fires on <code>save_post</code> for these
                                                         types:
                                                         <?php
-// Show post types
-    $args = array(
-        'public' => true,
-        '_builtin' => false, // exclude default post types
-    );
-    $post_types = get_post_types($args);
-    // add back default post types 'post' and 'page'
-    array_push($post_types, 'post', 'page');
+    $post_types = our_post_types();
+    
     echo implode(', ', array_map(function ($post_type) {
         return '<code>' . $post_type . '</code>';
     }, $post_types));
@@ -388,13 +400,7 @@ function tidy_media_organizer_options_page()
                                                     class="media-folder-input">
                                                 <?php
 // Show post types
-    $args = array(
-        'public' => true,
-        '_builtin' => false, // exclude default post types
-    );
-    $post_types = get_post_types($args);
-    // add back default post types 'post' and 'page'
-    array_push($post_types, 'post', 'page');
+    $post_types = our_post_types();
     echo '(' . implode(', ', array_map(function ($post_type) {
         return '<code>' . $post_type . '</code>';
     }, $post_types)) . ')';
@@ -662,15 +668,9 @@ function do_saved_post($post_id)
 
     if (get_post_status($post_id) && !wp_is_post_autosave($post_id) && !wp_is_post_revision($post_id) && get_post_status($post_id) !== 'trash' && get_post_status($post_id) !== 'auto-draft') {
 
-        // Only for post, page and custom post types
-        $args = array(
-            'public' => true,
-            '_builtin' => false, // exclude default post types
-        );
-        $post_types = get_post_types($args);
-        array_push($post_types, 'post', 'page'); // add back post and page
+        // Only run on preferred post types
+        $post_types = our_post_types();
         $my_post_type = get_post_type($post_id);
-
         if (in_array($my_post_type, $post_types)) {
 
             do_my_log("💾 do_saved_post() - " . $post_id . " " . get_post_field('post_type', $post_id) . ": " . get_the_title($post_id));
@@ -1494,7 +1494,7 @@ function update_body_img_urls($post_id, $post_att_id, $old_image_details, $new_i
     // 2. Do a post query for that string
     // do_my_log("looking for " . $old_image_details['url_rel']);
     $args = array(
-        'post_type' => 'post',
+        'post_type' => our_post_types(),
         'posts_per_page' => -1,
         'post__not_in' => array($post_id), // omit the starting post, which was already updated
         's' => $old_image_details['url_rel'],
@@ -1830,7 +1830,7 @@ function is_attachment_used_elsewhere($attachment_id, $main_post_id)
 
     // Check 1: URL in body content
     $args_attach = array(
-        'post_type' => 'post',
+        'post_type' => our_post_types(),
         'posts_per_page' => -1,
         'post__not_in' => array($main_post_id), // omit the starting post, which was already updated
         's' => $old_image_details['url_rel'],
@@ -1843,7 +1843,7 @@ function is_attachment_used_elsewhere($attachment_id, $main_post_id)
 
     // Check 2: used as thumbnail elsewhere
     $args_thumb = array(
-        'post_type' => 'post', // Replace with the post type you want to search in
+        'post_type' => our_post_types(), // Replace with the post type you want to search in
         'meta_key' => '_thumbnail_id',
         'meta_value' => $attachment_id,
         'post__not_in' => array($main_post_id), // omit the starting post, which was already updated
