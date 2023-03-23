@@ -119,10 +119,10 @@ function get_tidy_media_settings()
 {
 /**
  * Get Plugin  Settings.
- * 
+ *
  * @global object $wpdb WordPress database access object.
  * @return array Returns an array containing tidy media settings. If the tidy media organizer table is not found, an empty array is returned.
- * 
+ *
  * The returned array contains the following keys:
  * - organize_post_img_by_type: A boolean indicating whether to organize post images by type.
  * - organize_post_img_by_taxonomy: A string indicating the taxonomy to organize post images by.
@@ -135,7 +135,7 @@ function get_tidy_media_settings()
  * - use_delete: A boolean indicating whether to delete orphaned attachments.
  * - use_log: A boolean indicating whether to log Tidy Media Organizer activity.
  * - run_on_save: A boolean indicating whether to run Tidy Media Organizer on post save.
-*/
+ */
     global $wpdb;
     $table_name = $wpdb->prefix . 'tidy_media_organizer';
     if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") == $table_name) {
@@ -176,16 +176,15 @@ function get_tidy_media_settings()
     }
 }
 
-
-
-function our_post_types() {
+function our_post_types()
+{
 /**
  * Our Post Types.
- * 
+ *
  * Generates an array of post types which various other functions can use, eg. in post queries
  * and the main do_saved_post(). Strips out some built-in types like "attachment". Only uses
  * "post", "page" and any custom post types.
- * 
+ *
  * @return array An array of available post types, with the default post types added back in
  */
 
@@ -201,7 +200,6 @@ function our_post_types() {
     return $post_types;
 
 }
-
 
 function tidy_media_organizer_options_page()
 {
@@ -308,8 +306,8 @@ function tidy_media_organizer_options_page()
                                                     <p class="description">Fires on <code>save_post</code> for these
                                                         types:
                                                         <?php
-    $post_types = our_post_types();
-    
+$post_types = our_post_types();
+
     echo implode(', ', array_map(function ($post_type) {
         return '<code>' . $post_type . '</code>';
     }, $post_types));
@@ -773,13 +771,8 @@ function tidy_post_attachments($post_id)
 
 }
 
-
-
-
-
-
-
-function do_get_content_as_dom($content) {
+function do_get_content_as_dom($content)
+{
 
     if ($content) {
         // Set the encoding of the input HTML string
@@ -795,8 +788,6 @@ function do_get_content_as_dom($content) {
         return $dom;
     }
 }
-
-
 
 function tidy_body_imgs($post_id)
 {
@@ -1141,6 +1132,10 @@ function localise_remote_images($post_id)
 
     $post_content = get_post_field('post_content', $post_id);
 
+    if (!$post_content) {
+        return;
+    }
+
     $dom = do_get_content_as_dom($post_content);
 
     $image_tags = $dom->getElementsByTagName('img');
@@ -1187,7 +1182,7 @@ function localise_remote_images($post_id)
                     // ("Creating attachment for this...");
                     $attachment = array(
                         // TODO: Ensure the correct URL is used for guid
-                        'guid' => $upload_dir['url'] . '/' . $image_name,
+                        // 'guid' => $upload_dir['url'] . '/' . $image_name,
                         'post_title' => $image_name,
                         'post_mime_type' => wp_check_filetype($image_name)['type'],
                         'post_content' => '',
@@ -1541,7 +1536,6 @@ function update_body_img_urls($post_id, $post_att_id, $old_image_details, $new_i
 
             $doc = do_get_content_as_dom($content);
 
-
             // Find all img tags in the post content
             $images = $doc->getElementsByTagName('img');
 
@@ -1632,6 +1626,13 @@ function move_main_file($attachment_id, $old_image_details, $new_image_details, 
                 // B. Update database
                 // Update database #1 - image wp_postmeta, _wp_attached_file (eg. post/client/clarity/2018/06/146343_photo-1486312338219-ce68d2c6f44d-4959-art.jpe)
                 update_post_meta($attachment_id, '_wp_attached_file', trailingslashit($new_image_details['subdir']) . $new_image_details['filename']);
+                // Set attachment date to post's datae
+                $post_date = get_post_field('post_date', $post_id);
+                wp_update_post(array(
+                    'ID' => $attachment_id,
+                    'post_date' => $post_date,
+                ));
+
                 // Update database #2 - image wp_postmeta, _wp_attachment_metadata (eg. [file] => post/client/clarity/2018/06/146343_photo-1486312338219-ce68d2c6f44d-4959-art.jpe)
                 $attachment_metadata = wp_get_attachment_metadata($attachment_id);
                 $attachment_metadata['file'] = trailingslashit($new_image_details['subdir']) . $new_image_details['filename'];
@@ -1642,13 +1643,30 @@ function move_main_file($attachment_id, $old_image_details, $new_image_details, 
                 // TODO: Ensure the correct URL is used for guid
                 $new_guid_full = str_replace($old_image_details['subdir'], $new_image_details['subdir'], $old_image_details['guid']);
                 global $wpdb;
+                /*
+                $wpdb->update(
+                $wpdb->posts,
+                // array('guid' => $new_guid_full),
+                array('ID' => $attachment_id),
+                array('%s'),
+                array('%d')
+                );
+                 */
+                /*
                 $wpdb->update(
                     $wpdb->posts,
-                    array('guid' => $new_guid_full),
                     array('ID' => $attachment_id),
-                    array('%s'),
+                    array('ID' => $attachment_id),
+                    array('%d'),
                     array('%d')
                 );
+                */
+                wp_update_post(array(
+                    'ID' => $attachment_id,
+                ));
+
+
+
                 my_trigger_notice(1);
                 do_my_log("Database fields should now be updated.");
                 update_body_img_urls($post_id, $attachment_id, $old_image_details, $new_image_details);
@@ -1792,17 +1810,17 @@ function do_delete_attachment($attachment_id)
 {
 /**
  * Delete Attachment
- * 
+ *
  * Cleverly uses the kitchen sink to delete all traces of an attachment. WordPress has no single way
  * to do this. So the function:
  * - Finds and deletes [sizes] of attachment, via auxillary function.
  * - Deletes attachment files.
  * - Deletes attachment metadata.
  * - Deletes attachment's directory if it becomes empty.
- * 
+ *
  * @param int $attachment_id The ID of the attachment to be deleted.
  * @return void
-*/
+ */
     do_my_log("do_delete_attachment()");
 
     // Check if the attachment exists
@@ -1837,12 +1855,12 @@ function do_delete_img_sizes($attachment_id)
 {
     /**
      * Delete Image Sizes
-     * 
+     *
      * Deletes all image size variants associated with a given attachment ID.
-     * 
+     *
      * @@param int $attachment_id The ID of the attachment whose image sizes should be deleted.
      * @return void
-    */
+     */
     // Get all image size variants associated with the attachment
     $image_sizes = get_intermediate_image_sizes();
     $image_sizes[] = 'full'; // include the original image size as well
@@ -1872,11 +1890,11 @@ function is_attachment_used_elsewhere($attachment_id, $main_post_id)
 {
     /**
      * Is Attachment Used Elsewhere?
-     * 
+     *
      * Determines if an attachment of a particular post is used in any other posts.
      * This function checks whether the attachment is being used in another post's content or as a featured image.
      * If the attachment is used elsewhere, the function returns true, otherwise it returns false.
-     * 
+     *
      * @param int $attachment_id The ID of the attachment to check.
      * @param int $main_post_id The ID of the post where the attachment is currently being used.
      * @return bool True if the attachment is used elsewhere, false otherwise.
@@ -1921,14 +1939,14 @@ function do_get_all_attachments($post_id)
 {
     /**
      * Get All Attachments
-     * 
+     *
      * Clever function to get a combined array of *all* attachments associated with a post.
      * WordPress is limited in this regard. While a featured image is stored against a post in WP_Posts
      * with _thumbnail_id, in-line use of media may not be recorded in those items because an
      * attachment can only attach to a single post.
      * This function gets a) any featured image and b) any attachments inserted into body content.
      * The result is combined.
-     * 
+     *
      * @param int $post_id The ID of the post to search for attachments.
      * @return array|null An array of attachment objects if attachments are found, or null if none are found.
      */
@@ -1961,7 +1979,7 @@ function do_get_all_attachments($post_id)
     }
 
     // Combine, deduplicate and return
-    if($attachments) {
+    if ($attachments) {
         $attachments_unique = deduplicate_by_key($attachments, "ID");
         return $attachments_unique;
     }
@@ -1972,19 +1990,19 @@ function deduplicate_by_key($array, $key)
 {
 /**
  * Deduplicate Array Items By Key
- * 
+ *
  * This function deduplicates an array of objects based on a specified object property.
  * Designed so that an array of post items does not carry a post item twice, using the ID field.
- * 
+ *
  * It iterates over the array and checks if each object's specified property is already in the temporary array.
  * If the property value is not found, it is added to the temporary array and the object is added to the result array.
  * If the property value is found, the object is not added to the result array.
  * Finally, the result array is returned, containing only unique objects.
- * 
+ *
  * @param array $array The input array of objects to deduplicate.
  * @param string $key The name of the property to check for duplication.
  * @return array The array of objects with duplicates removed.
-*/
+ */
     $temp_array = array();
     $result_array = array();
 
@@ -1997,9 +2015,6 @@ function deduplicate_by_key($array, $key)
 
     return $result_array;
 }
-
-
-
 
 function delete_attached_images_on_post_delete($post_id)
 {
@@ -2057,8 +2072,6 @@ function delete_attached_images_on_post_delete($post_id)
     }
 }
 add_action('before_delete_post', 'delete_attached_images_on_post_delete');
-
-
 
 function my_trigger_notice($key = '')
 {
