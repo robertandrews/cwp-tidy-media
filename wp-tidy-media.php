@@ -117,6 +117,25 @@ add_action('admin_menu', 'tidy_media_organizer_admin_page');
 
 function get_tidy_media_settings()
 {
+/**
+ * Get Plugin  Settings.
+ * 
+ * @global object $wpdb WordPress database access object.
+ * @return array Returns an array containing tidy media settings. If the tidy media organizer table is not found, an empty array is returned.
+ * 
+ * The returned array contains the following keys:
+ * - organize_post_img_by_type: A boolean indicating whether to organize post images by type.
+ * - organize_post_img_by_taxonomy: A string indicating the taxonomy to organize post images by.
+ * - organize_post_img_by_post_slug: A boolean indicating whether to organize post images by post slug.
+ * - domains_to_replace: A string containing domains to replace with the local site's URL.
+ * - use_tidy_attachments: A boolean indicating whether to use the Tidy Attachments feature.
+ * - use_tidy_body_imgs: A boolean indicating whether to use the Tidy Body Images feature.
+ * - use_relative: A boolean indicating whether to use relative URLs.
+ * - use_localise: A boolean indicating whether to localize URLs.
+ * - use_delete: A boolean indicating whether to delete orphaned attachments.
+ * - use_log: A boolean indicating whether to log Tidy Media Organizer activity.
+ * - run_on_save: A boolean indicating whether to run Tidy Media Organizer on post save.
+*/
     global $wpdb;
     $table_name = $wpdb->prefix . 'tidy_media_organizer';
     if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") == $table_name) {
@@ -160,6 +179,15 @@ function get_tidy_media_settings()
 
 
 function our_post_types() {
+/**
+ * Our Post Types.
+ * 
+ * Generates an array of post types which various other functions can use, eg. in post queries
+ * and the main do_saved_post(). Strips out some built-in types like "attachment". Only uses
+ * "post", "page" and any custom post types.
+ * 
+ * @return array An array of available post types, with the default post types added back in
+ */
 
     // Available post-like post types, strip out defaults
     $args = array(
@@ -1762,6 +1790,19 @@ function move_original_file($attachment_id, $old_image_details, $new_image_detai
 
 function do_delete_attachment($attachment_id)
 {
+/**
+ * Delete Attachment
+ * 
+ * Cleverly uses the kitchen sink to delete all traces of an attachment. WordPress has no single way
+ * to do this. So the function:
+ * - Finds and deletes [sizes] of attachment, via auxillary function.
+ * - Deletes attachment files.
+ * - Deletes attachment metadata.
+ * - Deletes attachment's directory if it becomes empty.
+ * 
+ * @param int $attachment_id The ID of the attachment to be deleted.
+ * @return void
+*/
     do_my_log("do_delete_attachment()");
 
     // Check if the attachment exists
@@ -1773,6 +1814,7 @@ function do_delete_attachment($attachment_id)
     $attachment_path = get_attached_file($attachment_id);
     $dir = dirname($attachment_path);
 
+    // Delete [sizes] via custom function
     do_delete_img_sizes($attachment_id);
 
     // Delete the physical files associated with the attachment
@@ -1793,7 +1835,14 @@ function do_delete_attachment($attachment_id)
 
 function do_delete_img_sizes($attachment_id)
 {
-
+    /**
+     * Delete Image Sizes
+     * 
+     * Deletes all image size variants associated with a given attachment ID.
+     * 
+     * @@param int $attachment_id The ID of the attachment whose image sizes should be deleted.
+     * @return void
+    */
     // Get all image size variants associated with the attachment
     $image_sizes = get_intermediate_image_sizes();
     $image_sizes[] = 'full'; // include the original image size as well
@@ -1821,6 +1870,17 @@ function do_delete_img_sizes($attachment_id)
 
 function is_attachment_used_elsewhere($attachment_id, $main_post_id)
 {
+    /**
+     * Is Attachment Used Elsewhere?
+     * 
+     * Determines if an attachment of a particular post is used in any other posts.
+     * This function checks whether the attachment is being used in another post's content or as a featured image.
+     * If the attachment is used elsewhere, the function returns true, otherwise it returns false.
+     * 
+     * @param int $attachment_id The ID of the attachment to check.
+     * @param int $main_post_id The ID of the post where the attachment is currently being used.
+     * @return bool True if the attachment is used elsewhere, false otherwise.
+     */
 
     do_my_log("is_attachment_used_elsewhere()");
 
@@ -1859,6 +1919,19 @@ function is_attachment_used_elsewhere($attachment_id, $main_post_id)
 
 function do_get_all_attachments($post_id)
 {
+    /**
+     * Get All Attachments
+     * 
+     * Clever function to get a combined array of *all* attachments associated with a post.
+     * WordPress is limited in this regard. While a featured image is stored against a post in WP_Posts
+     * with _thumbnail_id, in-line use of media may not be recorded in those items because an
+     * attachment can only attach to a single post.
+     * This function gets a) any featured image and b) any attachments inserted into body content.
+     * The result is combined.
+     * 
+     * @param int $post_id The ID of the post to search for attachments.
+     * @return array|null An array of attachment objects if attachments are found, or null if none are found.
+     */
 
     $attachments = array();
 
@@ -1897,6 +1970,21 @@ function do_get_all_attachments($post_id)
 
 function deduplicate_by_key($array, $key)
 {
+/**
+ * Deduplicate Array Items By Key
+ * 
+ * This function deduplicates an array of objects based on a specified object property.
+ * Designed so that an array of post items does not carry a post item twice, using the ID field.
+ * 
+ * It iterates over the array and checks if each object's specified property is already in the temporary array.
+ * If the property value is not found, it is added to the temporary array and the object is added to the result array.
+ * If the property value is found, the object is not added to the result array.
+ * Finally, the result array is returned, containing only unique objects.
+ * 
+ * @param array $array The input array of objects to deduplicate.
+ * @param string $key The name of the property to check for duplication.
+ * @return array The array of objects with duplicates removed.
+*/
     $temp_array = array();
     $result_array = array();
 
