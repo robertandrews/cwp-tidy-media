@@ -753,17 +753,19 @@ function tidy_post_attachments($post_id)
 
 function do_get_content_as_dom($content) {
 
-    // Set the encoding of the input HTML string
-    $content = mb_convert_encoding($content, 'HTML-ENTITIES', 'UTF-8');
-    // Create a new DOMDocument object
-    $doc = new DOMDocument('1.0', 'UTF-8');
-    $doc->formatOutput = true;
-    $doc->preserveWhiteSpace = false;
-    $doc->encoding = 'UTF-8';
-    // Load the post content into the DOMDocument object
-    $doc->loadHTML($content, LIBXML_NOWARNING | LIBXML_NOERROR | LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+    if ($content) {
+        // Set the encoding of the input HTML string
+        $content = mb_convert_encoding($content, 'HTML-ENTITIES', 'UTF-8');
+        // Create a new DOMDocument object
+        $dom = new DOMDocument('1.0', 'UTF-8');
+        $dom->formatOutput = true;
+        $dom->preserveWhiteSpace = false;
+        $dom->encoding = 'UTF-8';
+        // Load the post content into the DOMDocument object
+        $dom->loadHTML($content, LIBXML_NOWARNING | LIBXML_NOERROR | LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
 
-    return $doc;
+        return $dom;
+    }
 }
 
 
@@ -794,7 +796,6 @@ function tidy_body_imgs($post_id)
     if (!$content) {
         return;
     }
-
 
     $doc = do_get_content_as_dom($content);
 
@@ -1863,6 +1864,10 @@ function do_get_all_attachments($post_id)
 
     // Get items in post content
     $content = get_post_field('post_content', $post_id);
+
+    if (!$content) {
+        return;
+    }
 
     $doc = do_get_content_as_dom($content);
 
