@@ -655,11 +655,12 @@ function do_saved_post($post_id)
 
     // Only run if:
     // - Post is not permanently deleted (ie. has a status)
-    // - Post status is not trashed
+    // - Post status is not in the trash/bin (so, it won't fire when it's subsequently Permanently Deleted)
     // - Post status is not auto-draft (ie. don't fire when auto-drafting)
+    // - Post status is not auto-saved
     // - Post status is not a saved revision
 
-    if (get_post_status($post_id) && !wp_is_post_autosave($post_id) && !wp_is_post_revision($post_id) && get_post_status($post_id) !== 'trash') {
+    if (get_post_status($post_id) && !wp_is_post_autosave($post_id) && !wp_is_post_revision($post_id) && get_post_status($post_id) !== 'trash' && get_post_status($post_id) !== 'auto-draft') {
 
         // Only for post, page and custom post types
         $args = array(
@@ -1848,22 +1849,53 @@ function is_attachment_used_elsewhere($attachment_id, $main_post_id)
 function do_get_all_attachments($post_id)
 {
 
-    // Get the featured image ID
-    $featured_image_id = get_post_thumbnail_id($post_id);
-    // Get all attachments of the post
-    $attachments = get_attached_media('', $post_id);
-    // Add the featured image to the array of attachments
-    if ($featured_image_id) {
-        $featured_image = get_post($featured_image_id);
-        if ($featured_image) {
-            $attachments[] = $featured_image;
+    $attachments = array();
+
+    // Get items in post content
+    $content = get_post_field('post_content', $post_id);
+    $doc = new DOMDocument();
+    $doc->loadHTML($content, LIBXML_NOWARNING | LIBXML_NOERROR | LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+    $images = $doc->getElementsByTagName('img');
+    foreach ($images as $img) {
+        $src = $img->getAttribute('src');
+        $inline_attachment = get_attachment_obj_from_filepath($src);
+        if ($inline_attachment) {
+            $attachments[] = $inline_attachment;
         }
     }
-    if ($attachments) {
-        return $attachments;
+
+    // Get the featured image ID
+    $featured_image_id = get_post_thumbnail_id($post_id);
+    $featured_img_obj = get_post($featured_image_id);
+    if ($featured_img_obj) {
+        $attachments[] = $featured_img_obj;
+    }
+
+    // Combine, deduplicate and return
+    if($attachments) {
+        $attachments_unique = deduplicate_by_key($attachments, "ID");
+        return $attachments_unique;
     }
 
 }
+
+function deduplicate_by_key($array, $key)
+{
+    $temp_array = array();
+    $result_array = array();
+
+    foreach ($array as $item) {
+        if (!isset($temp_array[$item->$key])) {
+            $temp_array[$item->$key] = true;
+            $result_array[] = $item;
+        }
+    }
+
+    return $result_array;
+}
+
+
+
 
 function delete_attached_images_on_post_delete($post_id)
 {
