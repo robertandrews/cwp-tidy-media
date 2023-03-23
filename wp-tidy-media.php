@@ -653,7 +653,13 @@ function do_saved_post($post_id)
      * @return void
      */
 
-    if (!wp_is_post_revision($post_id)) {
+    // Only run if:
+    // - Post is not permanently deleted (ie. has a status)
+    // - Post status is not trashed
+    // - Post status is not auto-draft (ie. don't fire when auto-drafting)
+    // - Post status is not a saved revision
+
+    if (get_post_status($post_id) && !wp_is_post_autosave($post_id) && !wp_is_post_revision($post_id) && get_post_status($post_id) !== 'trash') {
 
         // Only for post, page and custom post types
         $args = array(
@@ -712,7 +718,7 @@ function tidy_post_attachments($post_id)
     do_my_log('🧩 tidy_post_attachments()...');
 
     // TODO: Why does this omit some featured images?
-    $post_attachments = get_attached_media('', $post_id);
+    $post_attachments = do_get_all_attachments($post_id);
 
     // $attachment_ids = implode(',', wp_list_pluck($post_attachments, 'ID'));
     // do_my_log("attach ids: ". $attachment_ids);
@@ -760,6 +766,10 @@ function tidy_body_imgs($post_id)
 
     // Get the post content
     $content = get_post_field('post_content', $post_id);
+
+    if (!$content) {
+        return;
+    }
 
     // Set the encoding of the input HTML string
     $content = mb_convert_encoding($content, 'HTML-ENTITIES', 'UTF-8');
@@ -1644,7 +1654,6 @@ function move_sizes_files($attachment_id, $old_image_details, $new_image_details
     $moved_files = array();
     $num_sizes = 0;
 
-
     // Loop through each size variant
     foreach ($attachment_metadata['sizes'] as $size => $data) {
         // Generate the old and new filepaths for size variants
@@ -1739,6 +1748,123 @@ function move_original_file($attachment_id, $old_image_details, $new_image_detai
 
 }
 
+function do_delete_attachment($attachment_id)
+{
+    do_my_log("do_delete_attachment()");
+
+    // Check if the attachment exists
+    if (!wp_attachment_is_image($attachment_id) && !get_post($attachment_id)) {
+        return;
+    }
+
+    // Get directory before the file is gone
+    $attachment_path = get_attached_file($attachment_id);
+    $dir = dirname($attachment_path);
+
+    do_delete_img_sizes($attachment_id);
+
+    // Delete the physical files associated with the attachment
+    wp_delete_attachment_files($attachment_id, null, null, null);
+
+    // Delete the attachment and its metadata from the database
+    wp_delete_attachment($attachment_id, true);
+
+    // Delete directory if it's empty
+    if (is_dir($dir) && count(glob("$dir/*")) === 0) {
+        rmdir($dir);
+        do_my_log("Directory " . $dir . " deleted because it was empty.");
+    } else {
+        do_my_log("Directory " . $dir . " not empty, will not delete.");
+    }
+
+}
+
+function do_delete_img_sizes($attachment_id)
+{
+
+    // Get all image size variants associated with the attachment
+    $image_sizes = get_intermediate_image_sizes();
+    $image_sizes[] = 'full'; // include the original image size as well
+    $attachment_meta = wp_get_attachment_metadata($attachment_id);
+
+    if (!empty($attachment_meta['sizes'])) {
+        foreach ($attachment_meta['sizes'] as $size => $size_info) {
+            if (in_array($size, $image_sizes)) {
+                $image_sizes[] = $size;
+            }
+        }
+    }
+
+    // Delete each image size variant
+    foreach ($image_sizes as $size) {
+        $image_data = wp_get_attachment_image_src($attachment_id, $size);
+        if ($image_data) {
+            $image_path = $image_data[0];
+            if (file_exists($image_path)) {
+                wp_delete_attachment_file($attachment_id, null, true);
+            }
+        }
+    }
+}
+
+function is_attachment_used_elsewhere($attachment_id, $main_post_id)
+{
+
+    do_my_log("is_attachment_used_elsewhere()");
+
+    $main_post = get_post($main_post_id);
+    $attachment = get_post($attachment_id);
+    $old_image_details = old_image_details($attachment);
+
+    // Check 1: URL in body content
+    $args_attach = array(
+        'post_type' => 'post',
+        'posts_per_page' => -1,
+        'post__not_in' => array($main_post_id), // omit the starting post, which was already updated
+        's' => $old_image_details['url_rel'],
+    );
+    $query_attach = new WP_Query($args_attach);
+    do_my_log("Attachment: Found " . $query_attach->found_posts . " other posts with this as attachment");
+    if ($query_attach->found_posts > 0) {
+        return true;
+    }
+
+    // Check 2: used as thumbnail elsewhere
+    $args_thumb = array(
+        'post_type' => 'post', // Replace with the post type you want to search in
+        'meta_key' => '_thumbnail_id',
+        'meta_value' => $attachment_id,
+        'post__not_in' => array($main_post_id), // omit the starting post, which was already updated
+        'posts_per_page' => -1, // Retrieve all matching posts
+    );
+    $posts_with_featured_image = new WP_Query($args_thumb);
+    do_my_log("Thumbnail: Found " . $posts_with_featured_image->found_posts . " other posts with this as thumbnail");
+    if ($posts_with_featured_image->have_posts()) {
+        return true;
+    }
+
+}
+
+function do_get_all_attachments($post_id)
+{
+
+    // Get the featured image ID
+    $featured_image_id = get_post_thumbnail_id($post_id);
+    // Get all attachments of the post
+    $attachments = get_attached_media('', $post_id);
+    // Add the featured image to the array of attachments
+    if ($featured_image_id) {
+        $featured_image = get_post($featured_image_id);
+        if ($featured_image) {
+            $attachments[] = $featured_image;
+        }
+    }
+    if ($attachments) {
+        return $attachments;
+    }
+
+}
+
 function delete_attached_images_on_post_delete($post_id)
 {
     /**
@@ -1761,81 +1887,30 @@ function delete_attached_images_on_post_delete($post_id)
         if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'delete') {
             if (!isset($_REQUEST['delete_all']) && !wp_check_post_lock($post_id)) {
                 $post = get_post($post_id);
+
+                // When permanently deleting an attachment...
                 if ($post->post_status == 'trash') {
 
                     do_my_log("🗑 delete_attached_images_on_post_delete()...");
 
                     $current_screen = get_current_screen();
                     $screen_id = $current_screen ? $current_screen->id : '';
+                    do_my_log("Screen ID: " . $screen_id);
 
-                    // do_my_log("Screen ID: " . $screen_id);
-                    $attachments = get_attached_media('', $post_id);
-                    // do_my_log("Attachments: " . count($attachments));
+                    // Get post's attachments and featured image
+                    $attachments = do_get_all_attachments($post_id);
+
+                    do_my_log("Attachments: " . count($attachments));
 
                     foreach ($attachments as $attachment) {
-                        // Check if the image is used by another post
-                        do_my_log("Check if image is used by another post.");
-                        $used_by_other_post = false;
-                        $attachment_id = $attachment->ID;
-                        $attachment_post_id = $attachment->post_parent;
-                        $post_type = get_post_type($attachment_post_id);
-                        if ($post_type == 'post') {
-                            $other_attachments = get_attached_media('', $attachment_post_id);
-                            foreach ($other_attachments as $other_attachment) {
-                                if ($other_attachment->ID != $attachment_id) {
-                                    $used_by_other_post = true;
-                                    break;
-                                }
-                            }
-                            if (!$used_by_other_post) {
-                                $args = array(
-                                    'post_type' => 'post',
-                                    'post_status' => 'publish',
-                                    'posts_per_page' => -1,
-                                    'fields' => 'ids',
-                                );
-                                $posts = get_posts($args);
-                                foreach ($posts as $post) {
-                                    $content = get_post_field('post_content', $post);
-                                    $attachment_meta = get_post_meta($attachment_id, '_wp_attached_file', true);
-                                    if (strpos($content, $attachment_meta) !== false) {
-                                        $used_by_other_post = true;
-                                        do_my_log("Image in use by another post. Will not delete.");
-                                        break;
-                                    }
-                                }
-
-                            }
+                        do_my_log("Checking " . $attachment->ID);
+                        $used_elsewhere = is_attachment_used_elsewhere($attachment->ID, $post->ID);
+                        // TODO: Only if URL not found in other posts
+                        if ($used_elsewhere !== true) {
+                            do_my_log("Will delete attachment with post");
+                            do_delete_attachment($attachment->ID);
                         } else {
-                            $used_by_other_post = true;
-                            do_my_log("Image in use by another post. Will not delete.");
-                        }
-                        if (!$used_by_other_post) {
-                            // Delete the image if it is not used by another post
-                            $attachment_path = get_attached_file($attachment_id);
-                            do_my_log("Image " . $attachment_path . " only used by this post. Will be deleted.");
-                            $metadata = wp_get_attachment_metadata($attachment_id);
-                            foreach ($metadata['sizes'] as $size => $value) {
-                                $file = $metadata['sizes'][$size]['file'];
-                                $path = dirname($attachment_path) . '/' . $file;
-                                do_my_log("Size for deletion: " . $path);
-                                unlink($path);
-                            }
-                            if (isset($metadata['original_image'])) {
-                                $path = dirname($attachment_path) . '/' . $metadata['original_image'];
-                                do_my_log("Original image for deletion: " . $path);
-                                unlink($path);
-                            }
-                            wp_delete_attachment($attachment_id, true);
-                            do_my_log("Deletion should be complete.");
-                            // Delete the directory if it is empty
-                            $dir = dirname($attachment_path);
-                            if (is_dir($dir) && count(glob("$dir/*")) === 0) {
-                                rmdir($dir);
-                                do_my_log("Directory " . $dir . " deleted because it was empty.");
-                            } else {
-                                do_my_log("Directory " . $dir . " not empty, will not delete.");
-                            }
+                            do_my_log("Attachment used elsewhere. Will not delete.");
                         }
                     }
                 }
@@ -1847,45 +1922,7 @@ function delete_attached_images_on_post_delete($post_id)
 }
 add_action('before_delete_post', 'delete_attached_images_on_post_delete');
 
-function remove_save_post_on_trash()
-{
-    /**
-     * Remove save_post On Trash
-     *
-     * Removes the 'save_post' action from the 'post.php' page when a post is trashed, and restores it when a post is untrashed.
-     * This function is hooked to the 'admin_init' and 'untrash_post' actions. When a post is trashed, it removes the 'save_post'
-     * action from the 'post.php' page, which is responsible for saving post data. When a post is untrashed, it restores the
-     * 'save_post' action so that the post data can be saved again.
-     *
-     * @return void
-     */
-    global $pagenow;
-    if ($pagenow === 'post.php' && isset($_GET['action']) && $_GET['action'] === 'trash') {
-        remove_action('save_post', 'do_saved_post');
-    }
-}
-add_action('admin_init', 'remove_save_post_on_trash');
 
-function restore_save_post_on_untrash($post_id)
-{
-    /**
-     * Restore save_post On Untrash
-     *
-     * Restores the 'save_post' action when a post is untrashed.
-     * This function is triggered by the 'untrash_post' action hook and checks if the post being untrashed was previously
-     * in the trash. If it was, it adds the 'save_post' action back to the 'post.php' page, allowing post data to be saved
-     * again.
-     *
-     * @param int $post_id The ID of the post being untrashed.
-     * @return void
-     */
-
-    $post_status = get_post_status($post_id);
-    if ($post_status === 'trash') {
-        add_action('save_post', 'do_saved_post');
-    }
-}
-add_action('untrash_post', 'restore_save_post_on_untrash');
 
 function my_trigger_notice($key = '')
 {
