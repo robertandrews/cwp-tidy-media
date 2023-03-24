@@ -1189,6 +1189,7 @@ function localise_remote_images($post_id)
                         'post_status' => 'inherit',
                         'post_parent' => $post_id,
                         'post_date' => $post_date,
+                        'post_date_gmt' => get_gmt_from_date($post_date),
                     );
                     // Insert the attachment into the media library
                     $attach_id = wp_insert_attachment($attachment, $image_file, $post_id);
@@ -1631,6 +1632,7 @@ function move_main_file($attachment_id, $old_image_details, $new_image_details, 
                 wp_update_post(array(
                     'ID' => $attachment_id,
                     'post_date' => $post_date,
+                    'post_date_gmt' => get_gmt_from_date($post_date),
                 ));
 
                 // Update database #2 - image wp_postmeta, _wp_attachment_metadata (eg. [file] => post/client/clarity/2018/06/146343_photo-1486312338219-ce68d2c6f44d-4959-art.jpe)
