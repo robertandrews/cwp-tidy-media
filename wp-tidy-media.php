@@ -129,7 +129,7 @@ function get_tidy_media_settings()
  * - organize_post_img_by_post_slug: A boolean indicating whether to organize post images by post slug.
  * - domains_to_replace: A string containing domains to replace with the local site's URL.
  * - use_tidy_attachments: A boolean indicating whether to use the Tidy Attachments feature.
- * - use_tidy_body_media: A boolean indicating whether to use the Tidy Body Images feature.
+ * - use_tidy_body_media: A boolean indicating whether to use the Tidy Body Media feature.
  * - use_relative: A boolean indicating whether to use relative URLs.
  * - use_localise: A boolean indicating whether to localize URLs.
  * - use_delete: A boolean indicating whether to delete orphaned attachments.
@@ -335,9 +335,10 @@ $post_types = our_post_types();
                                                     <input type="checkbox" name="use_tidy_body_media"
                                                         id="use_tidy_body_media" value="1"
                                                         <?php checked($settings['use_tidy_body_media'], 1);?>>
-                                                    Tidy body image URLs
+                                                    Tidy body media URLs
                                                     <p class="description">Attachments of all local image URLs will be
-                                                        moved to your custom folder structure. <code>src</code> in post
+                                                        moved to your custom folder structure. <code>img src</code> and
+                                                        <code>a href</code> in post
                                                         body will be
                                                         updated accordingly.</p>
                                                 </label>
