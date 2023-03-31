@@ -59,7 +59,7 @@ function tidy_media_organizer_create_table()
         $pre_specified_values = array(
             array('setting_name' => 'organize_post_img_by_type', 'setting_value' => '1'),
             array('setting_name' => 'use_tidy_attachments', 'setting_value' => '1'),
-            array('setting_name' => 'use_tidy_body_imgs', 'setting_value' => '1'),
+            array('setting_name' => 'use_tidy_body_media', 'setting_value' => '1'),
             array('setting_name' => 'use_relative', 'setting_value' => '1'),
             array('setting_name' => 'use_localise', 'setting_value' => '1'),
             array('setting_name' => 'use_delete', 'setting_value' => '1'),
@@ -129,7 +129,7 @@ function get_tidy_media_settings()
  * - organize_post_img_by_post_slug: A boolean indicating whether to organize post images by post slug.
  * - domains_to_replace: A string containing domains to replace with the local site's URL.
  * - use_tidy_attachments: A boolean indicating whether to use the Tidy Attachments feature.
- * - use_tidy_body_imgs: A boolean indicating whether to use the Tidy Body Images feature.
+ * - use_tidy_body_media: A boolean indicating whether to use the Tidy Body Images feature.
  * - use_relative: A boolean indicating whether to use relative URLs.
  * - use_localise: A boolean indicating whether to localize URLs.
  * - use_delete: A boolean indicating whether to delete orphaned attachments.
@@ -149,7 +149,7 @@ function get_tidy_media_settings()
         $organize_post_img_by_post_slug = isset($settings_arr['organize_post_img_by_post_slug']) ? $settings_arr['organize_post_img_by_post_slug'] : 0;
         $domains_to_replace = isset($settings_arr['domains_to_replace']) ? $settings_arr['domains_to_replace'] : '';
         $use_tidy_attachments = isset($settings_arr['use_tidy_attachments']) ? $settings_arr['use_tidy_attachments'] : 0;
-        $use_tidy_body_imgs = isset($settings_arr['use_tidy_body_imgs']) ? $settings_arr['use_tidy_body_imgs'] : 0;
+        $use_tidy_body_media = isset($settings_arr['use_tidy_body_media']) ? $settings_arr['use_tidy_body_media'] : 0;
         $use_relative = isset($settings_arr['use_relative']) ? $settings_arr['use_relative'] : 0;
         $use_localise = isset($settings_arr['use_localise']) ? $settings_arr['use_localise'] : 0;
         $use_delete = isset($settings_arr['use_delete']) ? $settings_arr['use_delete'] : 0;
@@ -162,7 +162,7 @@ function get_tidy_media_settings()
             'organize_post_img_by_post_slug' => $organize_post_img_by_post_slug,
             'domains_to_replace' => $domains_to_replace,
             'use_tidy_attachments' => $use_tidy_attachments,
-            'use_tidy_body_imgs' => $use_tidy_body_imgs,
+            'use_tidy_body_media' => $use_tidy_body_media,
             'use_relative' => $use_relative,
             'use_localise' => $use_localise,
             'use_delete' => $use_delete,
@@ -234,7 +234,7 @@ function tidy_media_organizer_options_page()
                 // TODO: Use dynamic input entry/array consolidation
                 array('setting_name' => 'domains_to_replace', 'setting_value' => isset($_POST['domains_to_replace']) ? sanitize_text_field($_POST['domains_to_replace']) : ''),
                 array('setting_name' => 'use_tidy_attachments', 'setting_value' => isset($_POST['use_tidy_attachments']) ? sanitize_text_field($_POST['use_tidy_attachments']) : ''),
-                array('setting_name' => 'use_tidy_body_imgs', 'setting_value' => isset($_POST['use_tidy_body_imgs']) ? sanitize_text_field($_POST['use_tidy_body_imgs']) : ''),
+                array('setting_name' => 'use_tidy_body_media', 'setting_value' => isset($_POST['use_tidy_body_media']) ? sanitize_text_field($_POST['use_tidy_body_media']) : ''),
                 array('setting_name' => 'use_relative', 'setting_value' => isset($_POST['use_relative']) ? sanitize_text_field($_POST['use_relative']) : ''),
                 array('setting_name' => 'use_localise', 'setting_value' => isset($_POST['use_localise']) ? sanitize_text_field($_POST['use_localise']) : ''),
                 array('setting_name' => 'use_delete', 'setting_value' => isset($_POST['use_delete']) ? sanitize_text_field($_POST['use_delete']) : ''),
@@ -332,9 +332,9 @@ $post_types = our_post_types();
                                                 </label>
                                                 <br>
                                                 <label style="margin: 0.35em 0 0.5em!important; display: inline-block;">
-                                                    <input type="checkbox" name="use_tidy_body_imgs"
-                                                        id="use_tidy_body_imgs" value="1"
-                                                        <?php checked($settings['use_tidy_body_imgs'], 1);?>>
+                                                    <input type="checkbox" name="use_tidy_body_media"
+                                                        id="use_tidy_body_media" value="1"
+                                                        <?php checked($settings['use_tidy_body_media'], 1);?>>
                                                     Tidy body image URLs
                                                     <p class="description">Attachments of all local image URLs will be
                                                         moved to your custom folder structure. <code>src</code> in post
@@ -711,8 +711,8 @@ function do_saved_post($post_id)
             if ($settings['use_relative'] == 1) {
                 relative_body_imgs($post_id);
             }
-            if ($settings['use_tidy_body_imgs'] == 1) {
-                tidy_body_imgs($post_id);
+            if ($settings['use_tidy_body_media'] == 1) {
+                tidy_body_media($post_id);
             }
             if ($settings['use_tidy_attachments'] == 1) {
                 tidy_post_attachments($post_id);
@@ -1242,8 +1242,6 @@ function localise_remote_images($post_id)
 
 }
 
-get_att_obj_from_filepath('/wp-content/uploads/2017/05/The-Future-of-mCommerce-eCommerce-Playbook-v1.pdf');
-
 function get_attachment_obj_from_filepath($found_img_src)
 {
     /**
@@ -1519,7 +1517,7 @@ function update_body_img_urls($post_id, $post_att_id, $old_image_details, $new_i
  * This function will check for any posts which embed the just-updated image at its previous URL, and will update that
  * URL to the new location.
  * This does not run on the post which instigated the move, ie the sole post which is the post_parent of the attachment,
- * since this should have already been updated by tidy_body_imgs().
+ * since this should have already been updated by tidy_body_media().
  *
  * @param int $post_id The ID of the starting post.
  * @param int $post_att_id The ID of the attachment post for the starting post.
