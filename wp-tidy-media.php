@@ -65,6 +65,7 @@ function tidy_media_organizer_create_table()
             array('setting_name' => 'use_delete', 'setting_value' => '1'),
             array('setting_name' => 'use_log', 'setting_value' => '1'),
             array('setting_name' => 'run_on_save', 'setting_value' => '1'),
+            array('setting_name' => 'organize_term_attachments', 'setting_value' => '1'),
         );
         foreach ($pre_specified_values as $value) {
             $wpdb->insert($table_name, $value);
@@ -155,6 +156,7 @@ function get_tidy_media_settings()
         $use_delete = isset($settings_arr['use_delete']) ? $settings_arr['use_delete'] : 0;
         $use_log = isset($settings_arr['use_log']) ? $settings_arr['use_log'] : 0;
         $run_on_save = isset($settings_arr['run_on_save']) ? $settings_arr['run_on_save'] : 0;
+        $organize_term_attachments = isset($settings_arr['organize_term_attachments']) ? $settings_arr['organize_term_attachments'] : 0;
 
         return array(
             'organize_post_img_by_type' => $organize_post_img_by_type,
@@ -168,6 +170,7 @@ function get_tidy_media_settings()
             'use_delete' => $use_delete,
             'use_log' => $use_log,
             'run_on_save' => $run_on_save,
+            'organize_term_attachments' => $organize_term_attachments,
         );
     } else {
         // Show an error message
@@ -240,6 +243,7 @@ function tidy_media_organizer_options_page()
                 array('setting_name' => 'use_delete', 'setting_value' => isset($_POST['use_delete']) ? sanitize_text_field($_POST['use_delete']) : ''),
                 array('setting_name' => 'use_log', 'setting_value' => isset($_POST['use_log']) ? sanitize_text_field($_POST['use_log']) : ''),
                 array('setting_name' => 'run_on_save', 'setting_value' => isset($_POST['run_on_save']) ? sanitize_text_field($_POST['run_on_save']) : ''),
+                array('setting_name' => 'organize_term_attachments', 'setting_value' => isset($_POST['organize_term_attachments']) ? sanitize_text_field($_POST['organize_term_attachments']) : ''),
             );
             foreach ($settings as $setting) {
                 $existing_row = $wpdb->get_row("SELECT * FROM $table_name WHERE setting_name = '{$setting['setting_name']}'");
@@ -287,9 +291,38 @@ function tidy_media_organizer_options_page()
                 <div id="post-body-content">
                     <div class="meta-box-sortables ui-sortable">
 
+
                         <div class="postbox">
                             <div class="postbox-header">
-                                <h2>Components</h2>
+                                <h2>System settings</h2>
+                            </div>
+                            <div class="inside">
+                                <table class="form-table">
+                                    <tbody>
+                                        <tr>
+                                            <th scope="row">
+                                                <label for="organize_post_img_by_type">Logging</label>
+                                            </th>
+                                            <td>
+                                                <label style="margin: 0.35em 0 0.5em!important; display: inline-block;">
+                                                    <input type="checkbox" name="use_log" id="use_log" value="1"
+                                                        <?php checked($settings['use_log'], 1);?>>
+                                                    Log operations
+                                                    <p class="description">Keep a log of all operations in
+                                                        <code><?php echo plugin_dir_path(__FILE__); ?><a href="<?php echo plugins_url('/', __FILE__); ?>/wp-tidy-media.log" target="_new">wp-tidy-media.log</a></code>
+                                                    </p>
+                                                </label>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+
+                        <div class="postbox">
+                            <div class="postbox-header">
+                                <h2>Post attachment settings</h2>
                             </div>
                             <div class="inside">
                                 <table class="form-table">
@@ -340,7 +373,8 @@ $post_types = our_post_types();
                                                         moved to your custom folder structure. <code>img src</code> and
                                                         <code>a href</code> in post
                                                         body will be
-                                                        updated accordingly.</p>
+                                                        updated accordingly.
+                                                    </p>
                                                 </label>
                                                 <br>
                                             </td>
@@ -386,21 +420,6 @@ $post_types = our_post_types();
                                                 <br>
                                             </td>
                                         </tr>
-                                        <tr>
-                                            <th scope="row">
-                                                <label for="organize_post_img_by_type">Logging</label>
-                                            </th>
-                                            <td>
-                                                <label style="margin: 0.35em 0 0.5em!important; display: inline-block;">
-                                                    <input type="checkbox" name="use_log" id="use_log" value="1"
-                                                        <?php checked($settings['use_log'], 1);?>>
-                                                    Log operations
-                                                    <p class="description">Keep a log of all operations in
-                                                        <code><?php echo plugin_dir_path(__FILE__); ?><a href="<?php echo plugins_url('/', __FILE__); ?>/wp-tidy-media.log" target="_new">wp-tidy-media.log</a></code>
-                                                    </p>
-                                                </label>
-                                            </td>
-                                        </tr>
                                     </tbody>
                                 </table>
                             </div>
@@ -410,7 +429,7 @@ $post_types = our_post_types();
                         <!-- Post media folders -->
                         <div class="postbox">
                             <div class="postbox-header">
-                                <h2>Custom attachment filepath</h2>
+                                <h2>Post attachment custom filepath</h2>
                             </div>
                             <div class="inside">
 
@@ -538,6 +557,56 @@ if (get_option('uploads_use_yearmonth_folders') === '1') {
                                                 <p class="description">Separate multiple hostnames by comma (eg.
                                                     "http://www.oldsite.com, https://testsite:8080") - no trailing
                                                     slash.</p>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+
+                        <div class="postbox">
+                            <div class="postbox-header">
+                                <h2>Term attachment settings</h2>
+                            </div>
+                            <div class="inside">
+                                <table class="form-table">
+                                    <tbody>
+                                        <tr>
+                                            <th scope="row">
+                                                <label for="organize_term_attachments">Operation</label>
+                                            </th>
+                                            <td>
+                                                <label style="margin: 0.35em 0 0.5em!important; display: inline-block;">
+                                                    <input type="checkbox" name="organize_term_attachments"
+                                                        id="organize_term_attachments" value="1"
+                                                        <?php checked($settings['organize_term_attachments'], 1);?>>
+                                                    Tidy media attached to taxonomy terms
+                                                    <p class="description">Attachments of any IDs found referenced in a
+                                                        term's
+                                                        meta fields will be organised in corresponding folders.</p>
+                                                    <p class="description">Fires on <code>edit_term</code> for these
+                                                        taxonomies:
+                                                        <?php
+// list taxonomies
+    $taxonomies = get_taxonomies(array('public' => true));
+
+    echo implode(', ', array_map(function ($taxonomy) {
+        return '<code>' . $taxonomy . '</code>';
+    }, $taxonomies));
+    ?>.
+                                                    </p>
+                                                </label>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th scope="row">
+                                                <label>Preview:</label>
+                                            </th>
+                                            <td>
+                                                <div><?php echo esc_js(wp_upload_dir()['basedir']); ?>/<span
+                                                        style="color:#d63638">taxonomy</span>/<span
+                                                        style="color:#00a32a">taxonomy_slug</span>/image.jpeg</div>
                                             </td>
                                         </tr>
                                     </tbody>
@@ -1317,6 +1386,7 @@ function old_image_details($post_attachment)
      * @param WP_Post $post_attachment The WordPress post object representing the attachment (i.e., the image).
      * @return array An associative array containing details of the image's old location (e.g., 'dirname', 'filepath', 'subdir', 'filename', 'guid').
      */
+
     $filepath = get_attached_file($post_attachment->ID);
     $upload_dir = wp_upload_dir();
     $subdir = str_replace($upload_dir['basedir'], '', dirname($filepath));
@@ -1635,7 +1705,20 @@ function move_main_file($attachment_id, $old_image_details, $new_image_details, 
 
             // Move file
             do_my_log("Move to " . $new_image_details['filepath']);
-            $result = rename($old_image_details['filepath'], $new_image_details['filepath']);
+
+            // Increment filename if duplicate already exists
+            $counter = 0;
+            $destination = $new_image_details['filepath'];
+            while (file_exists($destination)) {
+                // If the file already exists, generate a new file name with a counter.
+                $counter++;
+                $path_parts = pathinfo($new_image_details['filepath']);
+                $destination = $path_parts['dirname'] . '/' . $path_parts['filename'] . '_' . $counter . '.' . $path_parts['extension'];
+            }
+            $path_parts = pathinfo($destination);
+
+            $result = rename($old_image_details['filepath'], $destination);
+            // $result = rename($old_image_details['filepath'], $new_image_details['filepath']);
 
             if ($result) {
                 do_my_log("✅ Moved: " . $result);
@@ -1643,18 +1726,20 @@ function move_main_file($attachment_id, $old_image_details, $new_image_details, 
 
                 // B. Update database
                 // Update database #1 - image wp_postmeta, _wp_attached_file (eg. post/client/clarity/2018/06/146343_photo-1486312338219-ce68d2c6f44d-4959-art.jpe)
-                update_post_meta($attachment_id, '_wp_attached_file', trailingslashit($new_image_details['subdir']) . $new_image_details['filename']);
-                // Set attachment date to post's datae
-                $post_date = get_post_field('post_date', $post_id);
-                wp_update_post(array(
-                    'ID' => $attachment_id,
-                    'post_date' => $post_date,
-                    'post_date_gmt' => get_gmt_from_date($post_date),
-                ));
+                update_post_meta($attachment_id, '_wp_attached_file', trailingslashit($new_image_details['subdir']) . $filename = $path_parts['filename'] . '.' . $path_parts['extension']);
+                // Set attachment date to post's date (if post_id was passed)
+                if ($post_id) {
+                    $post_date = get_post_field('post_date', $post_id);
+                    wp_update_post(array(
+                        'ID' => $attachment_id,
+                        'post_date' => $post_date,
+                        'post_date_gmt' => get_gmt_from_date($post_date),
+                    ));
+                }
 
                 // Update database #2 - image wp_postmeta, _wp_attachment_metadata (eg. [file] => post/client/clarity/2018/06/146343_photo-1486312338219-ce68d2c6f44d-4959-art.jpe)
                 $attachment_metadata = wp_get_attachment_metadata($attachment_id);
-                $attachment_metadata['file'] = trailingslashit($new_image_details['subdir']) . $new_image_details['filename'];
+                $attachment_metadata['file'] = trailingslashit($new_image_details['subdir']) . $filename = $path_parts['filename'] . '.' . $path_parts['extension'];
                 wp_update_attachment_metadata($attachment_id, $attachment_metadata);
 
                 // Update database #3 - image wp_postmeta, guid - does not alter hostname part
@@ -1686,7 +1771,10 @@ function move_main_file($attachment_id, $old_image_details, $new_image_details, 
 
                 my_trigger_notice(1);
                 do_my_log("Database fields should now be updated.");
-                update_body_img_urls($post_id, $attachment_id, $old_image_details, $new_image_details);
+                // If this was a post, update any body image URLs
+                if ($post_id) {
+                    update_body_img_urls($post_id, $attachment_id, $old_image_details, $new_image_details);
+                }
 
                 return true;
             } else {
@@ -1734,7 +1822,14 @@ function move_sizes_files($attachment_id, $old_image_details, $new_image_details
         foreach ($attachment_metadata['sizes'] as $size => $data) {
             // Generate the old and new filepaths for size variants
             $old_size_filename = trailingslashit($old_image_details['dirname']) . $data['file'];
-            $new_size_filename = trailingslashit($new_image_details['dirname']) . $data['file'];
+            // $new_size_filename = trailingslashit($new_image_details['dirname']) . $data['file'];
+            // $correct_new_size_filename = $new_image_details['filename_noext'] . '-' . $data['width'] . 'x' . $data['height'] . '.' . $new_image_details['extension'];
+            $correct_new_size_filename = pathinfo($new_image_details['filename'], PATHINFO_FILENAME) . '-' . $data['width'] . 'x' . $data['height'] . '.' . pathinfo($new_image_details['filename'], PATHINFO_EXTENSION);
+
+            $new_size_filename = trailingslashit($new_image_details['dirname']) . $correct_new_size_filename;
+
+            do_my_log("Old: " . $old_size_filename);
+            do_my_log("New: " . $new_size_filename);
 
             // Skip files that have already been moved
             if (in_array($old_size_filename, $moved_files)) {
@@ -1749,6 +1844,24 @@ function move_sizes_files($attachment_id, $old_image_details, $new_image_details
                 $moved_files[] = $old_size_filename;
                 // update_body_img_urls($post_id, $attachment_id, $old_image_details, $new_image_details);
                 do_my_log("✅ Moved $size: " . $data['file']);
+                foreach ($attachment_metadata['sizes'] as $size => $data) {
+                    // $correct_new_size_filename = $new_image_details['filename_noext'] . '-' . $data['width'] . 'x' . $data['height'] . '.' . $new_image_details['extension'];
+                    $correct_new_size_filename = pathinfo($new_image_details['filename'], PATHINFO_FILENAME) . '-' . $data['width'] . 'x' . $data['height'] . '.' . pathinfo($new_image_details['filename'], PATHINFO_EXTENSION);
+
+                    // update the attachment metadata's size [file] field to be $correct_new_size_filename
+                    $attachment_metadata['sizes'][$size]['file'] = $correct_new_size_filename;
+                    wp_update_attachment_metadata($attachment_id, $attachment_metadata);
+                }
+                // Update the attachment title to be the term name
+                // if $new_image_details['title'] is not empty
+
+                if (!empty($new_image_details['title'])) {
+                    $attachment = array(
+                        'ID' => $attachment_id,
+                        'post_title' => $new_image_details['title'],
+                    );
+                    wp_update_post($attachment);
+                }
             } else {
                 do_my_log("❌ Failed to move $size: " . $data['file']);
             }
@@ -1805,7 +1918,20 @@ function move_original_file($attachment_id, $old_image_details, $new_image_detai
         // Do the move
         if (file_exists($old_original_filename)) {
             // do_my_log("File exists.");
-            $result = rename($old_original_filename, $new_original_filename);
+
+            // Increment filename if duplicate already exists
+            $counter = 0;
+            $destination = $new_original_filename;
+            while (file_exists($destination)) {
+                // If the file already exists, generate a new file name with a counter.
+                $counter++;
+                $path_parts = pathinfo($new_original_filename);
+                $destination = $path_parts['dirname'] . '/' . $path_parts['filename'] . '_' . $counter . '.' . $path_parts['extension'];
+            }
+            // $path_parts = pathinfo($destination);
+
+            $result = rename($old_image_details['filepath'], $destination);
+            // $result = rename($old_original_filename, $new_original_filename);
             if ($result) {
                 // Move succeeded
                 do_my_log("✅ Moved " . $old_original_filename . " to " . $new_original_filename);
@@ -2166,4 +2292,188 @@ function my_admin_notices()
 }
 add_action('admin_notices', 'my_admin_notices');
 
-?>
+// Support taxonomy term file checking on edit_term hook, if user has enabled it
+$settings = get_tidy_media_settings();
+if ($settings['organize_term_attachments'] == 1) {
+    add_action('edit_term', 'do_edit_term', 10, 3);
+    add_action('create_term', 'do_edit_term', 10, 3);
+
+}
+function do_edit_term($term_id, $tt_id, $taxonomy)
+{
+    /**
+     * Check Edited Term
+     *
+     * @param int $term_id The ID of the term to edit.
+     * @param int $tt_id The taxonomy term ID.
+     * @param string $taxonomy The taxonomy name.
+     * @return void
+     */
+
+    do_my_log("do_edit_term()");
+
+    // Get served term and its meta
+    $term = get_term($term_id, $taxonomy);
+    $term_meta = get_term_meta($term_id);
+
+    // Go through term's wp_termmeta records, looking for attachment IDs
+    foreach ($term_meta as $key => $value) {
+        // do_my_log("Term Meta: " . $key . " = " . $value[0]);
+        // if value 0 is an integer
+        // TODO: Functionalise this repeating block
+        if (is_numeric($value[0])) {
+            $number_found = $value[0];
+            do_my_log($key . " value is numeric: " . $number_found);
+            // If the number corresponds to an actual attachment, assess the file for moving
+            if (check_id_for_attachment($number_found)) {
+                do_my_log("Found attachment against " . $key . " - " . $number_found);
+                $attachment_path = get_attached_file($number_found);
+                $post_attachment = get_post($number_found);
+                term_img_move_controller($post_attachment, $term, $key);
+            }
+        } else {
+            // do_my_log($key . " value is not numeric");
+            if (is_serialized($value[0])) {
+                do_my_log($key . " value is serialized");
+                // unserialise it
+                $unserialized_meta_value = unserialize($value[0]);
+                foreach ($unserialized_meta_value as $key2 => $value2) {
+                    // do_my_log("Unserialized Meta: " . $key2 . " = " . $value2);
+                    // When single photos is used, CMB2 stores its ID as a value
+                    // TODO: Functionalise this repeating block
+                    if (is_numeric($value2)) {
+                        $number_found = $value2;
+                        do_my_log($key2 . " value is numeric: " . $number_found);
+                        // If the number corresponds to an actual attachment, assess the file for moving
+                        if (check_id_for_attachment($number_found)) {
+                            do_my_log("Found attachment against " . $key2 . " - " . $number_found);
+                            $attachment_path = get_attached_file($number_found);
+                            $post_attachment = get_post($number_found);
+                            term_img_move_controller($post_attachment, $term, $key);
+                        }
+                    }
+                    // When multiple photos are used, CMB2 stores their IDs as keys, with URLs as values
+                    // TODO: Functionalise this repeating block
+                    if (is_numeric($key2)) {
+                        $number_found = $key2;
+                        do_my_log($key2 . " value is numeric: " . $number_found);
+                        // If the number corresponds to an actual attachment, assess the file for moving
+                        if (check_id_for_attachment($number_found)) {
+                            do_my_log("Found attachment against " . $key2 . " - " . $number_found);
+                            $attachment_path = get_attached_file($number_found);
+                            $post_attachment = get_post($number_found);
+                            term_img_move_controller($post_attachment, $term, $key);
+                        }
+                    }
+
+                }
+
+            }
+        }
+
+    }
+
+}
+
+function check_id_for_attachment($number_found)
+{
+    /**
+     * Check If ID Is Attachment
+     *
+     * @param int $number_found The ID to check
+     * @return bool True if the ID is an attachment; false otherwise.
+     */
+
+    do_my_log("check_id_for_attachment()");
+
+    // check if an attachment (post of type 'attachment') exists with $number_found as its ID
+    $args = array(
+        'post_type' => 'attachment',
+        'post_status' => 'inherit',
+        'posts_per_page' => 1,
+        'post__in' => array($number_found),
+    );
+    $query = new WP_Query($args);
+    // If there are any results, the number is of an attachment
+    if ($query->have_posts()) {
+        return true;
+        // If not, this is not an attachment
+    } else {
+        return false;
+    }
+}
+
+function new_term_image_details($post_attachment, $term, $key)
+{
+    /**
+     * General Term Image Details
+     *
+     * Generate an array of details for a new term image.
+     *
+     * @param WP_Post $post_attachment The attachment post to generate the image details from.
+     * @param WP_Term $term The term the image is associated with.
+     * @return array An array containing details for the new term image.
+     */
+
+    $filepath = get_attached_file($post_attachment->ID);
+    $upload_dir = wp_upload_dir();
+
+    $subdir = 'taxonomy/' . $term->taxonomy;
+    // add to subdir
+    if ($key) {
+        $subdir .= '/' . $key;
+    }
+
+    // Ensure term slug becomes filename, but retain original extension
+    $filename = pathinfo(basename($filepath), PATHINFO_FILENAME); // Get the filename without extension
+    $extension = pathinfo(basename($filepath), PATHINFO_EXTENSION); // Get the file extension
+    $new_filename = $term->slug . '.' . $extension; // Concatenate the new string with the extension
+    $new_filepath = str_replace($filename, $new_filename, $filepath); // Replace the old filename with the new one
+
+    $url_abs = trailingslashit(wp_upload_dir()['baseurl']) . trailingslashit($subdir) . $new_filename;
+    $url_rel = str_replace(home_url(), '', $url_abs);
+
+    // Populate bits of $new_image
+    $new_image = array();
+    $new_image['subdir'] = $subdir; // post/client/contentnext/2011/12
+    // $new_image['subdir_stem'] = $new_subdir_stem; // post/client/contentnext
+    $new_image['filepath'] = trailingslashit(trailingslashit($upload_dir['basedir']) . $subdir) . $new_filename; // /Users/robert/Sites/context.local/wp-content/uploads/post/client/contentnext/2011/12/netflix-on-tv-in-living-room-o.jpg
+    $new_image['dirname'] = trailingslashit($upload_dir['basedir']) . $subdir; // /Users/robert/Sites/context.local/wp-content/uploads/post/client/contentnext/2011/12/
+    $new_image['filename_noext'] = $filename;
+    $new_image['extension'] = $extension;
+    $new_image['filename'] = $new_filename; // netflix-on-tv-in-living-room-o.jpg
+    $new_image['guid'] = trailingslashit(trailingslashit($upload_dir['baseurl']) . $subdir) . $new_filename; // /Users/robert/Sites/context.local/wp-content/uploads/post/client/contentnext/2011/12/netflix-on-tv-in-living-room-o.jpg
+    $new_image['url_abs'] = $url_abs;
+    $new_image['url_rel'] = $url_rel;
+    $new_image['title'] = $term->name;
+
+    return $new_image;
+
+}
+
+function term_img_move_controller($term_attachment, $term, $key)
+{
+
+    $old_term_image_details = old_image_details($term_attachment);
+    // print_r($old_term_image_details);
+    $new_term_image_details = new_term_image_details($term_attachment, $term, $key);
+    // print_r($new_term_image_details);
+
+    // Check if need to move
+    if ($old_term_image_details['filepath'] == $new_term_image_details['filepath']) {
+        do_my_log("👍🏻 Path ok, no need to move.");
+        return false;
+    } else {
+        do_my_log("🚨 Path looks incorrect - " . $old_term_image_details['filepath']);
+        // Wrong location - move it, and update post and metadata
+        move_main_file($term_attachment->ID, $old_term_image_details, $new_term_image_details, null);
+
+        $new_term_image_details = new_term_image_details($term_attachment, $term, $key);
+        move_sizes_files($term_attachment->ID, $old_term_image_details, $new_term_image_details, null);
+        move_original_file($term_attachment->ID, $old_term_image_details, $new_term_image_details);
+
+    }
+
+}
+
+// TODO: Delete ref'd images when term is deleted - delete_term
