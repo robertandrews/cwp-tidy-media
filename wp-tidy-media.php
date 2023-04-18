@@ -1387,11 +1387,11 @@ function old_image_details($post_attachment)
      * @return array An associative array containing details of the image's old location (e.g., 'dirname', 'filepath', 'subdir', 'filename', 'guid').
      */
 
-    $filepath = get_attached_file($post_attachment->ID);
+    $filepath = get_attached_file($post_attachment->ID); // TODO: Stop this happening on post deletion
     $upload_dir = wp_upload_dir();
     $subdir = str_replace($upload_dir['basedir'], '', dirname($filepath));
     $subdir = ltrim($subdir, '/');
-    $guid = $post_attachment->guid;
+    $guid = $post_attachment->guid; // TODO: Stop this happening on post deletion
     $url_abs = trailingslashit(wp_upload_dir()['baseurl']) . trailingslashit($subdir) . basename($filepath);
     $url_rel = str_replace(home_url(), '', $url_abs);
 
@@ -1453,10 +1453,25 @@ function new_image_details($post_id, $post_attachment)
     if ($organize_post_img_by_taxonomy != '') {
         $new_subdir .= '/' . $organize_post_img_by_taxonomy;
         $post_terms = get_the_terms($post_id, $organize_post_img_by_taxonomy);
-        // print_r($post_terms);
+
         if ($post_terms) {
-            $new_subdir .= '/' . $post_terms[0]->slug;
-            $new_subdir_stem = $new_subdir;
+            // Get the last term in the array to use as the current term
+            $current_term = end($post_terms);
+
+            // Get an array of the parent term IDs
+            $parent_ids = get_ancestors($current_term->term_id, $organize_post_img_by_taxonomy);
+
+            // Add the slugs of all the parent terms to the subdirectory
+            foreach ($parent_ids as $parent_id) {
+                $parent_term = get_term($parent_id, $organize_post_img_by_taxonomy);
+                $new_subdir .= '/' . $parent_term->slug;
+            }
+
+            // Add the slug of the current term to the subdirectory
+            $new_subdir .= '/' . $current_term->slug;
+
+            // Set the stem to the subdirectory without the current term slug
+            $new_subdir_stem = implode('/', array_slice(explode('/', $new_subdir), 0, -1));
         } else {
             $new_subdir .= '/' . 'misc';
             $new_subdir_stem = $new_subdir;
@@ -1707,13 +1722,14 @@ function move_main_file($attachment_id, $old_image_details, $new_image_details, 
             do_my_log("Move to " . $new_image_details['filepath']);
 
             // Increment filename if duplicate already exists
-            $counter = 0;
+            // $counter = 0;
             $destination = $new_image_details['filepath'];
             while (file_exists($destination)) {
                 // If the file already exists, generate a new file name with a counter.
-                $counter++;
+                // $counter++;
                 $path_parts = pathinfo($new_image_details['filepath']);
-                $destination = $path_parts['dirname'] . '/' . $path_parts['filename'] . '_' . $counter . '.' . $path_parts['extension'];
+                // $destination = $path_parts['dirname'] . '/' . $path_parts['filename'] . '_' . $counter . '.' . $path_parts['extension'];
+                $destination = $path_parts['dirname'] . '/' . $path_parts['filename'] . '-' . $post_id . '.' . $path_parts['extension'];
             }
             $path_parts = pathinfo($destination);
 
@@ -1810,50 +1826,43 @@ function move_sizes_files($attachment_id, $old_image_details, $new_image_details
 
     do_my_log("🔧 move_sizes_files() - " . $attachment_id . "...");
 
-    // Get the _wp_attachment_metadata serialised array
     $attachment_metadata = wp_get_attachment_metadata($attachment_id);
 
-    // Keep track of files that have already been moved
     $moved_files = array();
     $num_sizes = 0;
 
-    // Loop through each size variant
     if (isset($attachment_metadata['sizes'])) {
         foreach ($attachment_metadata['sizes'] as $size => $data) {
-            // Generate the old and new filepaths for size variants
             $old_size_filename = trailingslashit($old_image_details['dirname']) . $data['file'];
-            // $new_size_filename = trailingslashit($new_image_details['dirname']) . $data['file'];
-            // $correct_new_size_filename = $new_image_details['filename_noext'] . '-' . $data['width'] . 'x' . $data['height'] . '.' . $new_image_details['extension'];
-            $correct_new_size_filename = pathinfo($new_image_details['filename'], PATHINFO_FILENAME) . '-' . $data['width'] . 'x' . $data['height'] . '.' . pathinfo($new_image_details['filename'], PATHINFO_EXTENSION);
+
+            // Use the original attachment's extension instead of the mimetype
+            $correct_new_size_filename = pathinfo($new_image_details['filename'], PATHINFO_FILENAME) . '-' . $post_id . '-' . $data['width'] . 'x' . $data['height'] . '.' . $original_attachment_extension;
 
             $new_size_filename = trailingslashit($new_image_details['dirname']) . $correct_new_size_filename;
+
+            if (file_exists($new_size_filename)) {
+                do_my_log("⚠️ File already exists with the same name: " . $new_size_filename);
+            }
 
             do_my_log("Old: " . $old_size_filename);
             do_my_log("New: " . $new_size_filename);
 
-            // Skip files that have already been moved
             if (in_array($old_size_filename, $moved_files)) {
                 continue;
             }
 
-            // Move the file
             $result = rename($old_size_filename, $new_size_filename);
             if ($result) {
                 $num_sizes++;
-                // Add the moved file to the list
                 $moved_files[] = $old_size_filename;
-                // update_body_img_urls($post_id, $attachment_id, $old_image_details, $new_image_details);
                 do_my_log("✅ Moved $size: " . $data['file']);
-                foreach ($attachment_metadata['sizes'] as $size => $data) {
-                    // $correct_new_size_filename = $new_image_details['filename_noext'] . '-' . $data['width'] . 'x' . $data['height'] . '.' . $new_image_details['extension'];
-                    $correct_new_size_filename = pathinfo($new_image_details['filename'], PATHINFO_FILENAME) . '-' . $data['width'] . 'x' . $data['height'] . '.' . pathinfo($new_image_details['filename'], PATHINFO_EXTENSION);
 
-                    // update the attachment metadata's size [file] field to be $correct_new_size_filename
+                foreach ($attachment_metadata['sizes'] as $size => $data) {
+                    $correct_new_size_filename = pathinfo($new_image_details['filename'], PATHINFO_FILENAME) . '-' . $post_id . '-' . $data['width'] . 'x' . $data['height'] . '.' . $original_attachment_extension;
+
                     $attachment_metadata['sizes'][$size]['file'] = $correct_new_size_filename;
                     wp_update_attachment_metadata($attachment_id, $attachment_metadata);
                 }
-                // Update the attachment title to be the term name
-                // if $new_image_details['title'] is not empty
 
                 if (!empty($new_image_details['title'])) {
                     $attachment = array(
@@ -1866,17 +1875,14 @@ function move_sizes_files($attachment_id, $old_image_details, $new_image_details
                 do_my_log("❌ Failed to move $size: " . $data['file']);
             }
         }
-
     }
 
     do_my_log("🧮 Sizes handled: " . $num_sizes);
 
-    // Return true if at least one file was moved
     return !empty($moved_files);
-
 }
 
-function move_original_file($attachment_id, $old_image_details, $new_image_details)
+function move_original_file($attachment_id, $old_image_details, $new_image_details, $post_id)
 {
     /**
      * Move Original File
@@ -1920,13 +1926,14 @@ function move_original_file($attachment_id, $old_image_details, $new_image_detai
             // do_my_log("File exists.");
 
             // Increment filename if duplicate already exists
-            $counter = 0;
+            // $counter = 0;
             $destination = $new_original_filename;
             while (file_exists($destination)) {
                 // If the file already exists, generate a new file name with a counter.
-                $counter++;
+                // $counter++;
                 $path_parts = pathinfo($new_original_filename);
-                $destination = $path_parts['dirname'] . '/' . $path_parts['filename'] . '_' . $counter . '.' . $path_parts['extension'];
+                // $destination = $path_parts['dirname'] . '/' . $path_parts['filename'] . '_' . $counter . '.' . $path_parts['extension'];
+                $destination = $path_parts['dirname'] . '/' . $path_parts['filename'] . '-' . $post_id . '.' . $path_parts['extension'];
             }
             // $path_parts = pathinfo($destination);
 
