@@ -1836,7 +1836,8 @@ function move_sizes_files($attachment_id, $old_image_details, $new_image_details
             $old_size_filename = trailingslashit($old_image_details['dirname']) . $data['file'];
 
             // Use the original attachment's extension instead of the mimetype
-            $correct_new_size_filename = pathinfo($new_image_details['filename'], PATHINFO_FILENAME) . '-' . $post_id . '-' . $data['width'] . 'x' . $data['height'] . '.' . $original_attachment_extension;
+            $path_parts = pathinfo($old_size_filename);
+            $correct_new_size_filename = pathinfo($new_image_details['filename'], PATHINFO_FILENAME) . /*'-' . $post_id . */'-' . $data['width'] . 'x' . $data['height'] . '.' . $path_parts['extension'];
 
             $new_size_filename = trailingslashit($new_image_details['dirname']) . $correct_new_size_filename;
 
@@ -1858,7 +1859,7 @@ function move_sizes_files($attachment_id, $old_image_details, $new_image_details
                 do_my_log("✅ Moved $size: " . $data['file']);
 
                 foreach ($attachment_metadata['sizes'] as $size => $data) {
-                    $correct_new_size_filename = pathinfo($new_image_details['filename'], PATHINFO_FILENAME) . '-' . $post_id . '-' . $data['width'] . 'x' . $data['height'] . '.' . $original_attachment_extension;
+                    $correct_new_size_filename = pathinfo($new_image_details['filename'], PATHINFO_FILENAME) . /*'-' . $post_id .*/'-' . $data['width'] . 'x' . $data['height'] . '.' . $path_parts['extension'];
 
                     $attachment_metadata['sizes'][$size]['file'] = $correct_new_size_filename;
                     wp_update_attachment_metadata($attachment_id, $attachment_metadata);
