@@ -1938,7 +1938,7 @@ function move_original_file($attachment_id, $old_image_details, $new_image_detai
             }
             // $path_parts = pathinfo($destination);
 
-            $result = rename($old_image_details['filepath'], $destination);
+            $result = rename($old_original_filename, $destination);
             // $result = rename($old_original_filename, $new_original_filename);
             if ($result) {
                 // Move succeeded
