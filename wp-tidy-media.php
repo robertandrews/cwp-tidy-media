@@ -1841,11 +1841,9 @@ function move_sizes_files($attachment_id, $old_image_details, $new_image_details
             $new_size_filename = trailingslashit($new_image_details['dirname']) . $correct_new_size_filename;
 
             $destination = $new_size_filename;
-            $counter = 1;
             while (file_exists($destination)) {
                 $path_parts = pathinfo($correct_new_size_filename);
-                $destination = trailingslashit($new_image_details['dirname']) . pathinfo($correct_new_size_filename, PATHINFO_FILENAME) . '-' . $post_id . '-' . $data['width'] . 'x' . $data['height'] . '-' . $counter . '.' . $path_parts['extension'];
-                $counter++;
+                $destination = trailingslashit($new_image_details['dirname']) . pathinfo($new_image_details['filename'], PATHINFO_FILENAME) . '-' . $post_id . '-' . $data['width'] . 'x' . $data['height'] . '.' . $path_parts['extension'];
             }
 
             do_my_log("Old: " . $old_size_filename);
