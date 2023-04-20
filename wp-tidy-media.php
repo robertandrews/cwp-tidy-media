@@ -1835,26 +1835,17 @@ function move_sizes_files($attachment_id, $old_image_details, $new_image_details
         foreach ($attachment_metadata['sizes'] as $size => $data) {
             $old_size_filename = trailingslashit($old_image_details['dirname']) . $data['file'];
 
-            // Use the original attachment's extension instead of the mimetype
             $path_parts = pathinfo($old_size_filename);
-            $correct_new_size_filename = pathinfo($new_image_details['filename'], PATHINFO_FILENAME) . /*'-' . $post_id . */'-' . $data['width'] . 'x' . $data['height'] . '.' . $path_parts['extension'];
+            $correct_new_size_filename = pathinfo($new_image_details['filename'], PATHINFO_FILENAME) . '-' . $data['width'] . 'x' . $data['height'] . '.' . $path_parts['extension'];
 
             $new_size_filename = trailingslashit($new_image_details['dirname']) . $correct_new_size_filename;
 
-            /*
-            if (file_exists($new_size_filename)) {
-            do_my_log("⚠️ File already exists with the same name: " . $new_size_filename);
-            }
-             */
             $destination = $new_size_filename;
+            $counter = 1;
             while (file_exists($destination)) {
-                // If the file already exists, generate a new file name with a counter.
-                // $counter++;
-                $path_parts = pathinfo($new_size_filename);
-                // #1 -- $destination = $path_parts['dirname'] . '/' . $path_parts['filename'] . '_' . $counter . '.' . $path_parts['extension'];
-                // #2 -- $destination = $path_parts['dirname'] . '/' . $path_parts['filename'] . '-' . $post_id . '-' . $data['width'] . 'x' . $data['height'] . '.' . $path_parts['extension'];
-                $destination = trailingslashit($new_image_details['dirname']) . pathinfo($new_image_details['filename'], PATHINFO_FILENAME) . '-' . $post_id . '-' . $data['width'] . 'x' . $data['height'] . '.' . $path_parts['extension'];
-
+                $path_parts = pathinfo($correct_new_size_filename);
+                $destination = trailingslashit($new_image_details['dirname']) . pathinfo($correct_new_size_filename, PATHINFO_FILENAME) . '-' . $post_id . '-' . $data['width'] . 'x' . $data['height'] . '-' . $counter . '.' . $path_parts['extension'];
+                $counter++;
             }
 
             do_my_log("Old: " . $old_size_filename);
@@ -1872,7 +1863,7 @@ function move_sizes_files($attachment_id, $old_image_details, $new_image_details
                 do_my_log("✅ Moved $size: " . $data['file']);
 
                 foreach ($attachment_metadata['sizes'] as $size => $data) {
-                    $correct_new_size_filename = pathinfo($new_image_details['filename'], PATHINFO_FILENAME) . /*'-' . $post_id .*/'-' . $data['width'] . 'x' . $data['height'] . '.' . $path_parts['extension'];
+                    $correct_new_size_filename = pathinfo($new_image_details['filename'], PATHINFO_FILENAME) . '-' . $data['width'] . 'x' . $data['height'] . '.' . $path_parts['extension'];
 
                     $attachment_metadata['sizes'][$size]['file'] = $correct_new_size_filename;
                     wp_update_attachment_metadata($attachment_id, $attachment_metadata);
