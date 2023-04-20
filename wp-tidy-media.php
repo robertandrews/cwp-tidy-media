@@ -1841,18 +1841,31 @@ function move_sizes_files($attachment_id, $old_image_details, $new_image_details
 
             $new_size_filename = trailingslashit($new_image_details['dirname']) . $correct_new_size_filename;
 
+            /*
             if (file_exists($new_size_filename)) {
-                do_my_log("⚠️ File already exists with the same name: " . $new_size_filename);
+            do_my_log("⚠️ File already exists with the same name: " . $new_size_filename);
+            }
+             */
+            $destination = $new_size_filename;
+            while (file_exists($destination)) {
+                // If the file already exists, generate a new file name with a counter.
+                // $counter++;
+                $path_parts = pathinfo($new_size_filename);
+                // #1 -- $destination = $path_parts['dirname'] . '/' . $path_parts['filename'] . '_' . $counter . '.' . $path_parts['extension'];
+                // #2 -- $destination = $path_parts['dirname'] . '/' . $path_parts['filename'] . '-' . $post_id . '-' . $data['width'] . 'x' . $data['height'] . '.' . $path_parts['extension'];
+                $destination = trailingslashit($new_image_details['dirname']) . pathinfo($new_image_details['filename'], PATHINFO_FILENAME) . '-' . $post_id . '-' . $data['width'] . 'x' . $data['height'] . '.' . $path_parts['extension'];
+
             }
 
             do_my_log("Old: " . $old_size_filename);
             do_my_log("New: " . $new_size_filename);
+            do_my_log("New-new: " . $destination);
 
             if (in_array($old_size_filename, $moved_files)) {
                 continue;
             }
 
-            $result = rename($old_size_filename, $new_size_filename);
+            $result = rename($old_size_filename, $destination);
             if ($result) {
                 $num_sizes++;
                 $moved_files[] = $old_size_filename;
