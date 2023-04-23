@@ -1703,45 +1703,47 @@ function move_main_file($attachment_id, $old_image_details, $new_image_details, 
     do_my_log("🔧 move_main_file()...");
 
     // A. Move file
-
-    // Ensure destination folder exists - if not, create it
+    // Get the WordPress uploads directory path
+    $uploads_dir = wp_upload_dir();
+    $uploads_dir_path = $uploads_dir['basedir']; // eg. /Users/robert/Sites/context.local/wp-content/uploads
+    // Create the new sub-folder if it doesn't exist
     if (!file_exists($new_image_details['dirname'])) {
+        // do_my_log("Making directory " . $new_image_details['dirname']);
         wp_mkdir_p($new_image_details['dirname']);
     }
+    // If folder now exists
     if (file_exists($new_image_details['dirname'])) {
 
         // If source file actually exists
         if (file_exists($old_image_details['filepath'])) {
+            // do_my_log("Source file exists at given location - " . $old_image_details['filepath']);
 
-            // do_my_log("Move from: " . $old_image_details['filepath']);
-            do_my_log("Move to: " . $new_image_details['filepath']);
+            // Move file
+            do_my_log("Move to " . $new_image_details['filepath']);
 
-            $source_dir = $old_image_details['dirname'];
-            $target_dir = $target_dir = $new_image_details['dirname'];
-            // define the filename to move
-            $filename = $old_image_details['filename'];
-
-            // check if the target directory already has a file with the same name
-            if (file_exists($target_dir . '/' . $filename)) {
-                // if the file already exists, generate a unique filename for the moving file
-                $unique_filename = wp_unique_filename($target_dir, $filename);
-                // move the file to the target directory using the unique filename
-                rename($source_dir . '/' . $filename, $target_dir . '/' . $unique_filename);
-            } else {
-                // if the file doesn't already exist, move the file to the target directory with the original filename
-                $result = rename($source_dir . '/' . $filename, $target_dir . '/' . $filename);
+            // Increment filename if duplicate already exists
+            // $counter = 0;
+            $destination = $new_image_details['filepath'];
+            while (file_exists($destination)) {
+                // If the file already exists, generate a new file name with a counter.
+                // $counter++;
+                $path_parts = pathinfo($new_image_details['filepath']);
+                // $destination = $path_parts['dirname'] . '/' . $path_parts['filename'] . '_' . $counter . '.' . $path_parts['extension'];
+                $destination = $path_parts['dirname'] . '/' . $path_parts['filename'] . '-' . $post_id . '.' . $path_parts['extension'];
             }
+            $path_parts = pathinfo($destination);
 
-            // Move the file
-            // $result = rename($old_image_details['dirname'] . '/' . $old_image_details['filename'], $target_dir = $new_image_details['dirname'] . '/' . $unique_filename);
+            $result = rename($old_image_details['filepath'], $destination);
+            // $result = rename($old_image_details['filepath'], $new_image_details['filepath']);
 
             if ($result) {
                 do_my_log("✅ Moved: " . $result);
+                // do_my_log("Updating attachment's database fields.");
 
                 // B. Update database
-
-                // Update database #1 - Set attachment date to post's date (if post_id was passed)
-                do_my_log("Updating DB #1: wp_update_post to update the post's own post_date," . get_post_field('post_date', $post_id));
+                // Update database #1 - image wp_postmeta, _wp_attached_file (eg. post/client/clarity/2018/06/146343_photo-1486312338219-ce68d2c6f44d-4959-art.jpe)
+                update_post_meta($attachment_id, '_wp_attached_file', trailingslashit($new_image_details['subdir']) . $filename = $path_parts['filename'] . '.' . $path_parts['extension']);
+                // Set attachment date to post's date (if post_id was passed)
                 if ($post_id) {
                     $post_date = get_post_field('post_date', $post_id);
                     wp_update_post(array(
@@ -1751,22 +1753,16 @@ function move_main_file($attachment_id, $old_image_details, $new_image_details, 
                     ));
                 }
 
-                // Update database #2 - image wp_postmeta, _wp_attached_file (eg. post/client/clarity/2018/06/146343_photo-1486312338219-ce68d2c6f44d-4959-art.jpe)
-                do_my_log("Updating DB #2: update_post_meta to update wp_postmeta _wp_attached_file to " . trailingslashit($new_image_details['subdir']) . $new_image_details['filename']);
-                update_post_meta($attachment_id, '_wp_attached_file', trailingslashit($new_image_details['subdir']) . $new_image_details['filename']);
-
-                // Update database #3 - image wp_postmeta, _wp_attachment_metadata (eg. [file] => post/client/clarity/2018/06/146343_photo-1486312338219-ce68d2c6f44d-4959-art.jpe)
-                do_my_log("Updating DB #3: wp_update_attachment_metadata to update [file] location in wp_postmeta _wp_attachment_metadata to " . trailingslashit($new_image_details['subdir']) . $new_image_details['filename']);
+                // Update database #2 - image wp_postmeta, _wp_attachment_metadata (eg. [file] => post/client/clarity/2018/06/146343_photo-1486312338219-ce68d2c6f44d-4959-art.jpe)
                 $attachment_metadata = wp_get_attachment_metadata($attachment_id);
-                $attachment_metadata['file'] = trailingslashit($new_image_details['subdir']) . $new_image_details['filename'];
+                $attachment_metadata['file'] = trailingslashit($new_image_details['subdir']) . $filename = $path_parts['filename'] . '.' . $path_parts['extension'];
                 wp_update_attachment_metadata($attachment_id, $attachment_metadata);
 
-                // Update database #4 - image wp_posts, guid - does not alter hostname part
-                /*do_my_log("Updating DB #4: wp_update_post to update wp_posts guid");
+                // Update database #3 - image wp_postmeta, guid - does not alter hostname part
                 $old_guid_full = get_post_field('guid', $attachment_id);
                 // TODO: Ensure the correct URL is used for guid
                 $new_guid_full = str_replace($old_image_details['subdir'], $new_image_details['subdir'], $old_image_details['guid']);
-                global $wpdb;*/
+                global $wpdb;
                 /*
                 $wpdb->update(
                 $wpdb->posts,
@@ -1785,8 +1781,6 @@ function move_main_file($attachment_id, $old_image_details, $new_image_details, 
                 array('%d')
                 );
                  */
-
-                do_my_log("wp_update_post some some reason");
                 wp_update_post(array(
                     'ID' => $attachment_id,
                 ));
@@ -1841,52 +1835,45 @@ function move_sizes_files($attachment_id, $old_image_details, $new_image_details
         foreach ($attachment_metadata['sizes'] as $size => $data) {
             $old_size_filename = trailingslashit($old_image_details['dirname']) . $data['file'];
 
+            // Use the original attachment's extension instead of the mimetype
             $path_parts = pathinfo($old_size_filename);
-            $correct_new_size_filename = pathinfo($new_image_details['filename'], PATHINFO_FILENAME) . '-' . $data['width'] . 'x' . $data['height'] . '.' . $path_parts['extension'];
+            $correct_new_size_filename = pathinfo($new_image_details['filename'], PATHINFO_FILENAME) . /*'-' . $post_id . */'-' . $data['width'] . 'x' . $data['height'] . '.' . $path_parts['extension'];
 
             $new_size_filename = trailingslashit($new_image_details['dirname']) . $correct_new_size_filename;
 
-            $destination = $new_size_filename;
-            // TODO: Implement better unique filename generation
-            if (file_exists($destination)) {
-                $path_parts = pathinfo($correct_new_size_filename);
-                $destination = trailingslashit($new_image_details['dirname']) . pathinfo($new_image_details['filename'], PATHINFO_FILENAME) . '-' . $post_id . '-' . $data['width'] . 'x' . $data['height'] . '.' . $path_parts['extension'];
+            if (file_exists($new_size_filename)) {
+                do_my_log("⚠️ File already exists with the same name: " . $new_size_filename);
             }
 
             do_my_log("Old: " . $old_size_filename);
             do_my_log("New: " . $new_size_filename);
-            do_my_log("New-new: " . $destination);
 
             if (in_array($old_size_filename, $moved_files)) {
                 continue;
             }
 
-            if (file_exists($old_size_filename)) {
-                $result = rename($old_size_filename, $destination);
-                if ($result) {
-                    $num_sizes++;
-                    $moved_files[] = $old_size_filename;
-                    do_my_log("✅ Moved $size: " . $data['file']);
+            $result = rename($old_size_filename, $new_size_filename);
+            if ($result) {
+                $num_sizes++;
+                $moved_files[] = $old_size_filename;
+                do_my_log("✅ Moved $size: " . $data['file']);
 
-                    foreach ($attachment_metadata['sizes'] as $size => $data) {
-                        $correct_new_size_filename = pathinfo($new_image_details['filename'], PATHINFO_FILENAME) . '-' . $data['width'] . 'x' . $data['height'] . '.' . $path_parts['extension'];
+                foreach ($attachment_metadata['sizes'] as $size => $data) {
+                    $correct_new_size_filename = pathinfo($new_image_details['filename'], PATHINFO_FILENAME) . /*'-' . $post_id .*/'-' . $data['width'] . 'x' . $data['height'] . '.' . $path_parts['extension'];
 
-                        $attachment_metadata['sizes'][$size]['file'] = $correct_new_size_filename;
-                        wp_update_attachment_metadata($attachment_id, $attachment_metadata);
-                    }
+                    $attachment_metadata['sizes'][$size]['file'] = $correct_new_size_filename;
+                    wp_update_attachment_metadata($attachment_id, $attachment_metadata);
+                }
 
-                    if (!empty($new_image_details['title'])) {
-                        $attachment = array(
-                            'ID' => $attachment_id,
-                            'post_title' => $new_image_details['title'],
-                        );
-                        wp_update_post($attachment);
-                    }
-                } else {
-                    do_my_log("❌ Failed to move $size: " . $data['file']);
+                if (!empty($new_image_details['title'])) {
+                    $attachment = array(
+                        'ID' => $attachment_id,
+                        'post_title' => $new_image_details['title'],
+                    );
+                    wp_update_post($attachment);
                 }
             } else {
-                do_my_log("❌ Old size file not found: " . $old_size_filename);
+                do_my_log("❌ Failed to move $size: " . $data['file']);
             }
         }
     }
@@ -1942,8 +1929,6 @@ function move_original_file($attachment_id, $old_image_details, $new_image_detai
             // Increment filename if duplicate already exists
             // $counter = 0;
             $destination = $new_original_filename;
-            // TODO: Implement better unique filename generation
-            // TODO: Ditch while for if
             while (file_exists($destination)) {
                 // If the file already exists, generate a new file name with a counter.
                 // $counter++;
