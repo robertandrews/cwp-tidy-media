@@ -1580,8 +1580,8 @@ function custom_path_controller($post_id, $post_attachment)
             }
              */
 
-            $move_sizes_files_success = move_sizes_files($post_attachment->ID, $old_image_details, $new_image_details, $post_id);
-            $move_original_file_success = move_original_file($post_attachment->ID, $old_image_details, $new_image_details, $post_id);
+            /*$move_sizes_files_success = */move_sizes_files($post_attachment->ID, $old_image_details, $new_image_details, $post_id);
+            /*$move_original_file_success = */move_original_file($post_attachment->ID, $old_image_details, $new_image_details, $post_id);
             // }
 
             return $move_main_file_success;
@@ -1841,7 +1841,7 @@ function move_sizes_files($attachment_id, $old_image_details, $new_image_details
     // Get attachment metadata
     $attachment_metadata = wp_get_attachment_metadata($attachment_id);
 
-// Iterate through each size and generate a unique filename for it
+    // Iterate through each size and generate a unique filename for it
     foreach ($attachment_metadata['sizes'] as $size => $size_info) {
         // Get the original size-specific filename
         $size_filename = $size_info['file'];
@@ -1895,57 +1895,48 @@ function move_original_file($attachment_id, $old_image_details, $new_image_detai
      * @param array $new_image_details An array of details about the attachment's new location.
      * @return void
      */
-    do_my_log("🔧 move_original_file()...");
+    do_my_log("🔧 move_original_image_file() - " . $attachment_id . "...");
 
-    // Get the _wp_attachment_metadata serialised array
+    // Get attachment metadata
     $attachment_metadata = wp_get_attachment_metadata($attachment_id);
 
     if (isset($attachment_metadata['original_image'])) {
-        // do_my_log("[original_image] is present.");
 
-        // A. Move the file
-        // Generate the old and new filepaths for the original
-        $old_original_filename = trailingslashit($old_image_details['dirname']) . $attachment_metadata['original_image'];
-        // print_r("old original: ".$old_original_filename."\n");
-        $new_original_filename = trailingslashit($new_image_details['dirname']) . $attachment_metadata['original_image'];
-        // print_r("new original: " . $new_original_filename . "\n");
+        $source_dir = $old_image_details['dirname'];
+        $target_dir = $new_image_details['dirname'];
 
-        // Do the move
-        if (file_exists($old_original_filename)) {
-            // do_my_log("File exists.");
+        // Get the original image filename from the metadata
+        $filename = $attachment_metadata['original_image'];
 
-            // Increment filename if duplicate already exists
-            // $counter = 0;
-            $destination = $new_original_filename;
-            // TODO: Implement better unique filename generation
-            // TODO: Ditch while for if
-            while (file_exists($destination)) {
-                // If the file already exists, generate a new file name with a counter.
-                // $counter++;
-                $path_parts = pathinfo($new_original_filename);
-                // $destination = $path_parts['dirname'] . '/' . $path_parts['filename'] . '_' . $counter . '.' . $path_parts['extension'];
-                $destination = $path_parts['dirname'] . '/' . $path_parts['filename'] . '-' . $post_id . '.' . $path_parts['extension'];
-            }
-            // $path_parts = pathinfo($destination);
+        if (file_exists($source_dir . '/' . $filename)) {
 
-            $result = rename($old_original_filename, $destination);
-            // $result = rename($old_original_filename, $new_original_filename);
-            if ($result) {
-                // Move succeeded
-                do_my_log("✅ Moved " . $old_original_filename . " to " . $new_original_filename);
+            // Check if a file with the same filename already exists in the target directory
+            if (file_exists($target_dir . '/' . $filename)) {
+                // Generate a unique filename using wp_unique_filename()
+                $unique_filename = wp_unique_filename($target_dir, $filename);
             } else {
-                // Move failed
-                do_my_log("❌ Move failed.");
+                $unique_filename = $filename;
             }
-            // echo $result;
+
+            // Move the original image file to the target directory with the unique filename
+            $result = rename($source_dir . '/' . $filename, $target_dir . '/' . $unique_filename);
+            if ($result) {
+                do_my_log("✅ Moved " . $source_dir . '/' . $filename . " to " . $target_dir . '/' . $unique_filename);
+                // Update attachment metadata with new file name
+                $attachment_metadata['original_image'] = $unique_filename;
+                wp_update_attachment_metadata($attachment_id, $attachment_metadata);
+            } else {
+                do_my_log("❌ Failed to move " . $filename . " to " . $unique_filename);
+            }
+
+            do_my_log("🧮 Original image done.");
+
         } else {
-            // Old original not found.
-            do_my_log("❌ File not found.");
+            do_my_log("❌ Original image file not found.");
         }
 
     } else {
-        // "[original_image] not found";
-        do_my_log("No [original_image].");
+        do_my_log("❌ No original image to move.");
     }
 
 }
