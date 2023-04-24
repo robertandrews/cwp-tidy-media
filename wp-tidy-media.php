@@ -1838,11 +1838,10 @@ function move_sizes_files($attachment_id, $old_image_details, $new_image_details
     // define the filename to move
     $filename = $old_image_details['filename'];
 
-    // If the 'old' file actually exists
-    if (file_exists(trailingslashit($old_image_details['dirname']) . $old_image_details['filename'])) {
+    // Get attachment metadata
+    $attachment_metadata = wp_get_attachment_metadata($attachment_id);
 
-        // Get attachment metadata
-        $attachment_metadata = wp_get_attachment_metadata($attachment_id);
+    if ($attachment_metadata['sizes']) {
 
         // Iterate through each size and generate a unique filename for it
         foreach ($attachment_metadata['sizes'] as $size => $size_info) {
@@ -1857,18 +1856,22 @@ function move_sizes_files($attachment_id, $old_image_details, $new_image_details
                 $unique_size_filename = $size_filename;
             }
 
-            // Move the file to the target directory with the unique filename
-            $result = rename($source_dir . '/' . $size_filename, $target_dir . '/' . $unique_size_filename);
-            if ($result) {
-                do_my_log("✅ Moved " . $source_dir . '/' . $size_filename . " to " . $target_dir . '/' . $unique_size_filename);
-                // Update attachment metadata with new file name
-                $attachment_metadata['sizes'][$size]['file'] = $unique_size_filename;
-                wp_update_attachment_metadata($attachment_id, $attachment_metadata);
-            } else {
-                do_my_log("❌ Failed to move " . $size_filename . " to " . $unique_size_filename);
+            // if source file exists
+            if (file_exists($source_dir . '/' . $size_filename)) {
+
+                // Move the file to the target directory with the unique filename
+                $result = rename($source_dir . '/' . $size_filename, $target_dir . '/' . $unique_size_filename);
+                if ($result) {
+                    do_my_log("✅ Moved " . $source_dir . '/' . $size_filename . " to " . $target_dir . '/' . $unique_size_filename);
+                    // Update attachment metadata with new file name
+                    $attachment_metadata['sizes'][$size]['file'] = $unique_size_filename;
+                    wp_update_attachment_metadata($attachment_id, $attachment_metadata);
+                } else {
+                    do_my_log("❌ Failed to move " . $size_filename . " to " . $unique_size_filename);
+                }
+
             }
         }
-
     }
 
     do_my_log("🧮 Sizes done. ");
