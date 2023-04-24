@@ -1841,7 +1841,7 @@ function move_sizes_files($attachment_id, $old_image_details, $new_image_details
     // Get attachment metadata
     $attachment_metadata = wp_get_attachment_metadata($attachment_id);
 
-    if ($attachment_metadata['sizes']) {
+    if (isset($attachment_metadata['sizes'])) {
 
         // Iterate through each size and generate a unique filename for it
         foreach ($attachment_metadata['sizes'] as $size => $size_info) {
