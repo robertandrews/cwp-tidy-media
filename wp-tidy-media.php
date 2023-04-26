@@ -2178,39 +2178,50 @@ function delete_attached_images_on_post_delete($post_id)
     $settings = get_tidy_media_settings();
     if ($settings['use_delete'] == 1) {
 
-        if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'delete') {
-            if (!isset($_REQUEST['delete_all']) && !wp_check_post_lock($post_id)) {
-                $post = get_post($post_id);
+        // Log the entire $_REQUEST array
+        /*
+        do_my_log("Request: " . print_r($_REQUEST, true));
+        do_my_log("Request URI: " . $_SERVER['REQUEST_URI']);
+         */
 
-                // When permanently deleting an attachment...
-                if ($post->post_status == 'trash') {
+        // if (isset($_REQUEST['action']) && $_REQUEST['action'] == 'delete') {
+        if ((isset($_REQUEST['action']) && $_REQUEST['action'] == 'delete') || (isset($_REQUEST['delete_all']) && ($_REQUEST['delete_all'] == 'Empty Bin' || $_REQUEST['delete_all'] == 'Empty Trash'))) {
 
-                    do_my_log("🗑 delete_attached_images_on_post_delete()...");
+            // if (!isset($_REQUEST['delete_all']) && !wp_check_post_lock($post_id)) {
 
-                    $current_screen = get_current_screen();
-                    $screen_id = $current_screen ? $current_screen->id : '';
-                    do_my_log("Screen ID: " . $screen_id);
+            $post = get_post($post_id);
 
-                    // Get post's attachments and featured image
-                    $attachments = do_get_all_attachments($post_id);
+            // When permanently deleting an attachment...
+            if ($post->post_status == 'trash') {
 
-                    do_my_log("Attachments: " . count($attachments));
+                do_my_log("🗑 delete_attached_images_on_post_delete()...");
 
-                    foreach ($attachments as $attachment) {
-                        do_my_log("Checking " . $attachment->ID);
-                        $used_elsewhere = is_attachment_used_elsewhere($attachment->ID, $post->ID);
-                        // TODO: Only if URL not found in other posts
-                        if ($used_elsewhere !== true) {
-                            do_my_log("Will delete attachment with post");
-                            do_delete_attachment($attachment->ID);
-                        } else {
-                            do_my_log("Attachment used elsewhere. Will not delete.");
-                        }
+                $current_screen = get_current_screen();
+                $screen_id = $current_screen ? $current_screen->id : '';
+                do_my_log("Screen ID: " . $screen_id);
+
+                // Get post's attachments and featured image
+                $attachments = do_get_all_attachments($post_id);
+
+                do_my_log("Attachments: " . count($attachments));
+
+                foreach ($attachments as $attachment) {
+                    do_my_log("Checking " . $attachment->ID);
+                    $used_elsewhere = is_attachment_used_elsewhere($attachment->ID, $post->ID);
+                    // TODO: Only if URL not found in other posts
+                    if ($used_elsewhere !== true) {
+                        do_my_log("Will delete attachment with post");
+                        do_delete_attachment($attachment->ID);
+                    } else {
+                        do_my_log("Attachment used elsewhere. Will not delete.");
                     }
                 }
-            } else {
-                // Second time firing
             }
+            /*
+        } else {
+        // Second time firing
+        }
+         */
         }
     }
 }
