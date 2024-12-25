@@ -3,7 +3,7 @@
 Plugin Name: CWP Tidy Media
 Plugin URI: https:/www.robertandrews.co.uk
 Description: A plugin to organize media by post type or taxonomy.
-Version: 1.0
+Version: 1.1.0
 Author: Robert Andrews
 Author URI: https:/www.robertandrews.co.uk
  */
