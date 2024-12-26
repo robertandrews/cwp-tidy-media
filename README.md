@@ -1,111 +1,76 @@
 # WP Tidy Media
 
-Tame the WordPress Media Library with a custom `uploads` folder structure.
+WordPress' default `uploads` folder structure is not always the best fit for your site.
 
-WordPress does not offer enough personalisation for organising media uploads. With this plugin, users are not beholden to the default:
+Chronological folders (eg. `wp-content/uploads/2023/03/image.jpeg`) do not suit every site.
 
-- `/wp-content/uploads/2023/03/image.jpeg`
-
-Instead, media folders can mimic a site's content structure, with any of these elements:
-
-- `/wp-content/uploads/post_type/taxonomy/term_slug/YYYY/MM/slug-of-the-post/image.jpeg`
-
-![Alt text](screenshots/screen_preview.png)
-
-For example:
-
-- `/wp-content/uploads/post/client/acme-inc/image.jpeg`
-- `/wp-content/uploads/category/technology/macbook.png`
-- `/wp-content/uploads/review/cuisine/japanese/sushi-house.jpeg`
-- `/wp-content/uploads/2023/03/my-awesome-post/image.jpeg`
-
-## Motivation
-
-WordPress' default media organisation does not scale. My site with 10,794 posts had 9,488 media items. Accounting for the different sizes WordPress generates, this was 22,021 individual files, totalling 2.25Gb, all organised in `YYYY/MM` folders under `/wp-content/uploads`.
-
-Chronology was *not* the natural way organise such a large and disparate set of images.
-
-The posts to which many of these images belong fall into a number of distinct groups. I had already grouped content using taxonomies. I  wanted to batch these images similarly, to make the image folder structure mirror the content structure, and to make potential future migration, perhaps even away from WordPress, smoother.
-
-I once used a combination of existing library management plugins and manual effort to reorganise images. But it was a huge and one-time task that I never wanted to repeat. Instead, I want WordPress to comply with my own media organisation preferences automatically, as I go, and to batch-reorganise images more efficiently.
-
-This required developing a plugin to force WordPress to organise media as I want.
+This plugin offers custom media storage rules for the WordPress Media Library.
 
 ## Features
 
 WP Tidy Media offers the following reorganisation features. Each can be enabled individually:
 
-### 1. Relocate post attachments
-
-Post-attached images will be moved to your specified custom folder structure, which can mirror your content structure. This includes Featured Image and other attachments.
-
-### 2. Relocate other images found in posts
-
-Media of all local image URLs found in post body content (whether attached or not) will be moved to your custom folder structure. `<img src` in post body will be updated accordingly.
-
-### 3. Convert body images to relative URLs
-
-By default, WordPress inserts images into post content using absolute URLs (eg. `<img src="http://www.yourblog.com/wp-content/uploads/2023/03/image.jpeg">`). This can make site migration - and even local development of a deployed website - complicated, because images will appear broken. By contrast, relative URLs will always point to the image, wherever you host the site.
-
-Any of your own images called via absolute URLs will be replaced by a corresponding relative URL (eg. `<img src="/wp-content/uploads/2023/03/image.jpeg">`). This does not move images.
-
-### 4. Localise remote body images
+### 1. Pull down remote body images
 
 All off-site images found in post body content will be pulled to your site. Applies to all `<img src=` URLs except your own site and specified "additional home domains". Organisation will be as per the other settings.
 
-### 5. Delete attachments with posts
+- Before: `<img src="https://www.example.com/wp-content/uploads/2023/03/image.jpeg">`
+- After: `<img src="/wp-content/uploads/2023/03/image.jpeg">`
+
+### 2. Convert local body image URLs from absolute to relative
+
+By default, WordPress inserts images into post content using [absolute URLs](https://stackoverflow.com/a/21828923) (eg. `<img src="http://www.yourblog.com/wp-content/uploads/2023/03/image.jpeg">`). This can make site migration - and even local development of a deployed website - complicated, because images will appear broken. By contrast, [relative URLs](https://stackoverflow.com/a/21828923) will always point to the image, wherever you host the site.
+
+Any of your own images called via absolute URLs will be replaced by a corresponding relative URL (eg. `<img src="/wp-content/uploads/2023/03/image.jpeg">`). This does not move images.
+
+- Before: `<img src="http://www.yourblog.com/wp-content/uploads/2023/03/image.jpeg">`
+- After: `<img src="/wp-content/uploads/2023/03/image.jpeg">`
+
+### 3. Delete attachments upon post deletion
 
 When a post is deleted, any attached media will also be deleted. Only deletes if attachment is unused elsewhere.
+
+### 4. Reorganise media found in post content
+
+All on-site image URLs found in post body content (whether attached or not) will be moved to your custom folder structure. `<img src` in post body will be updated accordingly.
+
+- Before: `<img src="http://www.yourblog.com/wp-content/uploads/2023/03/image.jpeg">`
+- After: `<img src="/wp-content/uploads/your_post_type/your_taxonomy/your_term_slug/2023/03/image.jpeg">`
+
+### 5. Reorganise post attachments
+
+Post-attached images will be moved to your specified custom folder structure, which can mirror your content structure. This includes Featured Image and other attachments.
+
+- Before: `<img src="http://www.yourblog.com/wp-content/uploads/2023/03/image.jpeg">`
+- After: `<img src="/wp-content/uploads/your_post_type/your_taxonomy/your_term_slug/2023/03/image.jpeg">`
+
+(This setting is separate from "Reorganise media found in post content" because an image in post content does not necessarily have to be attached to the post).
 
 ## Operation
 
 WP Tidy Media can be used in two ways:
 
 1. Run on every post save (optional).
-2. Run in bulk from the Posts list, via a button.
+2. Run in bulk on multiple posts from the Posts list, via a button.
 
-You can run on every post save to ensure the library is kept organised in the future.
+Running on every post save ensures the library is kept organised in the future.
 
-You can run in batch to reorganise your Media Library retrospectively. If you change your mind, you can change your custom file path after a batch run, and then run again - attachments will be moved again.
+Running in bulk can reorganise your Media Library retrospectively. If you change your mind about bulk tidy operations, you can change your custom file path after a batch run, and then run again - attachments will be moved again.
 
-In either event, the functions you choose in Options will be executed.
+### Post attachment custom filepath
 
-## Options
+| Setting                | Option                                                          |
+| ---------------------- | --------------------------------------------------------------- |
+| Organise by post type? | Enable/disable (creates folder for each post type)              |
+| Organise by taxonomy   | None, or choose from available public taxonomies                |
+| Use date folders       | (Set in Media Settings) Creates YYYY/MM folders                 |
+| Organise by post       | None, Post slug (eg. `my-awesome-post`), or Post ID (eg. `142`) |
 
-Access "Tidy Media" settings from beneath the core "Media" menu.
-
-### Components
-
-| Setting                                           | Option         |
-| ------------------------------------------------- | -------------- |
-| Tidy post attachments                             | Enable/disable |
-| Tidy body image URLs                              | Enable/disable |
-| Convert body image URLs from absolute to relative | Enable/disable |
-| Localise remote body images                       | Enable/disable |
-| Delete attachments with posts                     | Enable/disable |
-| Log operations                                    | Enable/disable |
-
-![Components](screenshots/screen_components.png)
-
-### Custom attachment filepath
-
-| Setting                | Option                                 |
-| ---------------------- | -------------------------------------- |
-| Organise by post type? | Enable/disable                         |
-| Organise by taxonomy   | Choose taxonomy, or None.              |
-| Use date folders       | (Set in Media Settings)                |
-| Organise by post slug? | Enable/disable (eg. `my-awesome-post`) |
-
-![Custom attachment filepath](screenshots/screen_filepath.png)
-
-### body `img src` URLs relative
+### Additional domains to make relative
 
 | Setting                 | Option                                                                                                   |
 | ----------------------- | -------------------------------------------------------------------------------------------------------- |
-| Remove home URL         | Shows how the hostname will be removed to construct a relative URL.                                      |
 | Additional home domains | Add any other hostnames/domains to strip out (for users who may have `<img src` URLs from legacy sites). |
-
-![Make body img src URLs relative](screenshots/screen_relative.png)
 
 ## Functionality
 
@@ -113,11 +78,11 @@ Access "Tidy Media" settings from beneath the core "Media" menu.
 
 The plugin will act on all three kinds of image files an attachment can represent:
 
-1. Main web-ready image file.
-2. Sizes files, for the range of thumbnail and other output sizes.
-3. Original image.
+1. `full` size image file (the main web-ready version)
+2. `sizes` (various resized versions like `thumbnail`, `medium`, `large`)
+3. `original_image` (only present for large uploads since WP 5.3)
 
-[Since 5.3](https://make.wordpress.org/core/2019/10/09/introducing-handling-of-big-images-in-wordpress-5-3/), when an uploaded image is over 2560px in height or width, WordPress downsizes the primary file it will serve and also retains the original.
+[Since WordPress5.3](https://make.wordpress.org/core/2019/10/09/introducing-handling-of-big-images-in-wordpress-5-3/), when an uploaded image is over 2560px in height or width, WordPress downsizes the primary file it will serve and also retains the original as `original_image`.
 
 ### Moving attachments
 
@@ -126,22 +91,88 @@ Moving the files alone to your custom folder path is insufficient. This plugin a
 **wp_postmeta**:
 
 - **_wp_attachment_metadata**: Updates the serialised array to reflect new file location.
+  ```php
+  // Before:
+  array(
+      'file' => '2023/03/image.jpeg',
+      'sizes' => array(
+          'thumbnail' => array(
+              'file' => '2023/03/image-150x150.jpeg'
+          )
+      )
+  )
+
+  // After:
+  array(
+      'file' => 'products/clothing/t-shirts/image.jpeg',
+      'sizes' => array(
+          'thumbnail' => array(
+              'file' => 'products/clothing/t-shirts/image-150x150.jpeg'
+          )
+      )
+  )
+  ```
 - **_wp_attached_file**: Updates the relative image path.
+    ```php
+  // Before:
+  '2023/03/image.jpeg'
+  
+  // After:
+  'products/clothing/t-shirts/image.jpeg'
+  ```
 
 **wp_posts**:
 
 - **post_parent**: Where an image is not already attached to another post and is designated to be attached to the current post, this attachment occurs by setting the post's ID as the attachment's post_parent.
+  ```php
+  // Before:
+  array(
+      'ID' => 123,          // Attachment ID
+      'post_parent' => 0    // Not attached to any post
+  )
+
+  // After:
+  array(
+      'ID' => 123,          // Attachment ID
+      'post_parent' => 456  // Now attached to post ID 456
+  )
+  ```
 - **post_date**: Where a change is being made to an attachment (ie. a reorganisation, or a new image is added to the Media Library), it will take on the date of the post itself. This is to avoid flooding the Media Library with new items.
+  ```php
+  // Before:
+  array(
+      'ID' => 123,          // Attachment ID
+      'post_date' => '2024-03-20 15:30:00'    // Date attachment was uploaded
+  )
+
+  // After:
+  array(
+      'ID' => 123,          // Attachment ID
+      'post_date' => '2023-06-15 09:45:00'    // Now matches parent post's date
+  )
+  ```
 - **guid**: Where an attachment is being moved, its guid (unique indicator) field will also be updated. Only the sub-directory portion is changed, the domain is not changed. Note: WordPress developers [advise against](https://wordpress.org/documentation/article/changing-the-site-url/#important-guid-note) changing guid for posts. This plugin runs on "attachment" post objects, for which guid is somewhat inconsequential, and is designed primarily for site overhauls which aim to run correct guids.
+    ```php
+  // Before:
+  array(
+      'ID' => 123,          // Attachment ID
+      'guid' => 'http://www.yourblog.com/wp-content/uploads/2023/03/image.jpeg'
+  )
+
+  // After:
+  array(
+      'ID' => 123,          // Attachment ID
+      'guid' => 'http://www.yourblog.com/wp-content/uploads/products/clothing/t-shirts/image.jpeg'
+  )  ```
 
 ### Order of operation
 
 Features are run logically in this order:
 
-- Localise remote images.
-- Convert body images to relative URLs.
-- Relocate other images found in posts.
-- Relocate post attachments.
+1. Pull down remote body images.
+2. Convert local body image URLs from absolute to relative.
+3. Reorganise media found in post content.
+4. Reorganise post attachments.
 
 Attachment deletion with post deletion occurs at time of post deletion, if enabled.
 
@@ -153,15 +184,34 @@ Attachment deletion with post deletion occurs at time of post deletion, if enabl
 
 ## Storage
 
-WP Tidy Media does not store settings in wp_options or any core WordPress database table.
+WP Tidy Media does not store settings in `wp_options` or any core WordPress database table.
 
-For neatness, it uses its own distinct table, wp_tidy_media_organizer.
+For neatness, it uses its own distinct table, `wp_tidy_media_organizer`.
 
 This table is created on plugin activation, and a small number of settings is set.
 
+The following settings are stored in the `wp_tidy_media_organizer` table:
+
+| Setting Name                   | Example Value                    | Description                                                             |
+| ------------------------------ | -------------------------------- | ----------------------------------------------------------------------- |
+| organize_post_img_by_type      | 1                                | Creates folders for each post type (e.g., 'posts/', 'products/')        |
+| organize_post_img_by_taxonomy  | 'category'                       | Organizes by taxonomy terms (e.g., 'news/', 'reviews/')                 |
+| organize_post_img_by_post_slug | 0                                | When enabled, creates folders using post slugs (e.g., 'my-first-post/') |
+| domains_to_replace             | 'old-site.com, staging.site.com' | Additional domains to convert to relative URLs                          |
+| use_tidy_attachments           | 1                                | Enables reorganizing post attachments                                   |
+| use_tidy_body_media            | 1                                | Enables reorganizing media found in post content                        |
+| use_relative                   | 1                                | Converts absolute URLs to relative URLs                                 |
+| use_localise                   | 1                                | Downloads and stores remote images locally                              |
+| use_delete                     | 1                                | Deletes attachments when their parent post is deleted                   |
+| use_log                        | 1                                | Logs operations to wp-tidy-media.log                                    |
+| run_on_save                    | 1                                | Runs operations automatically when posts are saved                      |
+| organize_term_attachments      | 1                                | Enables organizing media by taxonomy terms                              |
+
+All boolean settings use '1' for enabled and '0' for disabled. The plugin activates with most features enabled by default.
+
 ## Removal
 
-The plugin tidies up after itself. Upon deletion, the table wp_tidy_media_organizer is deleted. This removes all traces of the plugin.
+The plugin tidies up after itself. Upon deletion, the table `wp_tidy_media_organizer` is deleted. This removes all traces of the plugin.
 
 Removal will not affect changes already made by this plugin - any attachments already moved will remain in their new locations.
 
@@ -171,15 +221,9 @@ Deletion of the plugin will not revert attachments to their prior state.
 
 Running these operations may pose risks to your Media Library.
 
-Make a back-up of both files and database before you run this plugin.
+Make a back-up of your site before you run this plugin.
 
 The author cannot be held liable for any data loss.
-
-## Changelog
-
-### 1.0.0
-
-- Initial release
 
 ## License
 
