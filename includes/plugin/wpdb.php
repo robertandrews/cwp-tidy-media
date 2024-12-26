@@ -1,5 +1,8 @@
 <?php
 
+// Define constants at the top of the file
+define('TIDY_MEDIA_TABLE_SUFFIX', 'tidy_media_organizer');
+
 function tidy_media_organizer_create_table()
 {
     /**
@@ -11,7 +14,7 @@ function tidy_media_organizer_create_table()
      * @return void
      */
     global $wpdb;
-    $table_name = $wpdb->prefix . 'tidy_media_organizer';
+    $table_name = $wpdb->prefix . TIDY_MEDIA_TABLE_SUFFIX;
     if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") != $table_name) {
         $charset_collate = $wpdb->get_charset_collate();
         $sql = "CREATE TABLE $table_name (
@@ -23,24 +26,35 @@ function tidy_media_organizer_create_table()
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
         dbDelta($sql);
 
-        // Pre-specify values
-        $pre_specified_values = array(
-            array('setting_name' => 'organize_post_img_by_type', 'setting_value' => '1'),
-            array('setting_name' => 'use_tidy_attachments', 'setting_value' => '1'),
-            array('setting_name' => 'use_tidy_body_media', 'setting_value' => '1'),
-            array('setting_name' => 'use_relative', 'setting_value' => '1'),
-            array('setting_name' => 'use_localise', 'setting_value' => '1'),
-            array('setting_name' => 'use_delete', 'setting_value' => '1'),
-            array('setting_name' => 'use_log', 'setting_value' => '1'),
-            array('setting_name' => 'run_on_save', 'setting_value' => '1'),
-            array('setting_name' => 'organize_term_attachments', 'setting_value' => '1'),
+        // Batch insert default settings
+        $default_settings = array(
+            'organize_post_img_by_type' => '1',
+            'use_tidy_attachments' => '1',
+            'use_tidy_body_media' => '1',
+            'use_relative' => '1',
+            'use_localise' => '1',
+            'use_delete' => '1',
+            'use_log' => '1',
+            'run_on_save' => '1',
+            'organize_term_attachments' => '1',
         );
-        foreach ($pre_specified_values as $value) {
-            $wpdb->insert($table_name, $value);
+
+        $values = array();
+        $placeholders = array();
+        foreach ($default_settings as $name => $value) {
+            $values[] = $name;
+            $values[] = $value;
+            $placeholders[] = "(%s, %s)";
         }
 
+        $query = $wpdb->prepare(
+            "INSERT INTO $table_name (setting_name, setting_value) VALUES " . implode(', ', $placeholders),
+            $values
+        );
+        $wpdb->query($query);
     }
 }
+// Fires when the plugin is activated
 register_activation_hook(__FILE__, 'tidy_media_organizer_create_table');
 
 function tidy_media_organizer_delete_table()
