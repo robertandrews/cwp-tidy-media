@@ -52,7 +52,7 @@ function tidy_media_organizer_options_page()
                 array('setting_name' => 'organize_post_img_by_post_slug', 'setting_value' => isset($_POST['organize_post_img_by_post_slug']) ? 1 : 0),
                 // TODO: Save/retrieve a serialised array, not a single text string.
                 // TODO: Use dynamic input entry/array consolidation
-                array('setting_name' => 'domains_to_replace', 'setting_value' => isset($_POST['domains_to_replace']) ? sanitize_text_field($_POST['domains_to_replace']) : ''),
+                array('setting_name' => 'domains_to_replace', 'setting_value' => isset($_POST['domains_to_replace']) ? json_encode(array_filter($_POST['domains_to_replace'])) : ''),
                 array('setting_name' => 'use_tidy_attachments', 'setting_value' => isset($_POST['use_tidy_attachments']) ? sanitize_text_field($_POST['use_tidy_attachments']) : ''),
                 array('setting_name' => 'use_tidy_body_media', 'setting_value' => isset($_POST['use_tidy_body_media']) ? sanitize_text_field($_POST['use_tidy_body_media']) : ''),
                 array('setting_name' => 'use_relative', 'setting_value' => isset($_POST['use_relative']) ? sanitize_text_field($_POST['use_relative']) : ''),
@@ -80,6 +80,7 @@ function tidy_media_organizer_options_page()
 
     // Retrieve current settings from database
     $settings = get_tidy_media_settings();
+    $domains = json_decode($settings['domains_to_replace'], true) ?: array(); // Decode the JSON to an array
 
     // Output form HTML
     ?>
@@ -431,44 +432,23 @@ if (get_option('uploads_use_yearmonth_folders') === '1') {
                                                 <label for="organize_post_img_by_type">Legacy domains</label>
                                             </th>
                                             <td>
-                                                <p class="description">With "Convert local body image URLs from absolute
-                                                    to relative" set, the plugin will automatically make URLs relative
-                                                    by removing
-                                                    <code><?php echo home_url(); ?></code>.
-                                                </p>
-                                                <p class="description">Use this setting to specify
-                                                    additional
-                                                    domains that should also be made relative.
-                                                </p>
-                                                <p class="description">This is useful if you have imported content from
-                                                    other sites
-                                                    and still have image URLs that point to old domains.</p>
+                                                <p class="description">With "Convert local body image URLs from absolute to relative" set, the plugin will automatically make URLs relative by removing <code><?php echo home_url(); ?></code>.</p>
+                                                <p class="description">Use this setting to specify additional domains that should also be made relative.</p>
+                                                <p class="description">This is useful if you have imported content from other sites and still have image URLs that point to old domains.</p>
                                                 <div class="legacy-domains-wrapper">
                                                     <div class="legacy-domains-list">
-                                                        <?php
-$domains = json_decode($settings['domains_to_replace'], true) ?: array();
-    if (empty($domains)) {
-        $domains = array(''); // Start with one empty field
-    }
-    foreach ($domains as $domain): ?>
+                                                        <?php foreach ($domains as $domain): ?>
                                                         <div class="legacy-domain-item">
-                                                            <input type="text" name="legacy_domains[]"
-                                                                class="legacy-domain-input"
-                                                                placeholder="https://oldsite.com"
-                                                                value="<?php echo esc_attr($domain); ?>" />
-                                                            <button type="button" class="button remove-domain"
-                                                                title="Remove domain">&minus;</button>
+                                                            <input type="text" name="domains_to_replace[]" class="legacy-domain-input" placeholder="https://oldsite.com" value="<?php echo esc_attr($domain); ?>" />
+                                                            <button type="button" class="button remove-domain" title="Remove domain">&minus;</button>
                                                         </div>
                                                         <?php endforeach;?>
                                                     </div>
-                                                    <button type="button" class="button add-domain">Add Another
-                                                        Domain</button>
+                                                    <button type="button" class="button add-domain">Add Another Domain</button>
                                                 </div>
-
                                                 <div class="example-block">
-                                                    <p><strong>Example:</strong> If you migrated from oldsite.com to
-                                                        this site, add:</p>
-                                                    <code>http://www.oldsite.com and https://oldsite.com</code>
+                                                    <p><strong>Example:</strong> If you migrated from oldsite.com to this site, add:</p>
+                                                    <code>http://www.oldsite.com, https://oldsite.com</code>
                                                     <p class="before"><strong>Before:</strong>
                                                         <code>&lt;img src="http://www.oldsite.com/wp-content/uploads/path/to/image.jpeg"&gt;</code>
                                                     </p>
@@ -584,7 +564,7 @@ $taxonomies = get_taxonomies(array('public' => true));
                 newItem.className = 'legacy-domain-item';
                 newItem.innerHTML = `
                     <input type="text"
-                        name="legacy_domains[]"
+                        name="domains_to_replace[]"
                         class="legacy-domain-input"
                         placeholder="https://oldsite.com" />
                     <button type="button" class="button remove-domain" title="Remove domain">&minus;</button>

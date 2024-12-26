@@ -334,8 +334,8 @@ function relative_body_imgs($post_id)
 
         // Set up list of domains to strip from links - site URL is added by default
         $settings = get_tidy_media_settings();
-        $domains_to_replace = $settings['domains_to_replace'];
-        $local_domains = array_map('trim', explode(",", $domains_to_replace));
+        $domains_to_replace = json_decode($settings['domains_to_replace'], true); // Decode the JSON array
+        $local_domains = array_map('trim', $domains_to_replace);
         if (!in_array(get_site_url(), $local_domains)) {
             array_push($local_domains, get_site_url());
         }
