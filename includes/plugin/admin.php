@@ -448,7 +448,7 @@ if (get_option('uploads_use_yearmonth_folders') === '1') {
                                                 </div>
                                                 <div class="example-block">
                                                     <p><strong>Example:</strong> If you migrated from oldsite.com to this site, add:</p>
-                                                    <code>http://www.oldsite.com, https://oldsite.com</code>
+                                                    <code>http://www.oldsite.com</code> and <code>https://oldsite.com</code>
                                                     <p class="before"><strong>Before:</strong>
                                                         <code>&lt;img src="http://www.oldsite.com/wp-content/uploads/path/to/image.jpeg"&gt;</code>
                                                     </p>
