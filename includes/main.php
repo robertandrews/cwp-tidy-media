@@ -597,4 +597,4 @@ function tidy_do_delete_attachments_on_post_delete($post_id)
         }
     }
 }
-add_action('before_delete_post', 'delete_attached_images_on_post_delete');
+add_action('before_delete_post', 'tidy_do_delete_attachments_on_post_delete');
