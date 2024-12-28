@@ -90,7 +90,8 @@ Moving the files alone to your custom folder path is insufficient. This plugin a
 
 **wp_postmeta**:
 
-- **_wp_attachment_metadata**: Updates the serialised array to reflect new file location.
+- **\_wp_attachment_metadata**: Updates the serialised array to reflect new file location.
+
   ```php
   // Before:
   array(
@@ -112,11 +113,13 @@ Moving the files alone to your custom folder path is insufficient. This plugin a
       )
   )
   ```
-- **_wp_attached_file**: Updates the relative image path.
-    ```php
+
+- **\_wp_attached_file**: Updates the relative image path.
+
+  ```php
   // Before:
   '2023/03/image.jpeg'
-  
+
   // After:
   'products/clothing/t-shirts/image.jpeg'
   ```
@@ -124,6 +127,7 @@ Moving the files alone to your custom folder path is insufficient. This plugin a
 **wp_posts**:
 
 - **post_parent**: Where an image is not already attached to another post and is designated to be attached to the current post, this attachment occurs by setting the post's ID as the attachment's post_parent.
+
   ```php
   // Before:
   array(
@@ -137,7 +141,9 @@ Moving the files alone to your custom folder path is insufficient. This plugin a
       'post_parent' => 456  // Now attached to post ID 456
   )
   ```
+
 - **post_date**: Where a change is being made to an attachment (ie. a reorganisation, or a new image is added to the Media Library), it will take on the date of the post itself. This is to avoid flooding the Media Library with new items.
+
   ```php
   // Before:
   array(
@@ -151,19 +157,22 @@ Moving the files alone to your custom folder path is insufficient. This plugin a
       'post_date' => '2023-06-15 09:45:00'    // Now matches parent post's date
   )
   ```
+
 - **guid**: Where an attachment is being moved, its guid (unique indicator) field will also be updated. Only the sub-directory portion is changed, the domain is not changed. Note: WordPress developers [advise against](https://wordpress.org/documentation/article/changing-the-site-url/#important-guid-note) changing guid for posts. This plugin runs on "attachment" post objects, for which guid is somewhat inconsequential, and is designed primarily for site overhauls which aim to run correct guids.
-    ```php
+
+  ````php
   // Before:
   array(
-      'ID' => 123,          // Attachment ID
-      'guid' => 'http://www.yourblog.com/wp-content/uploads/2023/03/image.jpeg'
+    'ID' => 123,          // Attachment ID
+    'guid' => 'http://www.yourblog.com/wp-content/uploads/2023/03/image.jpeg'
   )
 
   // After:
   array(
-      'ID' => 123,          // Attachment ID
-      'guid' => 'http://www.yourblog.com/wp-content/uploads/products/clothing/t-shirts/image.jpeg'
+    'ID' => 123,          // Attachment ID
+    'guid' => 'http://www.yourblog.com/wp-content/uploads/products/clothing/t-shirts/image.jpeg'
   )  ```
+  ````
 
 ### Order of operation
 
