@@ -1,6 +1,6 @@
 <?php
 
-function tidy_media_organizer_admin_page()
+function tidy_admin_menu_item()
 {
     /**
      * Admin Menus.
@@ -16,16 +16,17 @@ function tidy_media_organizer_admin_page()
         'Tidy Media',
         'manage_options',
         'tidy-media-organizer-options',
-        'tidy_media_organizer_options_page'
+        'tidy_admin_options_page'
     );
 }
-add_action('admin_menu', 'tidy_media_organizer_admin_page');
+add_action('admin_menu', 'tidy_admin_menu_item');
 
-/**
- * Enqueue admin scripts and styles.
- */
-function tidy_media_organizer_admin_enqueue_scripts($hook)
+function tidy_admin_enqueue($hook)
 {
+    /**
+     * Enqueue admin scripts and styles.
+     */
+
     if ($hook !== 'media_page_tidy-media-organizer-options') {
         return;
     }
@@ -45,9 +46,9 @@ function tidy_media_organizer_admin_enqueue_scripts($hook)
         true
     );
 }
-add_action('admin_enqueue_scripts', 'tidy_media_organizer_admin_enqueue_scripts');
+add_action('admin_enqueue_scripts', 'tidy_admin_enqueue');
 
-function tidy_media_organizer_options_page()
+function tidy_admin_options_page()
 {
     /**
      * Admin Options Page.
