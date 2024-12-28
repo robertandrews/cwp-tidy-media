@@ -505,7 +505,7 @@ function do_get_all_attachments($post_id)
         return;
     }
 
-    $doc = tidy_get_content_as_dom($content);
+    $doc = tidy_get_content_dom($content);
 
     $images = $doc->getElementsByTagName('img');
     foreach ($images as $img) {

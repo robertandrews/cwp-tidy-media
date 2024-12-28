@@ -23,7 +23,7 @@ function tidy_do_localise_images($post_id)
         return;
     }
 
-    $dom = tidy_get_content_as_dom($post_content);
+    $dom = tidy_get_content_dom($post_content);
 
     // Process both img tags and anchor tags that link to images
     $elements_to_check = array(
@@ -169,7 +169,7 @@ function tidy_do_relativise_urls($post_id)
             $content = html_entity_decode($content, ENT_QUOTES | ENT_HTML5, 'UTF-8');
             $new_content = html_entity_decode($new_content, ENT_QUOTES | ENT_HTML5, 'UTF-8');
 
-            $doc = tidy_get_content_as_dom($content);
+            $doc = tidy_get_content_dom($content);
 
             // Get every img tag
             $images = $doc->getElementsByTagName('img');
@@ -249,7 +249,7 @@ function tidy_do_reorg_body_media($post_id)
         return;
     }
 
-    $doc = tidy_get_content_as_dom($content);
+    $doc = tidy_get_content_dom($content);
 
     $targets = array(
         "img" => "src",

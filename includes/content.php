@@ -61,7 +61,7 @@ function tidy_update_body_media_urls($post_id, $post_att_id, $old_image_details,
             // Get the post content
             $content = get_post_field('post_content', $post_id);
 
-            $doc = tidy_get_content_as_dom($content);
+            $doc = tidy_get_content_dom($content);
 
             // Find all img tags in the post content
             $images = $doc->getElementsByTagName('img');
