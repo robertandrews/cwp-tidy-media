@@ -1,3 +1,7 @@
+/**
+ * Initializes the legacy domains management functionality when the DOM is loaded.
+ * This section handles adding and removing domain fields in the legacy domains list.
+ */
 document.addEventListener('DOMContentLoaded', function () {
     const wrapper = document.querySelector('.legacy-domains-wrapper');
     if (wrapper) {
@@ -16,7 +20,7 @@ document.addEventListener('DOMContentLoaded', function () {
             list.appendChild(newItem);
         });
 
-        // Remove domain field
+        // Remove domain field when minus button is clicked
         wrapper.addEventListener('click', function (e) {
             if (e.target.classList.contains('remove-domain')) {
                 e.target.parentElement.remove();
@@ -25,7 +29,17 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 });
 
+/**
+ * Updates the preview paths based on selected organization options.
+ * This function dynamically generates and displays the file path structure
+ * based on various settings like:
+ * - Post type organization
+ * - Taxonomy organization
+ * - Year/Month folders
+ * - Post identifier (slug or ID)
+ */
 function updatePaths() {
+    // Base upload directory path
     var basePath = '/wp-content/uploads';
     var postTypeEnabled = document.querySelector('[name="organize_post_img_by_type"]').checked;
     var taxonomySlug = document.querySelector('[name="organize_post_img_by_taxonomy"]:checked');
@@ -34,15 +48,18 @@ function updatePaths() {
 
     var path = basePath;
 
+    // Add post type to path if enabled
     if (postTypeEnabled) {
         path += '/<span style="color:#d63638">post_type</span>';
     }
 
+    // Add taxonomy organization if selected
     if (taxonomySlug && taxonomySlug.value !== '') {
         path += '/<span style="color:#00a32a">' + taxonomySlug.value +
             '</span>/<span style="color:#2271b1">term_slug</span>';
     }
 
+    // Add year/month folders if enabled
     if (uploadsUseYearMonthFolders) {
         var today = new Date();
         var year = today.getFullYear();
@@ -51,6 +68,7 @@ function updatePaths() {
         path += '/' + dateFolders;
     }
 
+    // Add post identifier (slug or ID) if selected
     if (postIdentifier === 'slug') {
         path += '/<span style="color:#dba617">my-awesome-post</span>';
     } else if (postIdentifier === 'id') {
@@ -68,6 +86,10 @@ function updatePaths() {
     });
 }
 
+/**
+ * Toggles the visibility of the relative URLs settings box
+ * based on whether the use relative URLs option is checked.
+ */
 function toggleRelativeUrlsBox() {
     var useRelativeToggle = document.querySelector('[name="use_relative"]');
     var relativeUrlsBox = document.getElementById('relative-urls-settings');
@@ -77,6 +99,13 @@ function toggleRelativeUrlsBox() {
     }
 }
 
+/**
+ * Initializes all event listeners for the settings page when the DOM is loaded.
+ * This includes:
+ * - Path organization settings
+ * - Relative URL toggle
+ * - Initial path preview update
+ */
 document.addEventListener('DOMContentLoaded', function () {
     // Add event listeners for all relevant inputs
     document.querySelector('[name="organize_post_img_by_type"]').addEventListener('change', updatePaths);
@@ -95,6 +124,6 @@ document.addEventListener('DOMContentLoaded', function () {
         toggleRelativeUrlsBox();
     }
 
-    // Initial update
+    // Initial update of paths
     updatePaths();
 }); 
