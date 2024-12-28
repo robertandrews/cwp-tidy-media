@@ -20,6 +20,9 @@ define('TIDY_INCLUDES_DIR', TIDY_PLUGIN_DIR . 'includes/');
 // Include plugin database functions
 require_once TIDY_INCLUDES_DIR . 'plugin/wpdb.php';
 
+// Register activation hook
+register_activation_hook(__FILE__, 'tidy_media_organizer_create_table');
+
 // Include plugin admin functions
 require_once TIDY_INCLUDES_DIR . 'plugin/admin.php';
 

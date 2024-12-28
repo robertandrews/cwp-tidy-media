@@ -54,8 +54,6 @@ function tidy_media_organizer_create_table()
         $wpdb->query($query);
     }
 }
-// Fires when the plugin is activated
-register_activation_hook(__FILE__, 'tidy_media_organizer_create_table');
 
 function tidy_media_organizer_delete_table()
 {
