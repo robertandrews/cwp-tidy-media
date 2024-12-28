@@ -4,7 +4,7 @@ function do_get_content_as_dom($content)
 {
     if ($content) {
         // Set the encoding of the input HTML string
-        $content = mb_convert_encoding($content, 'HTML-ENTITIES', 'UTF-8');
+        $content = html_entity_decode($content, ENT_QUOTES | ENT_HTML5, 'UTF-8');
         // Create a new DOMDocument object
         $dom = new DOMDocument('1.0', 'UTF-8');
         $dom->formatOutput = true;

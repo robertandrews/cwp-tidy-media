@@ -343,8 +343,8 @@ function relative_body_imgs($post_id)
         foreach ($local_domains as $domain) {
 
             // Set the encoding of the input HTML string
-            $content = mb_convert_encoding($content, 'HTML-ENTITIES', 'UTF-8');
-            $new_content = mb_convert_encoding($new_content, 'HTML-ENTITIES', 'UTF-8');
+            $content = html_entity_decode($content, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            $new_content = html_entity_decode($new_content, ENT_QUOTES | ENT_HTML5, 'UTF-8');
 
             $doc = do_get_content_as_dom($content);
 
@@ -425,100 +425,107 @@ function localise_remote_images($post_id)
 
     $dom = do_get_content_as_dom($post_content);
 
-    $image_tags = $dom->getElementsByTagName('img');
+    // Process both img tags and anchor tags that link to images
+    $elements_to_check = array(
+        array('tag' => 'img', 'attr' => 'src'),
+        array('tag' => 'a', 'attr' => 'href'),
+    );
 
     $num_localised = 0;
 
-    foreach ($image_tags as $image_tag) {
-        $image_src = $image_tag->getAttribute('src');
+    foreach ($elements_to_check as $element_info) {
+        $tags = $dom->getElementsByTagName($element_info['tag']);
 
-        // "Remote" img i) starts with "http" but ii) not including http://www.yoursite.com
-        if (strpos($image_src, 'http') === 0 && strpos($image_src, home_url()) === false) {
+        foreach ($tags as $tag) {
+            $url = $tag->getAttribute($element_info['attr']);
 
-            do_my_log("🎆 Found img src " . $image_src);
+            // Check if URL points to an image by looking at the file extension
+            $is_image_url = preg_match('/\.(jpe?g|png|gif|webp)$/i', $url);
 
-            // Download the image file contents
-            $image_data = file_get_contents($image_src);
+            // "Remote" URL i) starts with "http" but ii) not including http://www.yoursite.com
+            if ($is_image_url && strpos($url, 'http') === 0 && strpos($url, home_url()) === false) {
+                do_my_log("🎆 Found " . $element_info['tag'] . " " . $element_info['attr'] . " " . $url);
 
-            if ($image_data) {
-                do_my_log("🛬 Downloaded file.");
-
-                // Check if the downloaded file is an image
-                $image_info = getimagesizefromstring($image_data);
-                if (!$image_info) {
-                    do_my_log("❌ Not an image.");
+                // Check if we already have this image in the media library
+                $existing_attachment = attachment_url_to_postid($url);
+                if ($existing_attachment) {
+                    do_my_log("Image already exists in media library with ID: " . $existing_attachment);
+                    $tag->setAttribute($element_info['attr'], wp_get_attachment_url($existing_attachment));
                     continue;
                 }
 
-                // Generate path info
-                $image_info = pathinfo($image_src);
-                $image_name = $image_info['basename'];
-                // Generate uploads directory info
-                $upload_dir = wp_upload_dir();
-                $image_file = $upload_dir['path'] . '/' . $image_name;
+                // Download the image file contents
+                $image_data = file_get_contents($url);
 
-                // do_my_log("Save to " . $image_file);
+                if ($image_data) {
+                    do_my_log("🛬 Downloaded file.");
 
-                if (file_put_contents($image_file, $image_data) !== false) {
+                    // Check if the downloaded file is an image
+                    $image_info = getimagesizefromstring($image_data);
+                    if (!$image_info) {
+                        do_my_log("❌ Not a valid image.");
+                        continue;
+                    }
 
-                    do_my_log("Saved file to " . $image_file);
+                    // Generate path info
+                    $image_info = pathinfo($url);
+                    $image_name = $image_info['basename'];
+                    // Generate uploads directory info
+                    $upload_dir = wp_upload_dir();
+                    $image_file = $upload_dir['path'] . '/' . $image_name;
 
-                    // Get the post date of the parent post
-                    $post_date = get_post_field('post_date', $post_id);
-                    // Create attachment post object
-                    // ("Creating attachment for this...");
-                    $attachment = array(
-                        // TODO: Ensure the correct URL is used for guid
-                        // 'guid' => $upload_dir['url'] . '/' . $image_name,
-                        'post_title' => $image_name,
-                        'post_mime_type' => wp_check_filetype($image_name)['type'],
-                        'post_content' => '',
-                        'post_status' => 'inherit',
-                        'post_parent' => $post_id,
-                        'post_date' => $post_date,
-                        'post_date_gmt' => get_gmt_from_date($post_date),
-                    );
-                    // Insert the attachment into the media library
-                    $attach_id = wp_insert_attachment($attachment, $image_file, $post_id);
+                    if (file_put_contents($image_file, $image_data) !== false) {
+                        do_my_log("Saved file to " . $image_file);
 
-                    // Set the attachment metadata
-                    // do_my_log("Set attachment metadata...");
-                    $attach_data = wp_generate_attachment_metadata($attach_id, $image_file);
-                    wp_update_attachment_metadata($attach_id, $attach_data);
+                        // Get the post date of the parent post
+                        $post_date = get_post_field('post_date', $post_id);
+                        // Create attachment post object
+                        $attachment = array(
+                            'post_title' => $image_name,
+                            'post_mime_type' => wp_check_filetype($image_name)['type'],
+                            'post_content' => '',
+                            'post_status' => 'inherit',
+                            'post_parent' => $post_id,
+                            'post_date' => $post_date,
+                            'post_date_gmt' => get_gmt_from_date($post_date),
+                        );
 
-                    do_my_log("📎 Attachment created.");
-                    $num_localised++;
+                        // Insert the attachment into the media library
+                        $attach_id = wp_insert_attachment($attachment, $image_file, $post_id);
 
-                    // Replace the image src with the new attachment URL
-                    // do_my_log("📝 Replacing remote src with local URL " . wp_get_attachment_url($attach_id));
-                    $image_tag->setAttribute('src', wp_get_attachment_url($attach_id));
+                        // Set the attachment metadata
+                        $attach_data = wp_generate_attachment_metadata($attach_id, $image_file);
+                        wp_update_attachment_metadata($attach_id, $attach_data);
 
-                    // Unhook do_saved_post(), or wp_update_post() would cause an infinite loop
-                    remove_action('save_post', 'do_saved_post', 10, 1);
-                    // Update the post content
-                    $post_content = $dom->saveHTML();
-                    wp_update_post(array('ID' => $post_id, 'post_content' => $post_content));
-                    do_my_log("✅ Updated post body.");
-                    // Hook it back up
-                    add_action('save_post', 'do_saved_post', 10, 1);
+                        do_my_log("📎 Attachment created.");
+                        $num_localised++;
 
+                        // Replace the URL with the new attachment URL
+                        $tag->setAttribute($element_info['attr'], wp_get_attachment_url($attach_id));
+
+                        // Unhook do_saved_post(), or wp_update_post() would cause an infinite loop
+                        remove_action('save_post', 'do_saved_post', 10, 1);
+                        // Update the post content
+                        $post_content = $dom->saveHTML();
+                        wp_update_post(array('ID' => $post_id, 'post_content' => $post_content));
+                        do_my_log("✅ Updated post body.");
+                        // Hook it back up
+                        add_action('save_post', 'do_saved_post', 10, 1);
+                    } else {
+                        do_my_log("❌ File save failed.");
+                    }
                 } else {
-                    do_my_log("❌ File save failed.");
+                    do_my_log("❌ File download failed.");
                 }
-
             } else {
-                do_my_log("❌ File download failed.");
-
+                if ($is_image_url) {
+                    do_my_log("🚫 Image not remote - " . $url);
+                }
             }
-
-        } else {
-            do_my_log("🚫 Image not remote - " . $image_src);
         }
     }
-    do_my_log("🧮 Localised images: " . $num_localised);
-    // do_my_log("Finished localise_remote_images().");
-    // do_my_log("🔚");
 
+    do_my_log("🧮 Localised images: " . $num_localised);
 }
 
 function delete_attached_images_on_post_delete($post_id)
