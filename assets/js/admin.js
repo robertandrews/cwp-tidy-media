@@ -38,7 +38,7 @@ document.addEventListener('DOMContentLoaded', function () {
  * - Year/Month folders
  * - Post identifier (slug or ID)
  */
-function updatePaths() {
+function updatePreviewPaths() {
     // Base upload directory path
     var basePath = '/wp-content/uploads';
     var postTypeEnabled = document.querySelector('[name="organize_post_img_by_type"]').checked;
@@ -108,12 +108,12 @@ function toggleRelativeUrlsBox() {
  */
 document.addEventListener('DOMContentLoaded', function () {
     // Add event listeners for all relevant inputs
-    document.querySelector('[name="organize_post_img_by_type"]').addEventListener('change', updatePaths);
+    document.querySelector('[name="organize_post_img_by_type"]').addEventListener('change', updatePreviewPaths);
 
     var radioButtons = document.querySelectorAll(
         '[name="organize_post_img_by_taxonomy"], [name="organize_post_img_by_post_slug"]');
     for (var i = 0; i < radioButtons.length; i++) {
-        radioButtons[i].addEventListener('change', updatePaths);
+        radioButtons[i].addEventListener('change', updatePreviewPaths);
     }
 
     // Add event listener for the relative URLs toggle
@@ -125,5 +125,5 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Initial update of paths
-    updatePaths();
+    updatePreviewPaths();
 }); 

@@ -88,7 +88,7 @@ function our_post_types()
      * Our Post Types.
      *
      * Generates an array of post types which various other functions can use, eg. in post queries
-     * and the main do_saved_post(). Strips out some built-in types like "attachment". Only uses
+     * and the main catch_saved_post(). Strips out some built-in types like "attachment". Only uses
      * "post", "page" and any custom post types.
      *
      * @return array An array of available post types, with the default post types added back in

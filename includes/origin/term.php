@@ -4,12 +4,12 @@
 $settings = tidy_db_get_settings();
 /*
 if ($settings['organize_term_attachments'] == 1) {
-add_action('edit_term', 'do_edit_term', 10, 3);
-add_action('create_term', 'do_edit_term', 10, 3);
+add_action('edit_term', 'catch_edit_term', 10, 3);
+add_action('create_term', 'catch_edit_term', 10, 3);
 }
  */
 
-function do_edit_term($term_id, $tt_id, $taxonomy)
+function catch_edit_term($term_id, $tt_id, $taxonomy)
 {
     /**
      * Check Edited Term
@@ -20,7 +20,7 @@ function do_edit_term($term_id, $tt_id, $taxonomy)
      * @return void
      */
 
-    do_my_log("do_edit_term()");
+    do_my_log("catch_edit_term()");
 
     // Get served term and its meta
     $term = get_term($term_id, $taxonomy);

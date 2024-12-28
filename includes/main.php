@@ -1,59 +1,4 @@
 <?php
-function do_saved_post($post_id)
-{
-    /**
-     * Catch Saved Posts.
-     *
-     * This function is triggered when a post is saved in WordPress. It checks whether the post is not a revision
-     * and then proceeds to call the tidy_post_attachments function, passing in the post ID as a parameter.
-     *
-     * @param int $post_id The ID of the post being saved.
-     * @return void
-     */
-
-    // Only run if:
-    // - Post is not permanently deleted (ie. has a status)
-    // - Post status is not in the trash/bin (so, it won't fire when it's subsequently Permanently Deleted)
-    // - Post status is not auto-draft (ie. don't fire when auto-drafting)
-    // - Post status is not auto-saved
-    // - Post status is not a saved revision
-
-    if (get_post_status($post_id) && !wp_is_post_autosave($post_id) && !wp_is_post_revision($post_id) && get_post_status($post_id) !== 'trash' && get_post_status($post_id) !== 'auto-draft') {
-
-        // Only run on preferred post types
-        $post_types = our_post_types();
-        $my_post_type = get_post_type($post_id);
-        if (in_array($my_post_type, $post_types)) {
-
-            do_my_log("💾 do_saved_post() - " . $post_id . " " . get_post_field('post_type', $post_id) . ": " . get_the_title($post_id));
-
-            // Retrieve current settings from database
-            $settings = tidy_db_get_settings();
-
-            // Core functions
-            if ($settings['use_localise'] == 1) {
-                tidy_do_localise_images($post_id);
-            }
-            if ($settings['use_relative'] == 1) {
-                tidy_do_relativise_urls($post_id);
-            }
-            if ($settings['use_tidy_body_media'] == 1) {
-                tidy_do_reorg_body_media($post_id);
-            }
-            if ($settings['use_tidy_attachments'] == 1) {
-                tidy_do_reorg_post_attachments($post_id);
-            }
-            // tidy_do_delete_attachments_on_post_delete($post_id);
-            do_my_log("🏁 Complete.");
-            do_my_log("🔚");
-
-        } else {
-            // error: disallowed post type
-        }
-
-    }
-}
-add_action('save_post', 'do_saved_post', 10, 1);
 
 function tidy_do_localise_images($post_id)
 {
@@ -158,14 +103,14 @@ function tidy_do_localise_images($post_id)
                         // Replace the URL with the new attachment URL
                         $tag->setAttribute($element_info['attr'], wp_get_attachment_url($attach_id));
 
-                        // Unhook do_saved_post(), or wp_update_post() would cause an infinite loop
-                        remove_action('save_post', 'do_saved_post', 10, 1);
+                        // Unhook catch_saved_post(), or wp_update_post() would cause an infinite loop
+                        remove_action('save_post', 'catch_saved_post', 10, 1);
                         // Update the post content
                         $post_content = $dom->saveHTML();
                         wp_update_post(array('ID' => $post_id, 'post_content' => $post_content));
                         do_my_log("✅ Updated post body.");
                         // Hook it back up
-                        add_action('save_post', 'do_saved_post', 10, 1);
+                        add_action('save_post', 'catch_saved_post', 10, 1);
                     } else {
                         do_my_log("❌ File save failed.");
                     }
@@ -251,8 +196,8 @@ function tidy_do_relativise_urls($post_id)
 
                 // do_my_log("Need to save post...");
 
-                // Unhook do_saved_post(), or wp_update_post() would cause an infinite loop
-                remove_action('save_post', 'do_saved_post', 10, 1);
+                // Unhook catch_saved_post(), or wp_update_post() would cause an infinite loop
+                remove_action('save_post', 'catch_saved_post', 10, 1);
                 // Re-save the post
                 wp_update_post(array(
                     'ID' => $post_id,
@@ -260,7 +205,7 @@ function tidy_do_relativise_urls($post_id)
                 ));
                 do_my_log("✅ Post updated.");
                 // Hook it back up
-                add_action('save_post', 'do_saved_post', 10, 1);
+                add_action('save_post', 'catch_saved_post', 10, 1);
 
                 my_trigger_notice(4);
 
@@ -387,15 +332,15 @@ function tidy_do_reorg_body_media($post_id)
                             // TODO: Should the save happen here, repeatedly, or outside?
                             if ($modified == true) { // was if ($new_content) {
                                 // do_my_log("Updating post...");
-                                // Unhook do_saved_post(), or wp_update_post() would cause an infinite loop
-                                remove_action('save_post', 'do_saved_post', 10, 1);
+                                // Unhook catch_saved_post(), or wp_update_post() would cause an infinite loop
+                                remove_action('save_post', 'catch_saved_post', 10, 1);
                                 // Re-save the post
                                 wp_update_post(array(
                                     'ID' => $post_id,
                                     'post_content' => $content,
                                 ));
                                 // Hook it back up
-                                add_action('save_post', 'do_saved_post', 10, 1);
+                                add_action('save_post', 'catch_saved_post', 10, 1);
                             }
 
                             // 3. Attach image to this post if it was unattached
@@ -406,9 +351,9 @@ function tidy_do_reorg_body_media($post_id)
                                     'ID' => $attachment_id,
                                     'post_parent' => $post_id,
                                 );
-                                remove_action('save_post', 'do_saved_post', 10, 1);
+                                remove_action('save_post', 'catch_saved_post', 10, 1);
                                 wp_update_post($update_args);
-                                add_action('save_post', 'do_saved_post', 10, 1);
+                                add_action('save_post', 'catch_saved_post', 10, 1);
                             }
 
                         }
@@ -459,15 +404,15 @@ function tidy_do_reorg_body_media($post_id)
                         // TODO: Should the save happen here, repeatedly, or outside?
                         if ($modified == true) { // was if ($new_content) {
                             // do_my_log("Updating post...");
-                            // Unhook do_saved_post(), or wp_update_post() would cause an infinite loop
-                            remove_action('save_post', 'do_saved_post', 10, 1);
+                            // Unhook catch_saved_post(), or wp_update_post() would cause an infinite loop
+                            remove_action('save_post', 'catch_saved_post', 10, 1);
                             // Re-save the post
                             wp_update_post(array(
                                 'ID' => $post_id,
                                 'post_content' => $content,
                             ));
                             // Hook it back up
-                            add_action('save_post', 'do_saved_post', 10, 1);
+                            add_action('save_post', 'catch_saved_post', 10, 1);
                         }
 
                         do_my_log("Replaced " . $found_attribute . " with " . $new_attachment_url);

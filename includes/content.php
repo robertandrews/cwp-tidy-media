@@ -92,15 +92,15 @@ function tidy_update_body_media_urls($post_id, $post_att_id, $old_image_details,
             }
             if ($modified == true) { // was if ($new_content) {
                 // do_my_log("Updating '". get_post_field('post_title', get_the_ID()) ."'");
-                // Unhook do_saved_post(), or wp_update_post() would cause an infinite loop
-                remove_action('save_post', 'do_saved_post', 10, 1);
+                // Unhook catch_saved_post(), or wp_update_post() would cause an infinite loop
+                remove_action('save_post', 'catch_saved_post', 10, 1);
                 // Re-save the post
                 wp_update_post(array(
                     'ID' => get_the_ID(),
                     'post_content' => $content,
                 ));
                 // Hook it back up
-                add_action('save_post', 'do_saved_post', 10, 1);
+                add_action('save_post', 'catch_saved_post', 10, 1);
                 // do_my_log("Done.");
             }
 

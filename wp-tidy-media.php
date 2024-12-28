@@ -30,7 +30,7 @@ require_once TIDY_INCLUDES_DIR . 'plugin/admin.php';
 require_once TIDY_INCLUDES_DIR . 'utilities.php';
 
 // Include plugin posts functions
-require_once TIDY_INCLUDES_DIR . 'origin/posts.php';
+require_once TIDY_INCLUDES_DIR . 'origin/post.php';
 
 // Include plugin edit functions
 require_once TIDY_INCLUDES_DIR . 'origin/edit.php';
