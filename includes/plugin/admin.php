@@ -102,7 +102,7 @@ function tidy_media_organizer_options_page()
     }
 
     // Get data for template
-    $settings = get_tidy_media_settings();
+    $settings = tidy_db_get_settings();
     $domains = json_decode($settings['domains_to_replace'], true) ?: array();
     $post_types = our_post_types();
     $taxonomies = get_taxonomies(array('public' => true));

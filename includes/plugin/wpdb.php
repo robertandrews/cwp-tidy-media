@@ -3,7 +3,7 @@
 // Define a constant for the database table suffix
 define('TIDY_MEDIA_TABLE_SUFFIX', 'tidy_media_organizer');
 
-function tidy_media_organizer_create_table()
+function tidy_db_table_create()
 {
     /**
      * Database Setup.
@@ -64,7 +64,7 @@ function tidy_media_organizer_create_table()
     }
 }
 
-function tidy_media_organizer_delete_table()
+function tidy_db_table_delete()
 {
     /**
      * Clean On Deletion.
@@ -85,9 +85,9 @@ function tidy_media_organizer_delete_table()
     $wpdb->query("DROP TABLE IF EXISTS $table_name");
 }
 // Register the uninstall hook to clean up the database when plugin is uninstalled
-register_uninstall_hook(__FILE__, 'tidy_media_organizer_delete_table');
+register_uninstall_hook(__FILE__, 'tidy_db_table_delete');
 
-function get_tidy_media_settings()
+function tidy_db_get_settings()
 {
 /**
  * Get Plugin  Settings.

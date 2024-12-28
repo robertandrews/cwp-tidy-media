@@ -12,7 +12,7 @@ function do_my_log($log_message)
      */
     // $logging = true;
     // Retrieve current settings from database
-    $settings = get_tidy_media_settings();
+    $settings = tidy_db_get_settings();
 
     if ($settings['use_log'] == 1) {
         $log_file = plugin_dir_path(dirname(__FILE__)) . 'wp-tidy-media.log';

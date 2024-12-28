@@ -586,7 +586,7 @@ function new_image_details($post_id, $post_attachment)
      * @return array An associative array containing the details of the new image.
      */
     // Get user's path preferences from database
-    // TODO: Use get_tidy_media_settings() instead here...
+    // TODO: Use tidy_db_get_settings() instead here...
     global $wpdb;
     $table_name = $wpdb->prefix . 'tidy_media_organizer';
     if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") == $table_name) {

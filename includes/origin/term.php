@@ -1,7 +1,7 @@
 <?php
 
 // Support taxonomy term file checking on edit_term hook, if user has enabled it
-$settings = get_tidy_media_settings();
+$settings = tidy_db_get_settings();
 /*
 if ($settings['organize_term_attachments'] == 1) {
 add_action('edit_term', 'do_edit_term', 10, 3);

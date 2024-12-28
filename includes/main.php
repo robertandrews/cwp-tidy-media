@@ -28,7 +28,7 @@ function do_saved_post($post_id)
             do_my_log("💾 do_saved_post() - " . $post_id . " " . get_post_field('post_type', $post_id) . ": " . get_the_title($post_id));
 
             // Retrieve current settings from database
-            $settings = get_tidy_media_settings();
+            $settings = tidy_db_get_settings();
 
             // Core functions
             if ($settings['use_localise'] == 1) {
@@ -185,7 +185,7 @@ function tidy_body_media($post_id)
                             $uploads_base = trailingslashit(wp_upload_dir()['baseurl']); // http://context.local:8888/wp-content/uploads/
                             $uploads_folder = str_replace(trailingslashit(home_url()), '', $uploads_base); // /wp-content/uploads/
 
-                            $settings = get_tidy_media_settings();
+                            $settings = tidy_db_get_settings();
                             // Relative URL
                             if ($settings['use_relative'] == 1) {
                                 $new_src = "/" . $uploads_folder . trailingslashit($new_image_details['subdir']) . $new_image_details['filename'];
@@ -248,14 +248,14 @@ function tidy_body_media($post_id)
                         $poss_path = "/" . str_replace(get_home_path(), '', $search_results);
                         $found_attachment = get_attachment_obj_from_filepath($poss_path);
                         $new_attachment_url = wp_get_attachment_image_url($found_attachment->ID, 'full');
-                        $settings = get_tidy_media_settings();
+                        $settings = tidy_db_get_settings();
 
                         // $new_image_details = new_image_details($post_id, $post_attachment);
 
                         $uploads_base = trailingslashit(wp_upload_dir()['baseurl']); // http://context.local:8888/wp-content/uploads/
                         $uploads_folder = str_replace(trailingslashit(home_url()), '', $uploads_base); // /wp-content/uploads/
 
-                        $settings = get_tidy_media_settings();
+                        $settings = tidy_db_get_settings();
                         // Relative URL
                         if ($settings['use_relative'] == 1) {
                             $new_attachment_url = str_replace(trailingslashit(home_url()), '/', $new_attachment_url);
@@ -333,7 +333,7 @@ function relative_body_imgs($post_id)
         $num_rel_changes = 0;
 
         // Set up list of domains to strip from links - site URL is added by default
-        $settings = get_tidy_media_settings();
+        $settings = tidy_db_get_settings();
         $domains_to_replace = json_decode($settings['domains_to_replace'], true); // Decode the JSON array
         $local_domains = array_map('trim', $domains_to_replace);
         if (!in_array(get_site_url(), $local_domains)) {
@@ -544,7 +544,7 @@ function delete_attached_images_on_post_delete($post_id)
      */
 
     // Retrieve current settings from database
-    $settings = get_tidy_media_settings();
+    $settings = tidy_db_get_settings();
     if ($settings['use_delete'] == 1) {
 
         // Log the entire $_REQUEST array
