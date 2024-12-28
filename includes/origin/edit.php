@@ -11,7 +11,7 @@ function tidy_media_enqueue_scripts()
  */
     $current_screen = get_current_screen();
     if ($current_screen->id === 'edit-post' || ($current_screen->base === 'edit' && isset($_GET['post_type']))) {
-        wp_enqueue_script('tidy-media', plugin_dir_url(__FILE__) . 'js/origin-posts.js', array('jquery'), '1.0', true);
+        wp_enqueue_script('tidy-media', plugins_url('assets/js/origin-posts.js', dirname(dirname(__FILE__))), array('jquery'), '1.0', true);
         wp_localize_script('tidy-media', 'tidy_media_params', array(
             'ajax_url' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('tidy_media_nonce'),
