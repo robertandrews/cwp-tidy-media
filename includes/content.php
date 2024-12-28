@@ -1,6 +1,6 @@
 <?php
 
-function do_get_content_as_dom($content)
+function tidy_get_content_dom($content)
 {
     if ($content) {
         // Set the encoding of the input HTML string
@@ -17,7 +17,7 @@ function do_get_content_as_dom($content)
     }
 }
 
-function update_body_img_urls($post_id, $post_att_id, $old_image_details, $new_image_details)
+function tidy_update_body_media_urls($post_id, $post_att_id, $old_image_details, $new_image_details)
 {
 /**
  * Update Body Image URLs
@@ -27,7 +27,7 @@ function update_body_img_urls($post_id, $post_att_id, $old_image_details, $new_i
  * This function will check for any posts which embed the just-updated image at its previous URL, and will update that
  * URL to the new location.
  * This does not run on the post which instigated the move, ie the sole post which is the post_parent of the attachment,
- * since this should have already been updated by tidy_body_media().
+ * since this should have already been updated by tidy_do_reorg_body_media().
  *
  * @param int $post_id The ID of the starting post.
  * @param int $post_att_id The ID of the attachment post for the starting post.
@@ -36,7 +36,7 @@ function update_body_img_urls($post_id, $post_att_id, $old_image_details, $new_i
  * @return void This function does not return a value.
  */
 
-    do_my_log("🧩 update_body_img_urls()...");
+    do_my_log("🧩 tidy_update_body_media_urls()...");
 
     // 1. Get the old URL we just updated - relative and absolute forms
     // $old_image_details['url_rel']
@@ -61,7 +61,7 @@ function update_body_img_urls($post_id, $post_att_id, $old_image_details, $new_i
             // Get the post content
             $content = get_post_field('post_content', $post_id);
 
-            $doc = do_get_content_as_dom($content);
+            $doc = tidy_get_content_as_dom($content);
 
             // Find all img tags in the post content
             $images = $doc->getElementsByTagName('img');

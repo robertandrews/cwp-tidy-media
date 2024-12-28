@@ -292,7 +292,7 @@ function move_main_file($attachment_id, $old_image_details, $new_image_details, 
                 do_my_log("Database fields should now be updated.");
                 // If this was a post, update any body image URLs
                 if ($post_id) {
-                    update_body_img_urls($post_id, $attachment_id, $old_image_details, $new_image_details);
+                    tidy_update_body_media_urls($post_id, $attachment_id, $old_image_details, $new_image_details);
                 }
 
                 return true;
@@ -505,7 +505,7 @@ function do_get_all_attachments($post_id)
         return;
     }
 
-    $doc = do_get_content_as_dom($content);
+    $doc = tidy_get_content_as_dom($content);
 
     $images = $doc->getElementsByTagName('img');
     foreach ($images as $img) {
@@ -525,7 +525,7 @@ function do_get_all_attachments($post_id)
 
     // Combine, deduplicate and return
     if ($attachments) {
-        $attachments_unique = deduplicate_by_key($attachments, "ID");
+        $attachments_unique = deduplicate_array_by_key($attachments, "ID");
         return $attachments_unique;
     }
 
@@ -736,7 +736,7 @@ function custom_path_controller($post_id, $post_attachment)
             if ($move_main_file_success == true) {
             do_my_log("File was moved.");
             // TODO: Check and update any other posts
-            update_body_img_urls($post_id, $post_attachment->ID, $old_image_details, $new_image_details);
+            tidy_update_body_media_urls($post_id, $post_attachment->ID, $old_image_details, $new_image_details);
             } else {
             do_my_log("File was NOT moved.");
             }

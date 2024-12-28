@@ -23,7 +23,7 @@ function do_my_log($log_message)
     }
 }
 
-function search_file($filename)
+function search_for_uploaded_file($filename)
 {
     /**
      * Search For File
@@ -52,7 +52,7 @@ function search_file($filename)
     return false;
 }
 
-function deduplicate_by_key($array, $key)
+function deduplicate_array_by_key($array, $key)
 {
     /**
      * Deduplicate Array Items By Key

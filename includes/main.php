@@ -32,18 +32,18 @@ function do_saved_post($post_id)
 
             // Core functions
             if ($settings['use_localise'] == 1) {
-                localise_remote_images($post_id);
+                tidy_do_localise_images($post_id);
             }
             if ($settings['use_relative'] == 1) {
-                relative_body_imgs($post_id);
+                tidy_do_relativise_urls($post_id);
             }
             if ($settings['use_tidy_body_media'] == 1) {
-                tidy_body_media($post_id);
+                tidy_do_reorg_body_media($post_id);
             }
             if ($settings['use_tidy_attachments'] == 1) {
-                tidy_post_attachments($post_id);
+                tidy_do_reorg_post_attachments($post_id);
             }
-            // delete_attached_images_on_post_delete($post_id);
+            // tidy_do_delete_attachments_on_post_delete($post_id);
             do_my_log("🏁 Complete.");
             do_my_log("🔚");
 
@@ -55,49 +55,230 @@ function do_saved_post($post_id)
 }
 add_action('save_post', 'do_saved_post', 10, 1);
 
-function tidy_post_attachments($post_id)
+function tidy_do_localise_images($post_id)
 {
     /**
-     * Tidy Post Attachments.
+     * Localise Remote Images
      *
-     * This main function is responsible for tidying up post attachments after a post is saved in WordPress. It retrieves all
-     * the attachments related to the post, and checks if they are located in the preferred path. If an attachment is found
-     * in a non-preferred path, it will be moved to the preferred path.
+     * Slurps any remote images in a given post by downloading them to the media library
+     * and updating the image src attribute to use a relative URL.
      *
-     * @param int $post_id The ID of the post to tidy up its attachments.
-     * @return boolean Returns false if no attachments are found, or if any errors occur during the attachment move process.
+     * @param int $post_id The ID of the post to be checked for remote images.
+     *
+     * @return void
+     *
+     * @throws Exception If there is an error downloading an image or updating the post.
      */
 
-    do_my_log('🧩 tidy_post_attachments()...');
+    do_my_log("🧩 tidy_do_localise_images()...");
 
-    // TODO: Why does this omit some featured images?
-    $post_attachments = do_get_all_attachments($post_id);
+    $post_content = get_post_field('post_content', $post_id);
 
-    // $attachment_ids = implode(',', wp_list_pluck($post_attachments, 'ID'));
-    // do_my_log("attach ids: ". $attachment_ids);
+    if (!$post_content) {
+        return;
+    }
 
-    // do_my_log(' thumbnail - ' . get_post_thumbnail_id($post_id));
-    // $thumb_id = get_post_thumbnail_id($post_id);
-    // $thumb_attachment = get_post($thumb_id);
+    $dom = tidy_get_content_as_dom($post_content);
 
-    if ($post_attachments) {
-        foreach ($post_attachments as $post_attachment) {
+    // Process both img tags and anchor tags that link to images
+    $elements_to_check = array(
+        array('tag' => 'img', 'attr' => 'src'),
+        array('tag' => 'a', 'attr' => 'href'),
+    );
 
-            do_my_log("🖼 Attachment " . $post_attachment->ID . " - " . $post_attachment->post_title);
+    $num_localised = 0;
 
-            // Check file location, move if needed
-            $move_attachment_outcome = custom_path_controller($post_id, $post_attachment);
-            // return $move_attachment_outcome;
+    foreach ($elements_to_check as $element_info) {
+        $tags = $dom->getElementsByTagName($element_info['tag']);
+
+        foreach ($tags as $tag) {
+            $url = $tag->getAttribute($element_info['attr']);
+
+            // Check if URL points to an image by looking at the file extension
+            $is_image_url = preg_match('/\.(jpe?g|png|gif|webp)$/i', $url);
+
+            // "Remote" URL i) starts with "http" but ii) not including http://www.yoursite.com
+            if ($is_image_url && strpos($url, 'http') === 0 && strpos($url, home_url()) === false) {
+                do_my_log("🎆 Found " . $element_info['tag'] . " " . $element_info['attr'] . " " . $url);
+
+                // Check if we already have this image in the media library
+                $existing_attachment = attachment_url_to_postid($url);
+                if ($existing_attachment) {
+                    do_my_log("Image already exists in media library with ID: " . $existing_attachment);
+                    $tag->setAttribute($element_info['attr'], wp_get_attachment_url($existing_attachment));
+                    continue;
+                }
+
+                // Download the image file contents
+                $image_data = file_get_contents($url);
+
+                if ($image_data) {
+                    do_my_log("🛬 Downloaded file.");
+
+                    // Check if the downloaded file is an image
+                    $image_info = getimagesizefromstring($image_data);
+                    if (!$image_info) {
+                        do_my_log("❌ Not a valid image.");
+                        continue;
+                    }
+
+                    // Generate path info
+                    $image_info = pathinfo($url);
+                    $image_name = $image_info['basename'];
+                    // Generate uploads directory info
+                    $upload_dir = wp_upload_dir();
+                    $image_file = $upload_dir['path'] . '/' . $image_name;
+
+                    if (file_put_contents($image_file, $image_data) !== false) {
+                        do_my_log("Saved file to " . $image_file);
+
+                        // Get the post date of the parent post
+                        $post_date = get_post_field('post_date', $post_id);
+                        // Create attachment post object
+                        $attachment = array(
+                            'post_title' => $image_name,
+                            'post_mime_type' => wp_check_filetype($image_name)['type'],
+                            'post_content' => '',
+                            'post_status' => 'inherit',
+                            'post_parent' => $post_id,
+                            'post_date' => $post_date,
+                            'post_date_gmt' => get_gmt_from_date($post_date),
+                        );
+
+                        // Insert the attachment into the media library
+                        $attach_id = wp_insert_attachment($attachment, $image_file, $post_id);
+
+                        // Set the attachment metadata
+                        $attach_data = wp_generate_attachment_metadata($attach_id, $image_file);
+                        wp_update_attachment_metadata($attach_id, $attach_data);
+
+                        do_my_log("📎 Attachment created.");
+                        $num_localised++;
+
+                        // Replace the URL with the new attachment URL
+                        $tag->setAttribute($element_info['attr'], wp_get_attachment_url($attach_id));
+
+                        // Unhook do_saved_post(), or wp_update_post() would cause an infinite loop
+                        remove_action('save_post', 'do_saved_post', 10, 1);
+                        // Update the post content
+                        $post_content = $dom->saveHTML();
+                        wp_update_post(array('ID' => $post_id, 'post_content' => $post_content));
+                        do_my_log("✅ Updated post body.");
+                        // Hook it back up
+                        add_action('save_post', 'do_saved_post', 10, 1);
+                    } else {
+                        do_my_log("❌ File save failed.");
+                    }
+                } else {
+                    do_my_log("❌ File download failed.");
+                }
+            } else {
+                if ($is_image_url) {
+                    do_my_log("🚫 Image not remote - " . $url);
+                }
+            }
+        }
+    }
+
+    do_my_log("🧮 Localised images: " . $num_localised);
+}
+
+function tidy_do_relativise_urls($post_id)
+{
+    /**
+     * Make In-Line Image URLs relative
+     *
+     * This function takes a WordPress post ID and modifies the post's content by
+     * making all local image URLs relative to the site's root directory. It does this by
+     * removing any specified domains from the image URLs.
+     *
+     * The function only removes the site's own scheme domain (eg. "http://www.myblog.com").
+     *
+     * @param int $post_id The ID of the WordPress post to modify.
+     * @return void
+     */
+
+    do_my_log("🧩 tidy_do_relativise_urls()...");
+
+    // Get the post content
+    $content = get_post_field('post_content', $post_id);
+
+    if ($content) {
+
+        $new_content = $content;
+        // Set starting vars
+        $modified = false;
+        $num_rel_changes = 0;
+
+        // Set up list of domains to strip from links - site URL is added by default
+        $settings = tidy_db_get_settings();
+        $domains_to_replace = json_decode($settings['domains_to_replace'], true); // Decode the JSON array
+        $local_domains = array_map('trim', $domains_to_replace);
+        if (!in_array(get_site_url(), $local_domains)) {
+            array_push($local_domains, get_site_url());
+        }
+
+        foreach ($local_domains as $domain) {
+
+            // Set the encoding of the input HTML string
+            $content = html_entity_decode($content, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            $new_content = html_entity_decode($new_content, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+            $doc = tidy_get_content_as_dom($content);
+
+            // Get every img tag
+            $images = $doc->getElementsByTagName('img');
+            foreach ($images as $image) {
+                // Get its src attribute
+                $src = $image->getAttribute('src');
+                // src starts with absolute url
+                if (strpos($src, $domain) === 0) {
+                    // Strip the domain part
+                    $new_src = str_replace($domain, '', $src);
+                    // Change the src in the content
+                    $image->setAttribute('src', $new_src);
+                    // Notice
+                    do_my_log("Replaced: " . $src);
+                    do_my_log("With: " . $new_src);
+                    // Resave the content (to memory)
+                    $new_content = $doc->saveHTML();
+                    $num_rel_changes++;
+                }
+            }
+
+            // If the content has changed,
+            if ($new_content !== $content) {
+
+                // do_my_log("Need to save post...");
+
+                // Unhook do_saved_post(), or wp_update_post() would cause an infinite loop
+                remove_action('save_post', 'do_saved_post', 10, 1);
+                // Re-save the post
+                wp_update_post(array(
+                    'ID' => $post_id,
+                    'post_content' => $new_content,
+                ));
+                do_my_log("✅ Post updated.");
+                // Hook it back up
+                add_action('save_post', 'do_saved_post', 10, 1);
+
+                my_trigger_notice(4);
+
+            }
 
         }
+        do_my_log("🧮 Relative URL conversions: " . $num_rel_changes++);
+
     } else {
-        do_my_log("No attachments found.");
-        return false;
+        // echo "Post ".$post_id." has no content.\n";
     }
+
+    // do_my_log("Finished tidy_do_relativise_urls().");
+    // do_my_log("🔚");
 
 }
 
-function tidy_body_media($post_id)
+function tidy_do_reorg_body_media($post_id)
 {
     /**
      * Tidy Body Img Paths
@@ -114,7 +295,7 @@ function tidy_body_media($post_id)
      * @return void
      */
 
-    do_my_log("🧩 tidy_body_media()...");
+    do_my_log("🧩 tidy_do_reorg_body_media()...");
 
     // Get the post content
     $content = get_post_field('post_content', $post_id);
@@ -123,7 +304,7 @@ function tidy_body_media($post_id)
         return;
     }
 
-    $doc = do_get_content_as_dom($content);
+    $doc = tidy_get_content_as_dom($content);
 
     $targets = array(
         "img" => "src",
@@ -242,7 +423,7 @@ function tidy_body_media($post_id)
 
                     do_my_log("❌ File does not exist at " . $found_media_filepath);
                     // Search for the file
-                    $search_results = search_file(basename($found_media_filepath));
+                    $search_results = search_for_uploaded_file(basename($found_media_filepath));
                     if ($search_results) {
                         do_my_log("🔍 " . basename($found_media_filepath) . " found at " . $search_results);
                         $poss_path = "/" . str_replace(get_home_path(), '', $search_results);
@@ -298,237 +479,56 @@ function tidy_body_media($post_id)
         }
 
         do_my_log("🧮 Tidied from body: " . $num_tidied_in_body);
-        // do_my_log("Finished tidy_body_media().");
+        // do_my_log("Finished tidy_do_reorg_body_media().");
         // do_my_log("🔚");
 
     }
 
 }
 
-function relative_body_imgs($post_id)
+function tidy_do_reorg_post_attachments($post_id)
 {
     /**
-     * Make In-Line Image URLs relative
+     * Tidy Post Attachments.
      *
-     * This function takes a WordPress post ID and modifies the post's content by
-     * making all local image URLs relative to the site's root directory. It does this by
-     * removing any specified domains from the image URLs.
+     * This main function is responsible for tidying up post attachments after a post is saved in WordPress. It retrieves all
+     * the attachments related to the post, and checks if they are located in the preferred path. If an attachment is found
+     * in a non-preferred path, it will be moved to the preferred path.
      *
-     * The function only removes the site's own scheme domain (eg. "http://www.myblog.com").
-     *
-     * @param int $post_id The ID of the WordPress post to modify.
-     * @return void
+     * @param int $post_id The ID of the post to tidy up its attachments.
+     * @return boolean Returns false if no attachments are found, or if any errors occur during the attachment move process.
      */
 
-    do_my_log("🧩 relative_body_imgs()...");
+    do_my_log('🧩 tidy_do_reorg_post_attachments()...');
 
-    // Get the post content
-    $content = get_post_field('post_content', $post_id);
+    // TODO: Why does this omit some featured images?
+    $post_attachments = do_get_all_attachments($post_id);
 
-    if ($content) {
+    // $attachment_ids = implode(',', wp_list_pluck($post_attachments, 'ID'));
+    // do_my_log("attach ids: ". $attachment_ids);
 
-        $new_content = $content;
-        // Set starting vars
-        $modified = false;
-        $num_rel_changes = 0;
+    // do_my_log(' thumbnail - ' . get_post_thumbnail_id($post_id));
+    // $thumb_id = get_post_thumbnail_id($post_id);
+    // $thumb_attachment = get_post($thumb_id);
 
-        // Set up list of domains to strip from links - site URL is added by default
-        $settings = tidy_db_get_settings();
-        $domains_to_replace = json_decode($settings['domains_to_replace'], true); // Decode the JSON array
-        $local_domains = array_map('trim', $domains_to_replace);
-        if (!in_array(get_site_url(), $local_domains)) {
-            array_push($local_domains, get_site_url());
-        }
+    if ($post_attachments) {
+        foreach ($post_attachments as $post_attachment) {
 
-        foreach ($local_domains as $domain) {
+            do_my_log("🖼 Attachment " . $post_attachment->ID . " - " . $post_attachment->post_title);
 
-            // Set the encoding of the input HTML string
-            $content = html_entity_decode($content, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-            $new_content = html_entity_decode($new_content, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-
-            $doc = do_get_content_as_dom($content);
-
-            // Get every img tag
-            $images = $doc->getElementsByTagName('img');
-            foreach ($images as $image) {
-                // Get its src attribute
-                $src = $image->getAttribute('src');
-                // src starts with absolute url
-                if (strpos($src, $domain) === 0) {
-                    // Strip the domain part
-                    $new_src = str_replace($domain, '', $src);
-                    // Change the src in the content
-                    $image->setAttribute('src', $new_src);
-                    // Notice
-                    do_my_log("Replaced: " . $src);
-                    do_my_log("With: " . $new_src);
-                    // Resave the content (to memory)
-                    $new_content = $doc->saveHTML();
-                    $num_rel_changes++;
-                }
-            }
-
-            // If the content has changed,
-            if ($new_content !== $content) {
-
-                // do_my_log("Need to save post...");
-
-                // Unhook do_saved_post(), or wp_update_post() would cause an infinite loop
-                remove_action('save_post', 'do_saved_post', 10, 1);
-                // Re-save the post
-                wp_update_post(array(
-                    'ID' => $post_id,
-                    'post_content' => $new_content,
-                ));
-                do_my_log("✅ Post updated.");
-                // Hook it back up
-                add_action('save_post', 'do_saved_post', 10, 1);
-
-                my_trigger_notice(4);
-
-            }
+            // Check file location, move if needed
+            $move_attachment_outcome = custom_path_controller($post_id, $post_attachment);
+            // return $move_attachment_outcome;
 
         }
-        do_my_log("🧮 Relative URL conversions: " . $num_rel_changes++);
-
     } else {
-        // echo "Post ".$post_id." has no content.\n";
+        do_my_log("No attachments found.");
+        return false;
     }
-
-    // do_my_log("Finished relative_body_imgs().");
-    // do_my_log("🔚");
 
 }
 
-function localise_remote_images($post_id)
-{
-    /**
-     * Localise Remote Images
-     *
-     * Slurps any remote images in a given post by downloading them to the media library
-     * and updating the image src attribute to use a relative URL.
-     *
-     * @param int $post_id The ID of the post to be checked for remote images.
-     *
-     * @return void
-     *
-     * @throws Exception If there is an error downloading an image or updating the post.
-     */
-
-    do_my_log("🧩 localise_remote_images()...");
-
-    $post_content = get_post_field('post_content', $post_id);
-
-    if (!$post_content) {
-        return;
-    }
-
-    $dom = do_get_content_as_dom($post_content);
-
-    // Process both img tags and anchor tags that link to images
-    $elements_to_check = array(
-        array('tag' => 'img', 'attr' => 'src'),
-        array('tag' => 'a', 'attr' => 'href'),
-    );
-
-    $num_localised = 0;
-
-    foreach ($elements_to_check as $element_info) {
-        $tags = $dom->getElementsByTagName($element_info['tag']);
-
-        foreach ($tags as $tag) {
-            $url = $tag->getAttribute($element_info['attr']);
-
-            // Check if URL points to an image by looking at the file extension
-            $is_image_url = preg_match('/\.(jpe?g|png|gif|webp)$/i', $url);
-
-            // "Remote" URL i) starts with "http" but ii) not including http://www.yoursite.com
-            if ($is_image_url && strpos($url, 'http') === 0 && strpos($url, home_url()) === false) {
-                do_my_log("🎆 Found " . $element_info['tag'] . " " . $element_info['attr'] . " " . $url);
-
-                // Check if we already have this image in the media library
-                $existing_attachment = attachment_url_to_postid($url);
-                if ($existing_attachment) {
-                    do_my_log("Image already exists in media library with ID: " . $existing_attachment);
-                    $tag->setAttribute($element_info['attr'], wp_get_attachment_url($existing_attachment));
-                    continue;
-                }
-
-                // Download the image file contents
-                $image_data = file_get_contents($url);
-
-                if ($image_data) {
-                    do_my_log("🛬 Downloaded file.");
-
-                    // Check if the downloaded file is an image
-                    $image_info = getimagesizefromstring($image_data);
-                    if (!$image_info) {
-                        do_my_log("❌ Not a valid image.");
-                        continue;
-                    }
-
-                    // Generate path info
-                    $image_info = pathinfo($url);
-                    $image_name = $image_info['basename'];
-                    // Generate uploads directory info
-                    $upload_dir = wp_upload_dir();
-                    $image_file = $upload_dir['path'] . '/' . $image_name;
-
-                    if (file_put_contents($image_file, $image_data) !== false) {
-                        do_my_log("Saved file to " . $image_file);
-
-                        // Get the post date of the parent post
-                        $post_date = get_post_field('post_date', $post_id);
-                        // Create attachment post object
-                        $attachment = array(
-                            'post_title' => $image_name,
-                            'post_mime_type' => wp_check_filetype($image_name)['type'],
-                            'post_content' => '',
-                            'post_status' => 'inherit',
-                            'post_parent' => $post_id,
-                            'post_date' => $post_date,
-                            'post_date_gmt' => get_gmt_from_date($post_date),
-                        );
-
-                        // Insert the attachment into the media library
-                        $attach_id = wp_insert_attachment($attachment, $image_file, $post_id);
-
-                        // Set the attachment metadata
-                        $attach_data = wp_generate_attachment_metadata($attach_id, $image_file);
-                        wp_update_attachment_metadata($attach_id, $attach_data);
-
-                        do_my_log("📎 Attachment created.");
-                        $num_localised++;
-
-                        // Replace the URL with the new attachment URL
-                        $tag->setAttribute($element_info['attr'], wp_get_attachment_url($attach_id));
-
-                        // Unhook do_saved_post(), or wp_update_post() would cause an infinite loop
-                        remove_action('save_post', 'do_saved_post', 10, 1);
-                        // Update the post content
-                        $post_content = $dom->saveHTML();
-                        wp_update_post(array('ID' => $post_id, 'post_content' => $post_content));
-                        do_my_log("✅ Updated post body.");
-                        // Hook it back up
-                        add_action('save_post', 'do_saved_post', 10, 1);
-                    } else {
-                        do_my_log("❌ File save failed.");
-                    }
-                } else {
-                    do_my_log("❌ File download failed.");
-                }
-            } else {
-                if ($is_image_url) {
-                    do_my_log("🚫 Image not remote - " . $url);
-                }
-            }
-        }
-    }
-
-    do_my_log("🧮 Localised images: " . $num_localised);
-}
-
-function delete_attached_images_on_post_delete($post_id)
+function tidy_do_delete_attachments_on_post_delete($post_id)
 {
     /**
      * Remove Attachments On Post Delete
@@ -563,7 +563,7 @@ function delete_attached_images_on_post_delete($post_id)
             // When permanently deleting an attachment...
             if ($post->post_status == 'trash') {
 
-                do_my_log("🗑 delete_attached_images_on_post_delete()...");
+                do_my_log("🗑 tidy_do_delete_attachments_on_post_delete()...");
 
                 $current_screen = get_current_screen();
                 $screen_id = $current_screen ? $current_screen->id : '';
