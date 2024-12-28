@@ -28,7 +28,7 @@ function tidy_do_localise_images($post_id)
     // Process both img tags and anchor tags that link to images
     $elements_to_check = array(
         array('tag' => 'img', 'attr' => 'src'),
-        array('tag' => 'a', 'attr' => 'href'),
+        // array('tag' => 'a', 'attr' => 'href'),
     );
 
     $num_localised = 0;
