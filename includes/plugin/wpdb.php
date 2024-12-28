@@ -1,6 +1,6 @@
 <?php
 
-// Define constants at the top of the file
+// Define a constant for the database table suffix
 define('TIDY_MEDIA_TABLE_SUFFIX', 'tidy_media_organizer');
 
 function tidy_media_organizer_create_table()
@@ -15,30 +15,38 @@ function tidy_media_organizer_create_table()
      */
     global $wpdb;
     $table_name = $wpdb->prefix . TIDY_MEDIA_TABLE_SUFFIX;
+
+    // Check if the table already exists
     if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") != $table_name) {
+        // Get the WordPress database character set
         $charset_collate = $wpdb->get_charset_collate();
+
+        // Define table structure with three columns: ID, setting name, and value
         $sql = "CREATE TABLE $table_name (
             setting_id mediumint(9) NOT NULL AUTO_INCREMENT,
             setting_name varchar(50) NOT NULL,
             setting_value varchar(300) NOT NULL,
             PRIMARY KEY (setting_id)
         ) $charset_collate;";
+
+        // Include WordPress upgrade functions for dbDelta
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
         dbDelta($sql);
 
-        // Batch insert default settings
+        // Define default settings for the plugin
         $default_settings = array(
-            'organize_post_img_by_type' => '1',
-            'use_tidy_attachments' => '1',
-            'use_tidy_body_media' => '1',
-            'use_relative' => '1',
-            'use_localise' => '1',
-            'use_delete' => '1',
-            'use_log' => '1',
-            'run_on_save' => '1',
-            'organize_term_attachments' => '1',
+            'organize_post_img_by_type' => '1', // Organize images by their type
+            'use_tidy_attachments' => '1', // Enable attachment organization
+            'use_tidy_body_media' => '1', // Enable body content media organization
+            'use_relative' => '1', // Use relative URLs
+            'use_localise' => '1', // Enable URL localization
+            'use_delete' => '1', // Enable orphaned attachment deletion
+            'use_log' => '1', // Enable logging
+            'run_on_save' => '1', // Run organization on post save
+            'organize_term_attachments' => '1', // Organize term attachments
         );
 
+        // Prepare values and placeholders for bulk insert
         $values = array();
         $placeholders = array();
         foreach ($default_settings as $name => $value) {
@@ -47,6 +55,7 @@ function tidy_media_organizer_create_table()
             $placeholders[] = "(%s, %s)";
         }
 
+        // Build and execute bulk insert query
         $query = $wpdb->prepare(
             "INSERT INTO $table_name (setting_name, setting_value) VALUES " . implode(', ', $placeholders),
             $values
@@ -69,10 +78,13 @@ function tidy_media_organizer_delete_table()
     global $wpdb;
     global $table_name;
 
+    // Set the full table name with prefix
     $table_name = $wpdb->prefix . 'tidy_media_organizer';
 
+    // Drop the table if it exists
     $wpdb->query("DROP TABLE IF EXISTS $table_name");
 }
+// Register the uninstall hook to clean up the database when plugin is uninstalled
 register_uninstall_hook(__FILE__, 'tidy_media_organizer_delete_table');
 
 function get_tidy_media_settings()
@@ -98,12 +110,19 @@ function get_tidy_media_settings()
  */
     global $wpdb;
     $table_name = $wpdb->prefix . 'tidy_media_organizer';
+
+    // Check if our settings table exists
     if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") == $table_name) {
+        // Fetch all settings from the database
         $settings = $wpdb->get_results("SELECT * FROM $table_name");
         $settings_arr = array();
+
+        // Convert database results into associative array
         foreach ($settings as $setting) {
             $settings_arr[$setting->setting_name] = $setting->setting_value;
         }
+
+        // Get each setting with fallback default values if not set
         $organize_post_img_by_type = isset($settings_arr['organize_post_img_by_type']) ? $settings_arr['organize_post_img_by_type'] : 0;
         $organize_post_img_by_taxonomy = isset($settings_arr['organize_post_img_by_taxonomy']) ? $settings_arr['organize_post_img_by_taxonomy'] : '';
         $organize_post_img_by_post_slug = isset($settings_arr['organize_post_img_by_post_slug']) ? $settings_arr['organize_post_img_by_post_slug'] : 0;
@@ -117,6 +136,7 @@ function get_tidy_media_settings()
         $run_on_save = isset($settings_arr['run_on_save']) ? $settings_arr['run_on_save'] : 0;
         $organize_term_attachments = isset($settings_arr['organize_term_attachments']) ? $settings_arr['organize_term_attachments'] : 0;
 
+        // Return all settings in a structured array
         return array(
             'organize_post_img_by_type' => $organize_post_img_by_type,
             'organize_post_img_by_taxonomy' => $organize_post_img_by_taxonomy,
@@ -132,7 +152,7 @@ function get_tidy_media_settings()
             'organize_term_attachments' => $organize_term_attachments,
         );
     } else {
-        // Add error message to WordPress admin notices instead of direct echo
+        // If table doesn't exist, add an admin notice and return empty settings
         add_action('admin_notices', function () use ($table_name) {
             echo '<div class="notice notice-error"><p>Plugin issue: <code>' . esc_html($table_name) . '</code> not found in database. Cannot store settings. Try reactivating the plugin.</p></div>';
         });
