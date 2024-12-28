@@ -105,7 +105,7 @@ function tidy_admin_options_page()
     // Get data for template
     $settings = tidy_db_get_settings();
     $domains = json_decode($settings['domains_to_replace'], true) ?: array();
-    $post_types = our_post_types();
+    $post_types = tidy_get_our_post_types();
     $taxonomies = get_taxonomies(array('public' => true));
 
     // Load template

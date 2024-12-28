@@ -157,7 +157,7 @@ function is_attachment_used_elsewhere($attachment_id, $main_post_id)
 
     // Check 1: URL in body content
     $args_attach = array(
-        'post_type' => our_post_types(),
+        'post_type' => tidy_get_our_post_types(),
         'posts_per_page' => -1,
         'post__not_in' => array($main_post_id), // omit the starting post, which was already updated
         's' => $old_image_details['url_rel'],
@@ -170,7 +170,7 @@ function is_attachment_used_elsewhere($attachment_id, $main_post_id)
 
     // Check 2: used as thumbnail elsewhere
     $args_thumb = array(
-        'post_type' => our_post_types(), // Replace with the post type you want to search in
+        'post_type' => tidy_get_our_post_types(), // Replace with the post type you want to search in
         'meta_key' => '_thumbnail_id',
         'meta_value' => $attachment_id,
         'post__not_in' => array($main_post_id), // omit the starting post, which was already updated

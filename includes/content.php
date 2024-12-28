@@ -44,7 +44,7 @@ function tidy_update_body_media_urls($post_id, $post_att_id, $old_image_details,
     // 2. Do a post query for that string
     // do_my_log("looking for " . $old_image_details['url_rel']);
     $args = array(
-        'post_type' => our_post_types(),
+        'post_type' => tidy_get_our_post_types(),
         'posts_per_page' => -1,
         'post__not_in' => array($post_id), // omit the starting post, which was already updated
         's' => $old_image_details['url_rel'],

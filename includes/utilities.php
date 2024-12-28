@@ -82,7 +82,7 @@ function deduplicate_array_by_key($array, $key)
     return $result_array;
 }
 
-function our_post_types()
+function tidy_get_our_post_types()
 {
     /**
      * Our Post Types.

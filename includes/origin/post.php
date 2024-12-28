@@ -21,7 +21,7 @@ function catch_saved_post($post_id)
     if (get_post_status($post_id) && !wp_is_post_autosave($post_id) && !wp_is_post_revision($post_id) && get_post_status($post_id) !== 'trash' && get_post_status($post_id) !== 'auto-draft') {
 
         // Only run on preferred post types
-        $post_types = our_post_types();
+        $post_types = tidy_get_our_post_types();
         $my_post_type = get_post_type($post_id);
         if (in_array($my_post_type, $post_types)) {
 
