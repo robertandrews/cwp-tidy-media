@@ -132,8 +132,10 @@ function get_tidy_media_settings()
             'organize_term_attachments' => $organize_term_attachments,
         );
     } else {
-        // Show an error message
-        echo '<div class="notice notice-error"><p>Plugin issue: <code>' . $table_name . '</code> not found in database. Cannot store settings. Try reactivating the plugin.</p></div>';
+        // Add error message to WordPress admin notices instead of direct echo
+        add_action('admin_notices', function () use ($table_name) {
+            echo '<div class="notice notice-error"><p>Plugin issue: <code>' . esc_html($table_name) . '</code> not found in database. Cannot store settings. Try reactivating the plugin.</p></div>';
+        });
         return array();
     }
 }
