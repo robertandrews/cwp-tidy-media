@@ -15,7 +15,7 @@ function do_my_log($log_message)
     $settings = get_tidy_media_settings();
 
     if ($settings['use_log'] == 1) {
-        $log_file = plugin_dir_path(__FILE__) . 'wp-tidy-media.log';
+        $log_file = plugin_dir_path(dirname(__FILE__)) . 'wp-tidy-media.log';
         $log_timestamp = gmdate('d-M-Y H:i:s T');
 
         $log_entry = "[$log_timestamp] $log_message\n";
