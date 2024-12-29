@@ -35,15 +35,18 @@ function tidy_db_table_create()
 
         // Define default settings for the plugin
         $default_settings = array(
-            'organize_post_img_by_type' => '1', // Organize images by their type
-            'use_tidy_attachments' => '1', // Enable attachment organization
-            'use_tidy_body_media' => '1', // Enable body content media organization
-            'use_relative' => '1', // Use relative URLs
-            'use_localise' => '1', // Enable URL localization
-            'use_delete' => '1', // Enable orphaned attachment deletion
+            // System settings
             'use_log' => '1', // Enable logging
-            'run_on_save' => '1', // Run organization on post save
-            'organize_term_attachments' => '1', // Organize term attachments
+            'run_on_save' => '1', // Run organization on every save_post hook
+            // Main functions
+            'tmo_do_localise_images' => '1', // Pull down remote body images
+            'tmo_do_relativise_urls' => '1', // Convert local body image URLs from absolute to relative
+            'tmo_do_delete_attachments_on_post_delete' => '1', // Enable orphaned attachment deletion
+            'tmo_do_reorg_body_media' => '1', // Reorganise media found in post content
+            'tmo_do_reorg_post_attachments' => '1', // Reorganise post attachments
+            // Path organisation
+            'path_inc_post_type' => '1', // Media filepath should use post_type folder (only for post attachments)
+            'path_inc_tax_term' => '1', // Media filepath should use taxonomy folder (only for term attachments)
         );
 
         // Prepare values and placeholders for bulk insert
@@ -96,17 +99,17 @@ function tidy_db_get_settings()
  * @return array Returns an array containing tidy media settings. If the tidy media organizer table is not found, an empty array is returned.
  *
  * The returned array contains the following keys:
- * - organize_post_img_by_type: A boolean indicating whether to organize post images by type.
- * - organize_post_img_by_taxonomy: A string indicating the taxonomy to organize post images by.
- * - organize_post_img_by_post_slug: A boolean indicating whether to organize post images by post slug.
- * - domains_to_replace: A string containing domains to replace with the local site's URL.
- * - use_tidy_attachments: A boolean indicating whether to use the Tidy Attachments feature.
- * - use_tidy_body_media: A boolean indicating whether to use the Tidy Body Media feature.
- * - use_relative: A boolean indicating whether to use relative URLs.
- * - use_localise: A boolean indicating whether to localize URLs.
- * - use_delete: A boolean indicating whether to delete orphaned attachments.
  * - use_log: A boolean indicating whether to log Tidy Media Organizer activity.
  * - run_on_save: A boolean indicating whether to run Tidy Media Organizer on post save.
+ * - tmo_do_localise_images: A boolean indicating whether to localize URLs.
+ * - tmo_do_relativise_urls: A boolean indicating whether to use relative URLs.
+ * - tmo_do_delete_attachments_on_post_delete: A boolean indicating whether to delete orphaned attachments.
+ * - tmo_do_reorg_body_media: A boolean indicating whether to use the Tidy Body Media feature.
+ * - tmo_do_reorg_post_attachments: A boolean indicating whether to use the Tidy Attachments feature.
+ * - path_inc_post_type: A boolean indicating whether to organize post images by type.
+ * - folder_item_taxonomy: A string indicating the taxonomy to organize post images by.
+ * - folder_item_post_identifier: A boolean indicating whether to organize post images by post slug.
+ * - domains_to_replace: A string containing domains to replace with the local site's URL.
  */
     global $wpdb;
     $table_name = $wpdb->prefix . 'tidy_media_organizer';
@@ -123,33 +126,43 @@ function tidy_db_get_settings()
         }
 
         // Get each setting with fallback default values if not set
-        $organize_post_img_by_type = isset($settings_arr['organize_post_img_by_type']) ? $settings_arr['organize_post_img_by_type'] : 0;
-        $organize_post_img_by_taxonomy = isset($settings_arr['organize_post_img_by_taxonomy']) ? $settings_arr['organize_post_img_by_taxonomy'] : '';
-        $organize_post_img_by_post_slug = isset($settings_arr['organize_post_img_by_post_slug']) ? $settings_arr['organize_post_img_by_post_slug'] : 0;
-        $domains_to_replace = isset($settings_arr['domains_to_replace']) ? $settings_arr['domains_to_replace'] : '';
-        $use_tidy_attachments = isset($settings_arr['use_tidy_attachments']) ? $settings_arr['use_tidy_attachments'] : 0;
-        $use_tidy_body_media = isset($settings_arr['use_tidy_body_media']) ? $settings_arr['use_tidy_body_media'] : 0;
-        $use_relative = isset($settings_arr['use_relative']) ? $settings_arr['use_relative'] : 0;
-        $use_localise = isset($settings_arr['use_localise']) ? $settings_arr['use_localise'] : 0;
-        $use_delete = isset($settings_arr['use_delete']) ? $settings_arr['use_delete'] : 0;
+        // System settings
         $use_log = isset($settings_arr['use_log']) ? $settings_arr['use_log'] : 0;
         $run_on_save = isset($settings_arr['run_on_save']) ? $settings_arr['run_on_save'] : 0;
-        $organize_term_attachments = isset($settings_arr['organize_term_attachments']) ? $settings_arr['organize_term_attachments'] : 0;
+        // Main functions
+        $tmo_do_localise_images = isset($settings_arr['tmo_do_localise_images']) ? $settings_arr['tmo_do_localise_images'] : 0;
+        $tmo_do_relativise_urls = isset($settings_arr['tmo_do_relativise_urls']) ? $settings_arr['tmo_do_relativise_urls'] : 0;
+        $tmo_do_delete_attachments_on_post_delete = isset($settings_arr['tmo_do_delete_attachments_on_post_delete']) ? $settings_arr['tmo_do_delete_attachments_on_post_delete'] : 0;
+        $tmo_do_reorg_body_media = isset($settings_arr['tmo_do_reorg_body_media']) ? $settings_arr['tmo_do_reorg_body_media'] : 0;
+        $tmo_do_reorg_post_attachments = isset($settings_arr['tmo_do_reorg_post_attachments']) ? $settings_arr['tmo_do_reorg_post_attachments'] : 0;
+        // Path organisation
+        $path_inc_post_type = isset($settings_arr['path_inc_post_type']) ? $settings_arr['path_inc_post_type'] : 0;
+        $path_inc_tax_term = isset($settings_arr['path_inc_tax_term']) ? $settings_arr['path_inc_tax_term'] : 0;
+        // Folder item organisation
+        $folder_item_taxonomy = isset($settings_arr['folder_item_taxonomy']) ? $settings_arr['folder_item_taxonomy'] : '';
+        $folder_item_post_identifier = isset($settings_arr['folder_item_post_identifier']) ? $settings_arr['folder_item_post_identifier'] : 0;
+        // Domains to replace
+        $domains_to_replace = isset($settings_arr['domains_to_replace']) ? $settings_arr['domains_to_replace'] : '';
 
         // Return all settings in a structured array
         return array(
-            'organize_post_img_by_type' => $organize_post_img_by_type,
-            'organize_post_img_by_taxonomy' => $organize_post_img_by_taxonomy,
-            'organize_post_img_by_post_slug' => $organize_post_img_by_post_slug,
-            'domains_to_replace' => $domains_to_replace,
-            'use_tidy_attachments' => $use_tidy_attachments,
-            'use_tidy_body_media' => $use_tidy_body_media,
-            'use_relative' => $use_relative,
-            'use_localise' => $use_localise,
-            'use_delete' => $use_delete,
+            // System settings
             'use_log' => $use_log,
             'run_on_save' => $run_on_save,
-            'organize_term_attachments' => $organize_term_attachments,
+            // Main functions
+            'tmo_do_localise_images' => $tmo_do_localise_images,
+            'tmo_do_relativise_urls' => $tmo_do_relativise_urls,
+            'tmo_do_delete_attachments_on_post_delete' => $tmo_do_delete_attachments_on_post_delete,
+            'tmo_do_reorg_body_media' => $tmo_do_reorg_body_media,
+            'tmo_do_reorg_post_attachments' => $tmo_do_reorg_post_attachments,
+            // Path organisation
+            'path_inc_post_type' => $path_inc_post_type,
+            'path_inc_tax_term' => $path_inc_tax_term,
+            // Folder item organisation
+            'folder_item_taxonomy' => $folder_item_taxonomy,
+            'folder_item_post_identifier' => $folder_item_post_identifier,
+            // Domains to replace
+            'domains_to_replace' => $domains_to_replace,
         );
     } else {
         // If table doesn't exist, add an admin notice and return empty settings

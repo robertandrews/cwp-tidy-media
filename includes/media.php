@@ -595,9 +595,9 @@ function new_image_details($post_id, $post_attachment)
         foreach ($settings as $setting) {
             $settings_arr[$setting->setting_name] = $setting->setting_value;
         }
-        $organize_post_img_by_type = isset($settings_arr['organize_post_img_by_type']) ? $settings_arr['organize_post_img_by_type'] : 0;
-        $organize_post_img_by_taxonomy = isset($settings_arr['organize_post_img_by_taxonomy']) ? $settings_arr['organize_post_img_by_taxonomy'] : '';
-        $organize_post_img_by_post_slug = isset($settings_arr['organize_post_img_by_post_slug']) ? $settings_arr['organize_post_img_by_post_slug'] : 0;
+        $path_inc_post_type = isset($settings_arr['path_inc_post_type']) ? $settings_arr['path_inc_post_type'] : 0;
+        $folder_item_taxonomy = isset($settings_arr['folder_item_taxonomy']) ? $settings_arr['folder_item_taxonomy'] : '';
+        $folder_item_post_identifier = isset($settings_arr['folder_item_post_identifier']) ? $settings_arr['folder_item_post_identifier'] : 0;
         // These will formulate the preferred path
     } else {
         // No database settings
@@ -607,25 +607,25 @@ function new_image_details($post_id, $post_attachment)
     // Build new subdir
     $new_subdir = '';
     // a. Use post type?
-    if ($organize_post_img_by_type == 1) {
+    if ($path_inc_post_type == 1) {
         $post_type = get_post_type($post_id);
         $new_subdir .= $post_type;
     }
     // b. Use taxonomy name and term?
-    if ($organize_post_img_by_taxonomy != '') {
-        $new_subdir .= '/' . $organize_post_img_by_taxonomy;
-        $post_terms = get_the_terms($post_id, $organize_post_img_by_taxonomy);
+    if ($folder_item_taxonomy != '') {
+        $new_subdir .= '/' . $folder_item_taxonomy;
+        $post_terms = get_the_terms($post_id, $folder_item_taxonomy);
 
         if ($post_terms) {
             // Get the last term in the array to use as the current term
             $current_term = end($post_terms);
 
             // Get an array of the parent term IDs
-            $parent_ids = get_ancestors($current_term->term_id, $organize_post_img_by_taxonomy);
+            $parent_ids = get_ancestors($current_term->term_id, $folder_item_taxonomy);
 
             // Add the slugs of all the parent terms to the subdirectory
             foreach ($parent_ids as $parent_id) {
-                $parent_term = get_term($parent_id, $organize_post_img_by_taxonomy);
+                $parent_term = get_term($parent_id, $folder_item_taxonomy);
                 $new_subdir .= '/' . $parent_term->slug;
             }
 
@@ -656,7 +656,7 @@ function new_image_details($post_id, $post_attachment)
     // new subdir is now generated
 
     // d. Use post slug?
-    if ($organize_post_img_by_post_slug == 1) {
+    if ($folder_item_post_identifier == 1) {
         $post_slug = get_post_field('post_name', get_post($post_id));
 
         if (!empty($new_subdir)) {

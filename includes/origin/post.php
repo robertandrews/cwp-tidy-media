@@ -31,16 +31,16 @@ function catch_saved_post($post_id)
             $settings = tidy_db_get_settings();
 
             // Core functions
-            if ($settings['use_localise'] == 1) {
+            if ($settings['tmo_do_localise_images'] == 1) {
                 tidy_do_localise_images($post_id);
             }
-            if ($settings['use_relative'] == 1) {
+            if ($settings['tmo_do_relativise_urls'] == 1) {
                 tidy_do_relativise_urls($post_id);
             }
-            if ($settings['use_tidy_body_media'] == 1) {
+            if ($settings['tmo_do_reorg_body_media'] == 1) {
                 tidy_do_reorg_body_media($post_id);
             }
-            if ($settings['use_tidy_attachments'] == 1) {
+            if ($settings['tmo_do_reorg_post_attachments'] == 1) {
                 tidy_do_reorg_post_attachments($post_id);
             }
             // tidy_do_delete_attachments_on_post_delete($post_id);

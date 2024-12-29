@@ -74,18 +74,18 @@ function tidy_admin_options_page()
         // Update or create settings
         if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") == $table_name) {
             $settings = array(
-                array('setting_name' => 'organize_post_img_by_type', 'setting_value' => isset($_POST['organize_post_img_by_type']) ? 1 : 0),
-                array('setting_name' => 'organize_post_img_by_taxonomy', 'setting_value' => isset($_POST['organize_post_img_by_taxonomy']) ? sanitize_text_field($_POST['organize_post_img_by_taxonomy']) : ''),
-                array('setting_name' => 'organize_post_img_by_post_slug', 'setting_value' => isset($_POST['organize_post_img_by_post_slug']) ? sanitize_text_field($_POST['organize_post_img_by_post_slug']) : ''),
+                array('setting_name' => 'path_inc_post_type', 'setting_value' => isset($_POST['path_inc_post_type']) ? 1 : 0),
+                array('setting_name' => 'folder_item_taxonomy', 'setting_value' => isset($_POST['folder_item_taxonomy']) ? sanitize_text_field($_POST['folder_item_taxonomy']) : ''),
+                array('setting_name' => 'folder_item_post_identifier', 'setting_value' => isset($_POST['folder_item_post_identifier']) ? sanitize_text_field($_POST['folder_item_post_identifier']) : ''),
                 array('setting_name' => 'domains_to_replace', 'setting_value' => isset($_POST['domains_to_replace']) ? json_encode(array_filter($_POST['domains_to_replace'])) : ''),
-                array('setting_name' => 'use_tidy_attachments', 'setting_value' => isset($_POST['use_tidy_attachments']) ? sanitize_text_field($_POST['use_tidy_attachments']) : ''),
-                array('setting_name' => 'use_tidy_body_media', 'setting_value' => isset($_POST['use_tidy_body_media']) ? sanitize_text_field($_POST['use_tidy_body_media']) : ''),
-                array('setting_name' => 'use_relative', 'setting_value' => isset($_POST['use_relative']) ? sanitize_text_field($_POST['use_relative']) : ''),
-                array('setting_name' => 'use_localise', 'setting_value' => isset($_POST['use_localise']) ? sanitize_text_field($_POST['use_localise']) : ''),
-                array('setting_name' => 'use_delete', 'setting_value' => isset($_POST['use_delete']) ? sanitize_text_field($_POST['use_delete']) : ''),
+                array('setting_name' => 'tmo_do_reorg_post_attachments', 'setting_value' => isset($_POST['tmo_do_reorg_post_attachments']) ? sanitize_text_field($_POST['tmo_do_reorg_post_attachments']) : ''),
+                array('setting_name' => 'tmo_do_reorg_body_media', 'setting_value' => isset($_POST['tmo_do_reorg_body_media']) ? sanitize_text_field($_POST['tmo_do_reorg_body_media']) : ''),
+                array('setting_name' => 'tmo_do_relativise_urls', 'setting_value' => isset($_POST['tmo_do_relativise_urls']) ? sanitize_text_field($_POST['tmo_do_relativise_urls']) : ''),
+                array('setting_name' => 'tmo_do_localise_images', 'setting_value' => isset($_POST['tmo_do_localise_images']) ? sanitize_text_field($_POST['tmo_do_localise_images']) : ''),
+                array('setting_name' => 'tmo_do_delete_attachments_on_post_delete', 'setting_value' => isset($_POST['tmo_do_delete_attachments_on_post_delete']) ? sanitize_text_field($_POST['tmo_do_delete_attachments_on_post_delete']) : ''),
                 array('setting_name' => 'use_log', 'setting_value' => isset($_POST['use_log']) ? sanitize_text_field($_POST['use_log']) : ''),
                 array('setting_name' => 'run_on_save', 'setting_value' => isset($_POST['run_on_save']) ? sanitize_text_field($_POST['run_on_save']) : ''),
-                array('setting_name' => 'organize_term_attachments', 'setting_value' => isset($_POST['organize_term_attachments']) ? sanitize_text_field($_POST['organize_term_attachments']) : ''),
+                array('setting_name' => 'path_inc_tax_term', 'setting_value' => isset($_POST['path_inc_tax_term']) ? sanitize_text_field($_POST['path_inc_tax_term']) : ''),
             );
             foreach ($settings as $setting) {
                 $existing_row = $wpdb->get_row("SELECT * FROM $table_name WHERE setting_name = '{$setting['setting_name']}'");

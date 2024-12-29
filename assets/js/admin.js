@@ -41,9 +41,9 @@ document.addEventListener('DOMContentLoaded', function () {
 function updatePreviewPaths() {
     // Base upload directory path
     var basePath = '/wp-content/uploads';
-    var postTypeEnabled = document.querySelector('[name="organize_post_img_by_type"]').checked;
-    var taxonomySlug = document.querySelector('[name="organize_post_img_by_taxonomy"]:checked');
-    var postIdentifier = document.querySelector('[name="organize_post_img_by_post_slug"]:checked')?.value || '';
+    var postTypeEnabled = document.querySelector('[name="path_inc_post_type"]').checked;
+    var taxonomySlug = document.querySelector('[name="folder_item_taxonomy"]:checked');
+    var postIdentifier = document.querySelector('[name="folder_item_post_identifier"]:checked')?.value || '';
     var uploadsUseYearMonthFolders = window.uploadsUseYearMonthFolders || false;
 
     var path = basePath;
@@ -91,7 +91,7 @@ function updatePreviewPaths() {
  * based on whether the use relative URLs option is checked.
  */
 function toggleRelativeUrlsBox() {
-    var useRelativeToggle = document.querySelector('[name="use_relative"]');
+    var useRelativeToggle = document.querySelector('[name="tmo_do_relativise_urls"]');
     var relativeUrlsBox = document.getElementById('relative-urls-settings');
 
     if (useRelativeToggle && relativeUrlsBox) {
@@ -108,16 +108,16 @@ function toggleRelativeUrlsBox() {
  */
 document.addEventListener('DOMContentLoaded', function () {
     // Add event listeners for all relevant inputs
-    document.querySelector('[name="organize_post_img_by_type"]').addEventListener('change', updatePreviewPaths);
+    document.querySelector('[name="path_inc_post_type"]').addEventListener('change', updatePreviewPaths);
 
     var radioButtons = document.querySelectorAll(
-        '[name="organize_post_img_by_taxonomy"], [name="organize_post_img_by_post_slug"]');
+        '[name="folder_item_taxonomy"], [name="folder_item_post_identifier"]');
     for (var i = 0; i < radioButtons.length; i++) {
         radioButtons[i].addEventListener('change', updatePreviewPaths);
     }
 
     // Add event listener for the relative URLs toggle
-    var useRelativeToggle = document.querySelector('[name="use_relative"]');
+    var useRelativeToggle = document.querySelector('[name="tmo_do_relativise_urls"]');
     if (useRelativeToggle) {
         useRelativeToggle.addEventListener('change', toggleRelativeUrlsBox);
         // Initial toggle state

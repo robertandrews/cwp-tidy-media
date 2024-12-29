@@ -3,7 +3,7 @@
 // Support taxonomy term file checking on edit_term hook, if user has enabled it
 $settings = tidy_db_get_settings();
 /*
-if ($settings['organize_term_attachments'] == 1) {
+if ($settings['path_inc_tax_term'] == 1) {
 add_action('edit_term', 'catch_edit_term', 10, 3);
 add_action('create_term', 'catch_edit_term', 10, 3);
 }

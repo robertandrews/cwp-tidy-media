@@ -31,7 +31,7 @@ if (!defined('ABSPATH')) {
                                     <tbody>
                                         <tr>
                                             <th scope="row">
-                                                <label for="organize_post_img_by_type">Logging</label>
+                                                <label for="path_inc_post_type">Logging</label>
                                             </th>
                                             <td>
                                                 <label style="margin: 0.35em 0 0.5em!important; display: inline-block;">
@@ -59,7 +59,7 @@ if (!defined('ABSPATH')) {
                                     <tbody>
                                         <tr>
                                             <th scope="row">
-                                                <label for="organize_post_img_by_type">Operation</label>
+                                                <label for="path_inc_post_type">Operation</label>
                                             </th>
                                             <td>
                                                 <label style="margin: 0.35em 0 0.5em!important; display: inline-block;">
@@ -88,15 +88,15 @@ echo implode(', ', array_map(function ($post_type) {
                                         </tr>
                                         <tr>
                                             <th scope="row">
-                                                <label for="organize_post_img_by_type">Functions</label>
+                                                <label for="path_inc_post_type">Functions</label>
                                             </th>
                                             <td>
                                                 <div class="function-toggles">
                                                     <label class="switch-wrapper">
                                                         <span class="switch">
-                                                            <input type="checkbox" name="use_localise" id="use_localise"
+                                                            <input type="checkbox" name="tmo_do_localise_images" id="tmo_do_localise_images"
                                                                 value="1"
-                                                                <?php checked($settings['use_localise'], 1);?>>
+                                                                <?php checked($settings['tmo_do_localise_images'], 1);?>>
                                                             <span class="slider"></span>
                                                         </span>
                                                         <span class="switch-label">
@@ -118,9 +118,9 @@ echo date('Y/m');
 
                                                     <label class="switch-wrapper">
                                                         <span class="switch">
-                                                            <input type="checkbox" name="use_relative" id="use_relative"
+                                                            <input type="checkbox" name="tmo_do_relativise_urls" id="tmo_do_relativise_urls"
                                                                 value="1"
-                                                                <?php checked($settings['use_relative'], 1);?>>
+                                                                <?php checked($settings['tmo_do_relativise_urls'], 1);?>>
                                                             <span class="slider"></span>
                                                         </span>
                                                         <span class="switch-label">
@@ -141,8 +141,8 @@ echo date('Y/m');
 
                                                     <label class="switch-wrapper">
                                                         <span class="switch">
-                                                            <input type="checkbox" name="use_delete" id="use_delete"
-                                                                value="1" <?php checked($settings['use_delete'], 1);?>>
+                                                            <input type="checkbox" name="tmo_do_delete_attachments_on_post_delete" id="tmo_do_delete_attachments_on_post_delete"
+                                                                value="1" <?php checked($settings['tmo_do_delete_attachments_on_post_delete'], 1);?>>
                                                             <span class="slider"></span>
                                                         </span>
                                                         <span class="switch-label">
@@ -158,15 +158,15 @@ echo date('Y/m');
 
                                         <tr>
                                             <th scope="row">
-                                                <label for="organize_post_img_by_type">Tidy functions</label>
+                                                <label for="path_inc_post_type">Tidy functions</label>
                                             </th>
                                             <td>
                                                 <div class="function-toggles">
                                                     <label class="switch-wrapper">
                                                         <span class="switch">
-                                                            <input type="checkbox" name="use_tidy_body_media"
-                                                                id="use_tidy_body_media" value="1"
-                                                                <?php checked($settings['use_tidy_body_media'], 1);?>>
+                                                            <input type="checkbox" name="tmo_do_reorg_body_media"
+                                                                id="tmo_do_reorg_body_media" value="1"
+                                                                <?php checked($settings['tmo_do_reorg_body_media'], 1);?>>
                                                             <span class="slider"></span>
                                                         </span>
                                                         <span class="switch-label">
@@ -190,9 +190,9 @@ echo date('Y/m');
 
                                                     <label class="switch-wrapper">
                                                         <span class="switch">
-                                                            <input type="checkbox" name="use_tidy_attachments"
-                                                                id="use_tidy_attachments" value="1"
-                                                                <?php checked($settings['use_tidy_attachments'], 1);?>>
+                                                            <input type="checkbox" name="tmo_do_reorg_post_attachments"
+                                                                id="tmo_do_reorg_post_attachments" value="1"
+                                                                <?php checked($settings['tmo_do_reorg_post_attachments'], 1);?>>
                                                             <span class="slider"></span>
                                                         </span>
                                                         <span class="switch-label">
@@ -220,12 +220,12 @@ echo date('Y/m');
                                     <tbody>
                                         <tr>
                                             <th scope="row">
-                                                <label for="organize_post_img_by_type">Organize by post type?</label>
+                                                <label for="path_inc_post_type">Organize by post type?</label>
                                             </th>
                                             <td>
-                                                <input type="checkbox" name="organize_post_img_by_type"
-                                                    id="organize_post_img_by_type" value="1"
-                                                    <?php checked($settings['organize_post_img_by_type'], 1);?>
+                                                <input type="checkbox" name="path_inc_post_type"
+                                                    id="path_inc_post_type" value="1"
+                                                    <?php checked($settings['path_inc_post_type'], 1);?>
                                                     class="media-folder-input">
                                                 <?php
 echo '(' . implode(', ', array_map(function ($post_type) {
@@ -243,17 +243,17 @@ echo '(' . implode(', ', array_map(function ($post_type) {
                                             <td>
                                                 <fieldset>
                                                     <label class="taxonomy-option">
-                                                        <input type="radio" name="organize_post_img_by_taxonomy"
+                                                        <input type="radio" name="folder_item_taxonomy"
                                                             value=""
-                                                            <?php checked($settings['organize_post_img_by_taxonomy'], '');?>
+                                                            <?php checked($settings['folder_item_taxonomy'], '');?>
                                                             class="media-folder-input">
                                                         <span>None</span>
                                                     </label>
                                                     <?php foreach ($taxonomies as $taxonomy): ?>
                                                     <label class="taxonomy-option">
-                                                        <input type="radio" name="organize_post_img_by_taxonomy"
+                                                        <input type="radio" name="folder_item_taxonomy"
                                                             value="<?php echo esc_attr($taxonomy); ?>"
-                                                            <?php checked($settings['organize_post_img_by_taxonomy'], $taxonomy);?>
+                                                            <?php checked($settings['folder_item_taxonomy'], $taxonomy);?>
                                                             class="media-folder-input">
                                                         <code><?php echo esc_html($taxonomy); ?></code>
                                                     </label>
@@ -286,23 +286,23 @@ if (get_option('uploads_use_yearmonth_folders') === '1') {
                                             <td>
                                                 <fieldset>
                                                     <label class="taxonomy-option">
-                                                        <input type="radio" name="organize_post_img_by_post_slug"
+                                                        <input type="radio" name="folder_item_post_identifier"
                                                             value=""
-                                                            <?php checked($settings['organize_post_img_by_post_slug'], '');?>
+                                                            <?php checked($settings['folder_item_post_identifier'], '');?>
                                                             class="media-folder-input">
                                                         <span>None</span>
                                                     </label>
                                                     <label class="taxonomy-option">
-                                                        <input type="radio" name="organize_post_img_by_post_slug"
+                                                        <input type="radio" name="folder_item_post_identifier"
                                                             value="slug"
-                                                            <?php checked($settings['organize_post_img_by_post_slug'], 'slug');?>
+                                                            <?php checked($settings['folder_item_post_identifier'], 'slug');?>
                                                             class="media-folder-input">
                                                         <span>Post slug</span> (eg. <code>my-awesome-post</code>)
                                                     </label>
                                                     <label class="taxonomy-option">
-                                                        <input type="radio" name="organize_post_img_by_post_slug"
+                                                        <input type="radio" name="folder_item_post_identifier"
                                                             value="id"
-                                                            <?php checked($settings['organize_post_img_by_post_slug'], 'id');?>
+                                                            <?php checked($settings['folder_item_post_identifier'], 'id');?>
                                                             class="media-folder-input">
                                                         <span>Post ID</span> (eg. <code>142</code>)
                                                     </label>
@@ -332,7 +332,7 @@ if (get_option('uploads_use_yearmonth_folders') === '1') {
                                     <tbody>
                                         <tr>
                                             <th scope="row">
-                                                <label for="organize_post_img_by_type">Legacy domains</label>
+                                                <label for="path_inc_post_type">Legacy domains</label>
                                             </th>
                                             <td>
                                                 <p class="description">With "Convert local body image URLs from absolute to relative" set, the plugin will automatically make URLs relative by removing <code><?php echo home_url(); ?></code>.</p>
@@ -376,15 +376,15 @@ if (get_option('uploads_use_yearmonth_folders') === '1') {
                                     <tbody>
                                         <tr>
                                             <th scope="row">
-                                                <label for="organize_term_attachments">Operation</label>
+                                                <label for="path_inc_tax_term">Operation</label>
                                             </th>
                                             <td>
                                                 <div class="function-toggles">
                                                     <label class="switch-wrapper">
                                                         <span class="switch">
-                                                            <input type="checkbox" name="organize_term_attachments"
-                                                                id="organize_term_attachments" value="1"
-                                                                <?php checked($settings['organize_term_attachments'], 1);?>>
+                                                            <input type="checkbox" name="path_inc_tax_term"
+                                                                id="path_inc_tax_term" value="1"
+                                                                <?php checked($settings['path_inc_tax_term'], 1);?>>
                                                             <span class="slider"></span>
                                                         </span>
                                                         <span class="switch-label">

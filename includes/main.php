@@ -313,7 +313,7 @@ function tidy_do_reorg_body_media($post_id)
 
                             $settings = tidy_db_get_settings();
                             // Relative URL
-                            if ($settings['use_relative'] == 1) {
+                            if ($settings['tmo_do_relativise_urls'] == 1) {
                                 $new_src = "/" . $uploads_folder . trailingslashit($new_image_details['subdir']) . $new_image_details['filename'];
                                 // Absolute URL
                             } else {
@@ -383,7 +383,7 @@ function tidy_do_reorg_body_media($post_id)
 
                         $settings = tidy_db_get_settings();
                         // Relative URL
-                        if ($settings['use_relative'] == 1) {
+                        if ($settings['tmo_do_relativise_urls'] == 1) {
                             $new_attachment_url = str_replace(trailingslashit(home_url()), '/', $new_attachment_url);
 
                             // Absolute URL
@@ -490,7 +490,7 @@ function tidy_do_delete_attachments_on_post_delete($post_id)
 
     // Retrieve current settings from database
     $settings = tidy_db_get_settings();
-    if ($settings['use_delete'] == 1) {
+    if ($settings['tmo_do_delete_attachments_on_post_delete'] == 1) {
 
         // Log the entire $_REQUEST array
         /*

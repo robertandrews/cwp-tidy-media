@@ -201,20 +201,20 @@ This table is created on plugin activation, and a small number of settings is se
 
 The following settings are stored in the `wp_tidy_media_organizer` table:
 
-| Setting Name                   | Example Value                    | Description                                                             |
-| ------------------------------ | -------------------------------- | ----------------------------------------------------------------------- |
-| organize_post_img_by_type      | 1                                | Creates folders for each post type (e.g., 'posts/', 'products/')        |
-| organize_post_img_by_taxonomy  | 'category'                       | Organizes by taxonomy terms (e.g., 'news/', 'reviews/')                 |
-| organize_post_img_by_post_slug | 0                                | When enabled, creates folders using post slugs (e.g., 'my-first-post/') |
-| domains_to_replace             | 'old-site.com, staging.site.com' | Additional domains to convert to relative URLs                          |
-| use_tidy_attachments           | 1                                | Enables reorganizing post attachments                                   |
-| use_tidy_body_media            | 1                                | Enables reorganizing media found in post content                        |
-| use_relative                   | 1                                | Converts absolute URLs to relative URLs                                 |
-| use_localise                   | 1                                | Downloads and stores remote images locally                              |
-| use_delete                     | 1                                | Deletes attachments when their parent post is deleted                   |
-| use_log                        | 1                                | Logs operations to wp-tidy-media.log                                    |
-| run_on_save                    | 1                                | Runs operations automatically when posts are saved                      |
-| organize_term_attachments      | 1                                | Enables organizing media by taxonomy terms                              |
+| Setting Name                             | Example Value                    | Description                                                             |
+| ---------------------------------------- | -------------------------------- | ----------------------------------------------------------------------- |
+| path_inc_post_type                       | 1                                | Creates folders for each post type (e.g., 'posts/', 'products/')        |
+| folder_item_taxonomy                     | 'category'                       | Organizes by taxonomy terms (e.g., 'news/', 'reviews/')                 |
+| folder_item_post_identifier              | 0                                | When enabled, creates folders using post slugs (e.g., 'my-first-post/') |
+| domains_to_replace                       | 'old-site.com, staging.site.com' | Additional domains to convert to relative URLs                          |
+| tmo_do_reorg_post_attachments            | 1                                | Enables reorganizing post attachments                                   |
+| tmo_do_reorg_body_media                  | 1                                | Enables reorganizing media found in post content                        |
+| tmo_do_relativise_urls                   | 1                                | Converts absolute URLs to relative URLs                                 |
+| tmo_do_localise_images                   | 1                                | Downloads and stores remote images locally                              |
+| tmo_do_delete_attachments_on_post_delete | 1                                | Deletes attachments when their parent post is deleted                   |
+| use_log                                  | 1                                | Logs operations to wp-tidy-media.log                                    |
+| run_on_save                              | 1                                | Runs operations automatically when posts are saved                      |
+| path_inc_tax_term                        | 1                                | Enables organizing media by taxonomy terms                              |
 
 All boolean settings use '1' for enabled and '0' for disabled. The plugin activates with most features enabled by default.
 
