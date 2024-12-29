@@ -106,3 +106,51 @@ function tidy_get_our_post_types()
     return $post_types;
 
 }
+
+function tidy_delete_empty_dir($dir)
+{
+    /**
+     * Delete Empty Directory
+     *
+     * Attempts to delete a directory if it exists and is empty. The function performs
+     * several checks:
+     * 1. Verifies if directory is within WordPress uploads directory
+     * 2. Verifies if the directory exists
+     * 3. Checks if the directory is empty
+     * 4. Attempts to delete the directory if conditions are met
+     *
+     * @param string $dir The absolute path to the directory to be deleted
+     * @return boolean Returns true if directory was successfully deleted, false otherwise
+     */
+
+    // Get WordPress uploads directory
+    $upload_dir = wp_upload_dir();
+    $uploads_basedir = $upload_dir['basedir'];
+
+    // Check if directory is within WordPress uploads directory
+    if (strpos($dir, $uploads_basedir) !== 0) {
+        do_my_log("❌ Security check failed: Directory " . $dir . " is not within WordPress uploads directory.");
+        return false;
+    }
+
+    // Check if directory exists
+    if (!is_dir($dir)) {
+        do_my_log("Directory " . $dir . " does not exist.");
+        return false;
+    }
+
+    // Check if directory is empty
+    if (count(glob("$dir/*")) === 0) {
+        // Attempt deletion
+        if (@rmdir($dir)) {
+            do_my_log("Directory " . $dir . " successfully deleted.");
+            return true;
+        } else {
+            do_my_log("Failed to delete directory " . $dir . " due to permissions or other error.");
+            return false;
+        }
+    }
+
+    do_my_log("Directory " . $dir . " is not empty, will not delete.");
+    return false;
+}

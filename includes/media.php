@@ -62,7 +62,7 @@ function get_attachment_obj_from_filepath($found_img_src)
 
 }
 
-function do_delete_attachment($attachment_id)
+function tidy_delete_the_attachment($attachment_id)
 {
 /**
  * Delete Attachment
@@ -77,7 +77,7 @@ function do_delete_attachment($attachment_id)
  * @param int $attachment_id The ID of the attachment to be deleted.
  * @return void
  */
-    do_my_log("do_delete_attachment()");
+    do_my_log("tidy_delete_the_attachment()");
 
     // Check if the attachment exists
     if (!wp_attachment_is_image($attachment_id) && !get_post($attachment_id)) {

@@ -53,7 +53,7 @@ function tidy_do_delete_attachments_on_post_delete($post_id)
                         if ($used_elsewhere !== true) {
                             // Go ahead and delete it
                             do_my_log("Will delete attachment with post");
-                            do_delete_attachment($attachment->ID);
+                            tidy_delete_the_attachment($attachment->ID);
                         } else {
                             // Do not delete it
                             do_my_log("Attachment used elsewhere. Will not delete.");
@@ -66,22 +66,22 @@ function tidy_do_delete_attachments_on_post_delete($post_id)
 }
 add_action('before_delete_post', 'tidy_do_delete_attachments_on_post_delete');
 
-function do_delete_attachment($attachment_id)
+function tidy_delete_the_attachment($attachment_id)
 {
 /**
  * Delete Attachment
  *
  * Cleverly uses the kitchen sink to delete all traces of an attachment. WordPress has no single way
  * to do this. So the function:
- * - Finds and deletes [sizes] of attachment, via auxillary function.
- * - Deletes attachment files.
- * - Deletes attachment metadata.
+ * - 1. Finds and deletes [sizes] of attachment, via auxillary function.
+ * - 2. Deletes attachment files.
+ * - 3. Deletes attachment metadata.
  * - Deletes attachment's directory if it becomes empty.
  *
  * @param int $attachment_id The ID of the attachment to be deleted.
  * @return void
  */
-    do_my_log("do_delete_attachment()");
+    do_my_log("tidy_delete_the_attachment()");
 
     // Check if the attachment does not exist OR is not an image
     if (!wp_attachment_is_image($attachment_id) || !get_post($attachment_id)) {
@@ -101,15 +101,13 @@ function do_delete_attachment($attachment_id)
     wp_delete_attachment_files($attachment_id, null, null, null);
 
     // 3. Delete the attachment and its metadata from the database
+    // Some question mark over whether wp_delete_attachment_files() is necessary
+    // since, supposedly, wp_delete_attachment() should do it all.
+    // Was likely coded this way to account for original_image.
     wp_delete_attachment($attachment_id, true);
 
-    // Delete directory if it's empty
-    if (is_dir($dir) && count(glob("$dir/*")) === 0) {
-        rmdir($dir);
-        do_my_log("Directory " . $dir . " deleted because it was empty.");
-    } else {
-        do_my_log("Directory " . $dir . " not empty, will not delete.");
-    }
+    // Delete the directory if it's empty
+    tidy_delete_empty_dir($dir);
 
 }
 
