@@ -62,51 +62,6 @@ function get_attachment_obj_from_filepath($found_img_src)
 
 }
 
-function tidy_delete_the_attachment($attachment_id)
-{
-/**
- * Delete Attachment
- *
- * Cleverly uses the kitchen sink to delete all traces of an attachment. WordPress has no single way
- * to do this. So the function:
- * - Finds and deletes [sizes] of attachment, via auxillary function.
- * - Deletes attachment files.
- * - Deletes attachment metadata.
- * - Deletes attachment's directory if it becomes empty.
- *
- * @param int $attachment_id The ID of the attachment to be deleted.
- * @return void
- */
-    do_my_log("tidy_delete_the_attachment()");
-
-    // Check if the attachment exists
-    if (!wp_attachment_is_image($attachment_id) && !get_post($attachment_id)) {
-        return;
-    }
-
-    // Get directory before the file is gone
-    $attachment_path = get_attached_file($attachment_id);
-    $dir = dirname($attachment_path);
-
-    // Delete [sizes] via custom function
-    do_delete_img_sizes($attachment_id);
-
-    // Delete the physical files associated with the attachment
-    wp_delete_attachment_files($attachment_id, null, null, null);
-
-    // Delete the attachment and its metadata from the database
-    wp_delete_attachment($attachment_id, true);
-
-    // Delete directory if it's empty
-    if (is_dir($dir) && count(glob("$dir/*")) === 0) {
-        rmdir($dir);
-        do_my_log("Directory " . $dir . " deleted because it was empty.");
-    } else {
-        do_my_log("Directory " . $dir . " not empty, will not delete.");
-    }
-
-}
-
 function is_id_attachment($number_found)
 {
     /**
@@ -445,42 +400,7 @@ function move_original_file($attachment_id, $old_image_details, $new_image_detai
 
 }
 
-function do_delete_img_sizes($attachment_id)
-{
-    /**
-     * Delete Image Sizes
-     *
-     * Deletes all image size variants associated with a given attachment ID.
-     *
-     * @@param int $attachment_id The ID of the attachment whose image sizes should be deleted.
-     * @return void
-     */
-    // Get all image size variants associated with the attachment
-    $image_sizes = get_intermediate_image_sizes();
-    $image_sizes[] = 'full'; // include the original image size as well
-    $attachment_meta = wp_get_attachment_metadata($attachment_id);
-
-    if (!empty($attachment_meta['sizes'])) {
-        foreach ($attachment_meta['sizes'] as $size => $size_info) {
-            if (in_array($size, $image_sizes)) {
-                $image_sizes[] = $size;
-            }
-        }
-    }
-
-    // Delete each image size variant
-    foreach ($image_sizes as $size) {
-        $image_data = wp_get_attachment_image_src($attachment_id, $size);
-        if ($image_data) {
-            $image_path = $image_data[0];
-            if (file_exists($image_path)) {
-                wp_delete_attachment_file($attachment_id, null, true);
-            }
-        }
-    }
-}
-
-function do_get_all_attachments($post_id)
+function do_get_post_attachments($post_id)
 {
     /**
      * Get All Attachments
@@ -496,19 +416,20 @@ function do_get_all_attachments($post_id)
      * @return array|null An array of attachment objects if attachments are found, or null if none are found.
      */
 
+    do_my_log(__FUNCTION__ . "...");
+
     $attachments = array();
 
-    // Get items in post content
+    // Get img elements found in body content
     $content = get_post_field('post_content', $post_id);
-
     if (!$content) {
         return;
     }
-
     $doc = tidy_get_content_dom($content);
+    $imgs_in_content = $doc->getElementsByTagName('img');
 
-    $images = $doc->getElementsByTagName('img');
-    foreach ($images as $img) {
+    // Add img srcs to attachments array
+    foreach ($imgs_in_content as $img) {
         $src = $img->getAttribute('src');
         $inline_attachment = get_attachment_obj_from_filepath($src);
         if ($inline_attachment) {
@@ -516,7 +437,7 @@ function do_get_all_attachments($post_id)
         }
     }
 
-    // Get the featured image ID
+    // Get the featured image
     $featured_image_id = get_post_thumbnail_id($post_id);
     $featured_img_obj = get_post($featured_image_id);
     if ($featured_img_obj) {

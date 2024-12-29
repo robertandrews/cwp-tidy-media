@@ -107,7 +107,7 @@ function tidy_get_our_post_types()
 
 }
 
-function tidy_delete_empty_dir($dir)
+function delete_empty_dir($dir)
 {
     /**
      * Delete Empty Directory
@@ -126,6 +126,8 @@ function tidy_delete_empty_dir($dir)
     // Get WordPress uploads directory
     $upload_dir = wp_upload_dir();
     $uploads_basedir = $upload_dir['basedir'];
+
+    do_my_log(__FUNCTION__ . "...");
 
     // Check if directory is within WordPress uploads directory
     if (strpos($dir, $uploads_basedir) !== 0) {

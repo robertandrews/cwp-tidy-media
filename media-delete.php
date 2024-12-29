@@ -1,5 +1,7 @@
 <?php
 
+add_action('before_delete_post', 'tidy_do_delete_attachments_on_post_delete');
+
 function tidy_do_delete_attachments_on_post_delete($post_id)
 {
     /**
@@ -28,17 +30,10 @@ function tidy_do_delete_attachments_on_post_delete($post_id)
             // If it's already in the trash, and we are deleting it for good
             if ($post->post_status == 'trash') {
 
-                do_my_log("🗑 tidy_do_delete_attachments_on_post_delete()...");
-
-                // Get the current screen, just for logging
-                /*
-                $current_screen = get_current_screen();
-                $screen_id = $current_screen ? $current_screen->id : '';
-                do_my_log("Screen ID: " . $screen_id);
-                 */
+                do_my_log("🧩 " . __FUNCTION__ . "...");
 
                 // Get post's attachments including featured image
-                $attachments = do_get_all_attachments($post_id);
+                $attachments = do_get_post_attachments($post_id);
 
                 // If there are attachments
                 if (is_array($attachments) || is_object($attachments)) {
@@ -47,7 +42,12 @@ function tidy_do_delete_attachments_on_post_delete($post_id)
 
                     // Loop through each attachment
                     foreach ($attachments as $attachment) {
+
+                        // Log attachment details
+                        $attachment_path = get_attached_file($attachment->ID);
+                        do_my_log("Attachment name: " . $attachment->post_title . ", File: " . basename($attachment_path));
                         do_my_log("Checking " . $attachment->ID);
+
                         // Is the attachment used elsewhere?
                         $used_elsewhere = is_attachment_used_elsewhere($attachment->ID, $post->ID);
                         if ($used_elsewhere !== true) {
@@ -64,7 +64,6 @@ function tidy_do_delete_attachments_on_post_delete($post_id)
         }
     }
 }
-add_action('before_delete_post', 'tidy_do_delete_attachments_on_post_delete');
 
 function tidy_delete_the_attachment($attachment_id)
 {
@@ -81,9 +80,9 @@ function tidy_delete_the_attachment($attachment_id)
  * @param int $attachment_id The ID of the attachment to be deleted.
  * @return void
  */
-    do_my_log("tidy_delete_the_attachment()");
+    do_my_log(__FUNCTION__ . "...");
 
-    // Check if the attachment does not exist OR is not an image
+    // If the attachment does not exist OR is not an image
     if (!wp_attachment_is_image($attachment_id) || !get_post($attachment_id)) {
         do_my_log("❌ Attachment does not exist.");
         // Return early
@@ -107,7 +106,7 @@ function tidy_delete_the_attachment($attachment_id)
     wp_delete_attachment($attachment_id, true);
 
     // Delete the directory if it's empty
-    tidy_delete_empty_dir($dir);
+    delete_empty_dir($dir);
 
 }
 
