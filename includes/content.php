@@ -2,6 +2,17 @@
 
 function tidy_get_content_dom($content)
 {
+    /**
+     * Converts an HTML content string into a DOMDocument object with proper UTF-8 encoding.
+     *
+     * This function takes HTML content, decodes HTML entities, and creates a new DOMDocument
+     * object with specific configuration for proper HTML parsing. It's configured to handle
+     * UTF-8 encoding and suppress warnings/errors during HTML loading.
+     *
+     * @param string|null $content The HTML content to convert into a DOMDocument
+     * @return DOMDocument|null Returns a configured DOMDocument object if content exists, null otherwise
+     */
+
     if ($content) {
         // Set the encoding of the input HTML string
         $content = html_entity_decode($content, ENT_QUOTES | ENT_HTML5, 'UTF-8');
