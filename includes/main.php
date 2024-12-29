@@ -447,7 +447,7 @@ function tidy_do_reorg_post_attachments($post_id)
     do_my_log('🧩 tidy_do_reorg_post_attachments()...');
 
     // TODO: Why does this omit some featured images?
-    $post_attachments = do_get_all_attachments($post_id);
+    $post_attachments = do_get_post_attachments($post_id);
 
     // $attachment_ids = implode(',', wp_list_pluck($post_attachments, 'ID'));
     // do_my_log("attach ids: ". $attachment_ids);
