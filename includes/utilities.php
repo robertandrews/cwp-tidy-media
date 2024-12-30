@@ -23,16 +23,17 @@ function do_my_log($log_message)
     }
 }
 
+/**
+ * Search For File
+ *
+ * Searches for a file in the WordPress uploads directory and its subdirectories.
+ *
+ * @param string $filename The name of the file to search for.
+ * @return string|false The absolute path to the first occurrence of the file found, or false if the file was not found.
+ */
+
 function search_for_uploaded_file($filename)
 {
-    /**
-     * Search For File
-     *
-     * Searches for a file in the WordPress uploads directory and its subdirectories.
-     *
-     * @param string $filename The name of the file to search for.
-     * @return string|false The absolute path to the first occurrence of the file found, or false if the file was not found.
-     */
     $wp_upload_dir = wp_upload_dir();
     $dirs = array($wp_upload_dir['basedir']);
 
@@ -142,4 +143,68 @@ function is_absolute_url($url)
 
     // Check if both scheme and host are present
     return isset($parsed_url['scheme']) && isset($parsed_url['host']);
+}
+
+/**
+ * Convert an absolute URL to its relative form
+ *
+ * Takes any absolute URL and converts it to a relative path by removing the scheme and host.
+ * If the URL is already relative, it will be returned unchanged.
+ *
+ * Examples:
+ * - http://mysite.com/wp-content/uploads/image.jpg -> /wp-content/uploads/image.jpg
+ * - https://othersite.com/images/photo.jpg -> /images/photo.jpg
+ * - /wp-content/uploads/image.jpg -> /wp-content/uploads/image.jpg (unchanged)
+ *
+ * @param string $url The URL to convert
+ * @return string The URL in relative form if applicable, otherwise unchanged
+ */
+function convert_to_relative_url($url)
+{
+    // If not an absolute URL or empty, return as is
+    if (!$url || !is_absolute_url($url)) {
+        return $url;
+    }
+
+    // Parse the URL to get its path component
+    $parsed_url = wp_parse_url($url);
+    $path = isset($parsed_url['path']) ? $parsed_url['path'] : '/';
+
+    // Add query string if it exists
+    if (isset($parsed_url['query'])) {
+        $path .= '?' . $parsed_url['query'];
+    }
+
+    // Add fragment if it exists
+    if (isset($parsed_url['fragment'])) {
+        $path .= '#' . $parsed_url['fragment'];
+    }
+
+    // Ensure path starts with a forward slash
+    return '/' . ltrim($path, '/');
+}
+
+/**
+ * Check if URL belongs to current site
+ *
+ * Takes a URL and checks whether it belongs to the current WordPress site
+ * by comparing the hostnames.
+ *
+ * @param string $url The URL to check
+ * @return bool True if URL belongs to current site, false otherwise
+ */
+function is_url_from_current_site($url)
+{
+    // Get site's host
+    $site_host = parse_url(home_url(), PHP_URL_HOST);
+    // Get input URL's host
+    $input_host = parse_url($url, PHP_URL_HOST);
+
+    // If input URL has no host (relative URL), it's from our site
+    if (empty($input_host)) {
+        return true;
+    }
+
+    // Check if input URL's host matches our site's host
+    return $input_host === $site_host;
 }

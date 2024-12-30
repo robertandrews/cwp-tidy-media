@@ -13,7 +13,6 @@
  */
 function get_post_body_media_elements($post_id)
 {
-
     // 1. Get the post content as DOM
     $content = get_post_field('post_content', $post_id);
     if (!$content) {
@@ -28,6 +27,8 @@ function get_post_body_media_elements($post_id)
 
     // Define the tags to search for
     $tags = array('img', 'source', 'embed'); // img, source and embed have 'src' attributes
+    // Define the attributes to search for
+    $attributes = array('src', 'alt', 'title', 'href'); //eg. ['src', 'alt', 'title', 'href']
 
     // Iterate over each tag type
     foreach ($tags as $tag) {
@@ -39,7 +40,7 @@ function get_post_body_media_elements($post_id)
             $media_item = array('tag' => $tag);
 
             // Add common attributes if they exist
-            foreach (['src', 'alt', 'title', 'href'] as $attr) {
+            foreach ($attributes as $attr) {
                 if ($element->hasAttribute($attr)) {
                     $media_item[$attr] = $element->getAttribute($attr);
                 }
@@ -49,28 +50,36 @@ function get_post_body_media_elements($post_id)
         }
     }
 
+    // Log the results
+    do_my_log(__FUNCTION__ . ": 🔍 Found " . count($body_media_elements) . " media elements in post body");
+    if (!empty($body_media_elements)) {
+        foreach ($body_media_elements as $position => $element) {
+            do_my_log($position . ": " . $element['tag'] . " with src " . $element['src']);
+        }
+    }
+
+    // Return the results
     return $body_media_elements;
 }
 
 /**
  * Get Media Objects from Post Body
  *
- * Extracts and retrieves all media objects (attachments) that are referenced
+ * Extracts and retrieves all media objects that are found and referenced
  * within a post's content body. This function scans the post content for media
- * elements and verifies if they exist as WordPress media attachments.
+ * elements and verifies if they exist as WordPress media items.
  *
  * @param int $post_id The ID of the post to search for media objects
  * @return array An array of WP_Post objects representing the media attachments found in the post body
  */
-function get_media_objects_from_post_body($post_id)
+function get_post_body_media_objects($post_id)
 {
-    echo __FUNCTION__ . "\n";
 
     // First, get the media elements from the post body
     $body_media_elements = get_post_body_media_elements($post_id);
 
     // Initialize an array to hold all attachments
-    $all_post_media = array();
+    $body_media_objects = array();
 
     if (!empty($body_media_elements)) {
         foreach ($body_media_elements as $media_element) {
@@ -78,82 +87,88 @@ function get_media_objects_from_post_body($post_id)
             $media_object = get_media_object_from_filepath($media_element['src']);
             if ($media_object) {
                 // Add to attachments array
-                $all_post_media[] = $media_object;
+                $body_media_objects[] = $media_object;
             }
         }
     }
 
-    return $all_post_media;
+    // Log the results
+    do_my_log(__FUNCTION__ . ": 🔍 Found " . count($body_media_objects) . " media objects in post body");
+    if (!empty($body_media_objects)) {
+        foreach ($body_media_objects as $position => $media_object) {
+            do_my_log($position . ": " . $media_object->post_title . " with src " . $media_object->guid);
+        }
+    }
+
+    return $body_media_objects;
 }
 
 /**
- * Get Attachment From Filepath
+ * Get Media Object From Filepath
  *
- * Gets the attachment object for a file given its URL path, which can be either:
+ * Attempts to find the attachment object for a file given its URL path, which can be either:
  * - relative URL path (e.g. /wp-content/uploads/post/client/ghost-foundation/2020/09/rafat-ali-skift.jpg)
  * - absolute URL from current site (e.g. http://mysite.com/wp-content/uploads/2020/09/image.jpg)
  *
- * @param string $found_img_src The URL path of the file
+ * @param string $found_media_src The URL path of the file
  * @return WP_Post|void The WP_Post object representing the attachment, or void if the attachment ID was not found.
  */
-function get_media_object_from_filepath($found_img_src)
+function get_media_object_from_filepath($found_media_src)
 {
-    echo __FUNCTION__ . "\n";
+    do_my_log(__FUNCTION__);
 
-    // If this is an absolute URL, verify it's from our site and convert to relative
-    if (filter_var($found_img_src, FILTER_VALIDATE_URL)) {
-        // Get site URL without protocol
-        $site_url = preg_replace('#^https?://#', '', untrailingslashit(home_url()));
-        // Get input URL without protocol
-        $input_url = preg_replace('#^https?://#', '', $found_img_src);
+    // 1. Generate an initial relative path
 
-        // Check if URL is from our site
-        if (strpos($input_url, $site_url) !== 0) {
-            do_my_log("❌ URL is not from current site: " . $found_img_src);
-            return;
-        }
-
-        // Convert to relative by removing site URL
-        $found_img_src = str_replace(home_url(), '', $found_img_src);
+    // If this is an absolute URL from another site, return early
+    if (is_absolute_url($found_media_src) && !is_url_from_current_site($found_media_src)) {
+        return;
     }
 
-    // Upload folder parts, used to generate attachment
-    $uploads_base = trailingslashit(wp_upload_dir()['baseurl']); // http://context.local:8888/wp-content/uploads/
-    $uploads_folder = str_replace(trailingslashit(home_url()), '', $uploads_base); // /wp-content/uploads/
+    // If we get here and it's an absolute URL, and from our site, convert it to relative
+    if (is_absolute_url($found_media_src) && is_url_from_current_site($found_media_src)) {
+        $found_media_src = convert_to_relative_url($found_media_src);
+    }
 
-    // Get file's attachment object
-    $found_img_url = trailingslashit(get_site_url()) . ltrim($found_img_src, '/'); // http://context.local:8888/wp-content/uploads/media/folio/clients/wired/tom_heather.jpg
+    // 2. Generate a shortened filepath to match WordPress's database format in
+    // wp_attached_file, which looks like 2023/12/image.jpg
 
-    // Correct for double-slash that happens when an abolute URL was input
-    $found_img_url = str_replace('//wp-content', '/wp-content', $found_img_url);
-    // Remove the start to just work with a local child of /uploads/
-    $img_path_no_base = str_replace($uploads_base, '', $found_img_url);
+    // Get the uploads directory information
+    $uploads = wp_upload_dir();
+    $uploads_base_url = trailingslashit($uploads['baseurl']);
 
-    // Use DB metadata to find attachment object
-    $args = array(
-        'post_type' => 'attachment',
-        'post_status' => 'inherit',
-        'meta_query' => array(
-            array(
-                'value' => $img_path_no_base,
-                'compare' => 'LIKE',
-                'key' => '_wp_attached_file',
-            ),
-        ),
-    );
+    // Extract the path relative to uploads directory
+    $relative_path = ltrim($found_media_src, '/');
+    if (strpos($relative_path, 'wp-content/uploads/') === 0) {
+        $shortened_relative_path = substr($relative_path, strlen('wp-content/uploads/')); // eg. /2020/09/image.jpg
+    }
 
-    $query = new WP_Query($args);
-    if ($query->have_posts()) {
-        $query->the_post();
-        $attachment_id = get_the_ID();
-        do_my_log("Found attachment ID " . $attachment_id . ".");
-        wp_reset_postdata();
+    // 3. Look for a wp_postmeta record with _wp_attached_file matching the shortened path
+    // eg. /2020/09/image.jpg - use direct database query for better performance
+    global $wpdb;
+    $attachment_id = $wpdb->get_var($wpdb->prepare(
+        "SELECT post_id FROM $wpdb->postmeta
+        WHERE meta_key = '_wp_attached_file'
+        AND meta_value LIKE %s",
+        '%' . $wpdb->esc_like($shortened_relative_path)
+    ));
+
+    // 4. If found, return the attachment object
+    if ($attachment_id) {
         $post_attachment = get_post($attachment_id);
+        // NEW: Double check file still exists
+        $attached_file = get_attached_file($attachment_id);
+        if (!file_exists($attached_file)) {
+            do_my_log("❌ Attachment exists in database but file missing at: " . $attached_file);
+            return null;
+        }
+        do_my_log("Found attachment ID " . $attachment_id . " with title " . $post_attachment->post_title . " and src " . $post_attachment->guid);
         return $post_attachment;
     } else {
-        do_my_log("❌ No attachment ID found.");
+        do_my_log("❌ No attachment ID found for path: " . $shortened_relative_path);
+        return null;
     }
 }
+
 /**
  * Get All Post Media
  *
@@ -169,41 +184,34 @@ function get_media_object_from_filepath($found_img_src)
  */
 function do_get_post_media_everything($post_id)
 {
-
-    echo __FUNCTION__ . "\n";
-
     // Initialize an array to hold all attachments
-    $all_post_media = array();
+    $body_media_objects = array();
 
-    // 1. Get local media found in post content, add to array
-    // TODO: Not working ok
-    $all_post_media = get_media_objects_from_post_body($post_id);
+    // 1. Get local media found in post body content, add to array
+    $body_media_objects = get_post_body_media_objects($post_id);
 
     // 2. Get featured image
-    // TODO: Works
-
     $featured_image_id = get_post_thumbnail_id($post_id);
     $featured_img_obj = get_post($featured_image_id);
     if ($featured_img_obj) {
         // Add featured image to media array
-        $all_post_media[] = $featured_img_obj;
+        $body_media_objects[] = $featured_img_obj;
     }
 
     // 3. Get post attachments
-    // TODO: Works
     $post_attachments = get_attached_media('image', $post_id);
     if ($post_attachments) {
         foreach ($post_attachments as $post_attachment) {
             // Add to media array
-            $all_post_media[] = $post_attachment;
+            $body_media_objects[] = $post_attachment;
         }
     }
 
     // 4. Deduplicate and return
 
-    if ($all_post_media) {
-        $all_post_media_unique = deduplicate_array_by_key($all_post_media, "ID");
-        return $all_post_media_unique;
+    if ($body_media_objects) {
+        $body_media_objects_unique = deduplicate_array_by_key($body_media_objects, "ID");
+        return $body_media_objects_unique;
     }
 
 }
