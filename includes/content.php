@@ -1,5 +1,15 @@
 <?php
 
+/**
+ * Function: Create a DOMDocument object from HTML content, with proper UTF-8 encoding.
+ *
+ * This function takes HTML content, decodes HTML entities, and creates a properly
+ * configured DOMDocument object. It handles UTF-8 encoding and disables warnings
+ * and errors during HTML parsing.
+ *
+ * @param string|null $content The HTML content to convert to a DOM object
+ * @return DOMDocument|null Returns a configured DOMDocument object if content exists, null otherwise
+ */
 function tidy_get_content_dom($content)
 {
     if ($content) {
@@ -17,10 +27,8 @@ function tidy_get_content_dom($content)
     }
 }
 
-function tidy_update_body_media_urls($post_id, $post_att_id, $old_image_details, $new_image_details)
-{
 /**
- * Update Body Image URLs
+ * Function: Update Body Image URLs
  *
  * When a move_* operation updates (moves) a post's image, any _other_ posts which also include the image via <img src...> will
  * find it becomes 404.
@@ -35,6 +43,9 @@ function tidy_update_body_media_urls($post_id, $post_att_id, $old_image_details,
  * @param array $new_image_details An array containing the details of the new image to replace the old image.
  * @return void This function does not return a value.
  */
+
+function tidy_update_body_media_urls($post_id, $post_att_id, $old_image_details, $new_image_details)
+{
 
     do_my_log("🧩 tidy_update_body_media_urls()...");
 
@@ -110,4 +121,54 @@ function tidy_update_body_media_urls($post_id, $post_att_id, $old_image_details,
         // do_my_log("👍🏻 No posts containing old URL.");
     }
 
+}
+
+/**
+ * Function: Get all media elements in post body
+ *
+ * This function searches for specific HTML tags (e.g., 'img', 'source', 'embed') within the post
+ * content and extracts their attributes. It returns an array of media elements, each containing
+ * the tag name and relevant attributes (e.g., 'src', 'alt', 'title', 'href').
+ *
+ * @param int $post_id The ID of the post to retrieve media elements from.
+ * @return array An array of media elements, each represented as an associative array
+ *               with the tag name and its attributes.
+ */
+
+function get_post_body_media_elements($post_id)
+{
+
+    // 1. Get the post content as DOM
+    $content = get_post_field('post_content', $post_id);
+    $dom = tidy_get_content_dom($content);
+
+    // 2. Get specified elements from the post content
+
+    // Initialize an array to hold all media elements
+    $body_media_elements = array();
+
+    // Define the tags to search for
+    $tags = array('img', 'source', 'embed'); // img, source and embed have 'src' attributes
+
+    // Iterate over each tag type
+    foreach ($tags as $tag) {
+        // Find all elements of the current tag type
+        $elements = $dom->getElementsByTagName($tag);
+
+        // Add each element's attributes to the body_media_elements array
+        foreach ($elements as $element) {
+            $media_item = array('tag' => $tag);
+
+            // Add common attributes if they exist
+            foreach (['src', 'alt', 'title', 'href'] as $attr) {
+                if ($element->hasAttribute($attr)) {
+                    $media_item[$attr] = $element->getAttribute($attr);
+                }
+            }
+
+            $body_media_elements[] = $media_item;
+        }
+    }
+
+    return $body_media_elements;
 }
