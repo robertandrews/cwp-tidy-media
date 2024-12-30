@@ -134,3 +134,12 @@ function is_id_attachment($number_found)
         return false;
     }
 }
+
+function is_absolute_url($url)
+{
+    // Parse the URL and retrieve its components
+    $parsed_url = wp_parse_url($url);
+
+    // Check if both scheme and host are present
+    return isset($parsed_url['scheme']) && isset($parsed_url['host']);
+}
