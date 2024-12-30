@@ -44,6 +44,9 @@ require_once TIDY_INCLUDES_DIR . 'main.php';
 // Include plugin media functions
 require_once TIDY_INCLUDES_DIR . 'media.php';
 
+// Include plugin media move functions
+require_once TIDY_INCLUDES_DIR . 'media-move.php';
+
 // Include plugin media delete functions
 require_once TIDY_INCLUDES_DIR . 'media-delete.php';
 
