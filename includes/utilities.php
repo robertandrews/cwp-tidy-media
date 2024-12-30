@@ -106,3 +106,31 @@ function tidy_get_our_post_types()
     return $post_types;
 
 }
+
+function is_id_attachment($number_found)
+{
+    /**
+     * Check If ID Is Attachment
+     *
+     * @param int $number_found The ID to check
+     * @return bool True if the ID is an attachment; false otherwise.
+     */
+
+    do_my_log("is_id_attachment()");
+
+    // check if an attachment (post of type 'attachment') exists with $number_found as its ID
+    $args = array(
+        'post_type' => 'attachment',
+        'post_status' => 'inherit',
+        'posts_per_page' => 1,
+        'post__in' => array($number_found),
+    );
+    $query = new WP_Query($args);
+    // If there are any results, the number is of an attachment
+    if ($query->have_posts()) {
+        return true;
+        // If not, this is not an attachment
+    } else {
+        return false;
+    }
+}
