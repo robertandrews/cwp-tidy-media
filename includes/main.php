@@ -294,7 +294,7 @@ function tidy_do_reorg_body_media($post_id)
 
                     // do_my_log("File does exist at src. Getting its attachment object...");
 
-                    $post_attachment = get_attachment_obj_from_filepath($found_attribute);
+                    $post_attachment = get_media_object_from_filepath($found_attribute);
 
                     if ($post_attachment) {
                         do_my_log("🖼 Found attachment object " . $post_attachment->ID . " - " . $post_attachment->post_title);
@@ -372,7 +372,7 @@ function tidy_do_reorg_body_media($post_id)
                     if ($search_results) {
                         do_my_log("🔍 " . basename($found_media_filepath) . " found at " . $search_results);
                         $poss_path = "/" . str_replace(get_home_path(), '', $search_results);
-                        $found_attachment = get_attachment_obj_from_filepath($poss_path);
+                        $found_attachment = get_media_object_from_filepath($poss_path);
                         $new_attachment_url = wp_get_attachment_image_url($found_attachment->ID, 'full');
                         $settings = tidy_db_get_settings();
 
@@ -447,7 +447,7 @@ function tidy_do_reorg_post_attachments($post_id)
     do_my_log('🧩 tidy_do_reorg_post_attachments()...');
 
     // TODO: Why does this omit some featured images?
-    $post_attachments = do_get_all_attachments($post_id);
+    $post_attachments = do_get_post_media_everything($post_id);
 
     // $attachment_ids = implode(',', wp_list_pluck($post_attachments, 'ID'));
     // do_my_log("attach ids: ". $attachment_ids);
@@ -515,7 +515,7 @@ function tidy_do_delete_attachments_on_post_delete($post_id)
                 do_my_log("Screen ID: " . $screen_id);
 
                 // Get post's attachments and featured image
-                $attachments = do_get_all_attachments($post_id);
+                $attachments = do_get_post_media_everything($post_id);
 
                 if (is_array($attachments) || is_object($attachments)) {
 
