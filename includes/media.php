@@ -1,26 +1,39 @@
 <?php
 
+/**
+ * Is Attachment Used Elsewhere?
+ *
+ * Determines if an attachment of a particular post is used in any other posts.
+ * This function checks whether the attachment is being used in another post's content or as a featured image.
+ * If the attachment is used elsewhere, the function returns true, otherwise it returns false.
+ *
+ * @param int $attachment_id The ID of the attachment to check.
+ * @param int $main_post_id The ID of the post where the attachment is currently being used.
+ * @return bool True if the attachment is used elsewhere, false otherwise.
+ */
 function is_attachment_used_elsewhere($attachment_id, $main_post_id)
 {
-    /**
-     * Is Attachment Used Elsewhere?
-     *
-     * Determines if an attachment of a particular post is used in any other posts.
-     * This function checks whether the attachment is being used in another post's content or as a featured image.
-     * If the attachment is used elsewhere, the function returns true, otherwise it returns false.
-     *
-     * @param int $attachment_id The ID of the attachment to check.
-     * @param int $main_post_id The ID of the post where the attachment is currently being used.
-     * @return bool True if the attachment is used elsewhere, false otherwise.
-     */
 
     do_my_log("is_attachment_used_elsewhere()");
 
+    // Validate input IDs
+    if (!$attachment_id || !$main_post_id) {
+        do_my_log("Error: Invalid attachment_id or main_post_id provided");
+        return false;
+    }
+
     $main_post = get_post($main_post_id);
     $attachment = get_post($attachment_id);
+
+    // Check if posts exist
+    if (!$main_post || !$attachment) {
+        do_my_log("Error: Could not find post or attachment with provided IDs");
+        return false;
+    }
+
     $old_image_details = old_image_details($attachment);
 
-    // Check 1: URL in body content
+    // Check 1: Is URL in body content?
     $args_attach = array(
         'post_type' => tidy_get_our_post_types(),
         'posts_per_page' => -1,
@@ -33,7 +46,7 @@ function is_attachment_used_elsewhere($attachment_id, $main_post_id)
         return true;
     }
 
-    // Check 2: used as thumbnail elsewhere
+    // Check 2: Is media object used as a post featured image (not for this post)?
     $args_thumb = array(
         'post_type' => tidy_get_our_post_types(), // Replace with the post type you want to search in
         'meta_key' => '_thumbnail_id',
@@ -47,6 +60,8 @@ function is_attachment_used_elsewhere($attachment_id, $main_post_id)
         return true;
     }
 
+    // Media not used elsewhere
+    return false;
 }
 
 function old_image_details($post_attachment)
