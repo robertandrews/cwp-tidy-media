@@ -140,6 +140,9 @@ function get_post_body_media_elements($post_id)
 
     // 1. Get the post content as DOM
     $content = get_post_field('post_content', $post_id);
+    if (!$content) {
+        return;
+    }
     $dom = tidy_get_content_dom($content);
 
     // 2. Get specified elements from the post content
