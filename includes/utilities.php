@@ -208,3 +208,17 @@ function is_url_from_current_site($url)
     // Check if input URL's host matches our site's host
     return $input_host === $site_host;
 }
+
+/**
+ * Check if URL points to an image file
+ *
+ * Takes a URL and checks if it points to an image file by examining
+ * the file extension. Supports jpg, jpeg, png, gif, and webp formats.
+ *
+ * @param string $url The URL to check
+ * @return bool True if URL points to an image file, false otherwise
+ */
+function is_image_url($url)
+{
+    return (bool) preg_match('/\.(jpe?g|png|gif|webp)$/i', $url);
+}

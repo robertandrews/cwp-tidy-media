@@ -31,7 +31,7 @@ function is_attachment_used_elsewhere($attachment_id, $main_post_id)
         return false;
     }
 
-    $old_image_details = old_image_details($attachment);
+    $old_image_details = get_old_image_details($attachment->ID);
 
     // Check 1: Is URL in body content?
     $args_attach = array(
@@ -64,189 +64,158 @@ function is_attachment_used_elsewhere($attachment_id, $main_post_id)
     return false;
 }
 
-function old_image_details($post_attachment)
+/**
+ * Generate Existing Image Details
+ *
+ * Retrieves various details of an old image attachment for a post.
+ * This is designed to make the partial folder and filepath parts available to other functions
+ * in a singular array. This avoids needing to generate those parts in those functions.
+ *
+ * @param int $attachment_id The ID of the attachment (i.e., the image).
+ * @return array An associative array containing details of the image's old location (e.g., 'dirname', 'filepath', 'subdir', 'filename', 'guid').
+ */
+function get_old_image_details($attachment_id)
 {
-    /**
-     * Generate Existing Image Details
-     *
-     * Retrieves various details of an old image attachment for a post.
-     * This is designed to make the partial folder and filepath parts available to other functions
-     * in a singular array. This avoids needing to generate those parts in those functions.
-     *
-     * @param WP_Post $post_attachment The WordPress post object representing the attachment (i.e., the image).
-     * @return array An associative array containing details of the image's old location (e.g., 'dirname', 'filepath', 'subdir', 'filename', 'guid').
-     */
-
     // Get the filepath
-    $filepath = get_attached_file($post_attachment->ID); // TODO: Stop this happening on post deletion
+    $filepath = get_attached_file($attachment_id);
     // Get the upload directory
     $upload_dir = wp_upload_dir();
     // Get the subdirectory
     $subdir = str_replace($upload_dir['basedir'], '', dirname($filepath));
     $subdir = ltrim($subdir, '/');
     // Get the guid
-    $guid = $post_attachment->guid; // TODO: Stop this happening on post deletion
+    $guid = get_post($attachment_id)->guid;
     $url_abs = trailingslashit(wp_upload_dir()['baseurl']) . trailingslashit($subdir) . basename($filepath);
     $url_rel = str_replace(home_url(), '', $url_abs);
 
     // Populate the array
     $old_image = array();
-    $old_image['filepath'] = $filepath; // /Users/robert/Sites/context.local/wp-content/uploads/post/client/contentnext/2011/12/netflix-on-tv-in-living-room-o.jpg
-    $old_image['dirname'] = dirname($filepath); // /Users/robert/Sites/context.local/wp-content/uploads/post/client/contentnext/2011/12/
-    $old_image['subdir'] = $subdir; // post/client/contentnext/2011/12
-    $old_image['filename'] = basename($filepath); // netflix-on-tv-in-living-room-o.jpg
-    // TODO: Ensure the correct URL is used for guid
-    $old_image['guid'] = $guid; // http://context.local:8888/wp-content/uploads/post/client/contentnext/2011/12/netflix-on-tv-in-living-room-o.jpg
+    $old_image['filepath'] = $filepath;
+    $old_image['dirname'] = dirname($filepath);
+    $old_image['subdir'] = $subdir;
+    $old_image['filename'] = basename($filepath);
+    $old_image['guid'] = $guid;
     $old_image['url_abs'] = $url_abs;
     $old_image['url_rel'] = $url_rel;
-    // print_r($old_image);
     return $old_image;
-
 }
 
-function new_image_details($post_id, $post_attachment)
+/**
+ * Generate Details to Relocate and Update Image
+ *
+ * Formulates various details of the new image attachment for a post.
+ *
+ * This is designed to make the partial folder and filepath parts available to other functions
+ * in a singular array. This avoids needing to generate those parts in those functions.
+ *
+ * @param int $post_id The ID of the post where the image is attached.
+ * @param int $attachment_id The ID of the attachment.
+ * @return array An associative array containing the details of the new image.
+ */
+function generate_new_image_details($post_id, $attachment_id)
 {
-    /**
-     * Generate New Image Details
-     *
-     * Formulates various details of the new image attachment for a post.
-     *
-     * This is designed to make the partial folder and filepath parts available to other functions
-     * in a singular array. This avoids needing to generate those parts in those functions.
-     *
-     * @param int $post_id The ID of the post where the image is attached.
-     * @param object $post_attachment The WP_Post object representing the attached image.
-     * @return array An associative array containing the details of the new image.
-     */
+    // Cache upload directory info - used multiple times
+    $upload_dir = wp_upload_dir();
+    $filepath = get_attached_file($attachment_id);
+    $filename = basename($filepath);
+
     // Get user's path preferences from database
-    // TODO: Use tidy_db_get_settings() instead here...
-    global $wpdb;
-    $table_name = $wpdb->prefix . 'tidy_media_organizer';
-    if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") == $table_name) {
-        $settings = $wpdb->get_results("SELECT * FROM $table_name");
-        $settings_arr = array();
-        foreach ($settings as $setting) {
-            $settings_arr[$setting->setting_name] = $setting->setting_value;
-        }
-        $path_inc_post_type = isset($settings_arr['path_inc_post_type']) ? $settings_arr['path_inc_post_type'] : 0;
-        $folder_item_taxonomy = isset($settings_arr['folder_item_taxonomy']) ? $settings_arr['folder_item_taxonomy'] : '';
-        $folder_item_post_identifier = isset($settings_arr['folder_item_post_identifier']) ? $settings_arr['folder_item_post_identifier'] : 0;
-        // These will formulate the preferred path
-    } else {
-        // No database settings
-        do_my_log("Could not get database settings.");
+    $settings = tidy_db_get_settings();
+
+    // Initialize path parts array for efficient concatenation
+    $path_parts = array();
+    $new_subdir_stem = '';
+
+    // a. Use post type?
+    if ($settings['path_inc_post_type'] == 1) {
+        $path_parts[] = get_post_type($post_id);
     }
 
-    // Build new subdir
-    $new_subdir = '';
-    // a. Use post type?
-    if ($path_inc_post_type == 1) {
-        $post_type = get_post_type($post_id);
-        $new_subdir .= $post_type;
-    }
     // b. Use taxonomy name and term?
-    if ($folder_item_taxonomy != '') {
-        $new_subdir .= '/' . $folder_item_taxonomy;
-        $post_terms = get_the_terms($post_id, $folder_item_taxonomy);
+    if (!empty($settings['folder_item_taxonomy'])) {
+        $path_parts[] = $settings['folder_item_taxonomy'];
+        $post_terms = get_the_terms($post_id, $settings['folder_item_taxonomy']);
 
         if ($post_terms) {
-            // Get the last term in the array to use as the current term
             $current_term = end($post_terms);
+            $parent_ids = get_ancestors($current_term->term_id, $settings['folder_item_taxonomy']);
 
-            // Get an array of the parent term IDs
-            $parent_ids = get_ancestors($current_term->term_id, $folder_item_taxonomy);
-
-            // Add the slugs of all the parent terms to the subdirectory
+            // Build parent terms path
             foreach ($parent_ids as $parent_id) {
-                $parent_term = get_term($parent_id, $folder_item_taxonomy);
-                $new_subdir .= '/' . $parent_term->slug;
+                $parent_term = get_term($parent_id, $settings['folder_item_taxonomy']);
+                $path_parts[] = $parent_term->slug;
             }
 
-            // Add the slug of the current term to the subdirectory
-            $new_subdir .= '/' . $current_term->slug;
+            // Add current term
+            $path_parts[] = $current_term->slug;
 
-            // Set the stem to the subdirectory without the current term slug
-            $new_subdir_stem = implode('/', array_slice(explode('/', $new_subdir), 0, -1));
+            // Store stem without the last term
+            $new_subdir_stem = implode('/', array_slice($path_parts, 0, -1));
         } else {
-            $new_subdir .= '/' . 'misc';
-            $new_subdir_stem = $new_subdir;
+            $path_parts[] = 'misc';
+            $new_subdir_stem = implode('/', $path_parts);
         }
-    } else {
-        $new_subdir = '';
-        $new_subdir_stem = '';
     }
-    // c. Are date-folders in use?
-    $wp_use_date_folders = get_option('uploads_use_yearmonth_folders');
-    if ($wp_use_date_folders == 1) {
+
+    // c. Add date folders if enabled
+    if (get_option('uploads_use_yearmonth_folders') == 1) {
         $post_date = get_post_field('post_date', $post_id);
-        $formatted_date = date('Y/m', strtotime($post_date));
-        if (!empty($new_subdir)) {
-            $new_subdir .= '/' . $formatted_date;
-        } else {
-            $new_subdir .= $formatted_date;
-        }
+        $path_parts[] = date('Y/m', strtotime($post_date));
     }
-    // new subdir is now generated
 
-    // d. Use post slug?
-    if ($folder_item_post_identifier == 1) {
-        $post_slug = get_post_field('post_name', get_post($post_id));
-
-        if (!empty($new_subdir)) {
-            $new_subdir .= '/' . $post_slug;
-        } else {
-            $new_subdir .= $post_slug;
+    // d. Add post slug if enabled
+    if ($settings['folder_item_post_identifier'] == 1) {
+        $post = get_post($post_id);
+        if ($post) {
+            $path_parts[] = $post->post_name;
         }
     }
 
-    $filepath = get_attached_file($post_attachment->ID);
+    // Generate the subdirectory path
+    $subdir = implode('/', array_filter($path_parts));
 
-    $upload_dir = wp_upload_dir();
-    $subdir = $new_subdir;
-
-    $url_abs = trailingslashit(wp_upload_dir()['baseurl']) . trailingslashit($subdir) . basename($filepath);
+    // Generate URLs efficiently
+    $base_url = trailingslashit($upload_dir['baseurl']);
+    $subdir_path = $subdir ? trailingslashit($subdir) : '';
+    $url_abs = $base_url . $subdir_path . $filename;
     $url_rel = str_replace(home_url(), '', $url_abs);
 
-    // Populate bits of $new_image
-    $new_image = array();
-    $new_image['subdir'] = $subdir; // post/client/contentnext/2011/12
-    $new_image['subdir_stem'] = $new_subdir_stem; // post/client/contentnext
-    $new_image['filepath'] = trailingslashit(trailingslashit($upload_dir['basedir']) . $subdir) . basename($filepath); // /Users/robert/Sites/context.local/wp-content/uploads/post/client/contentnext/2011/12/netflix-on-tv-in-living-room-o.jpg
-    $new_image['dirname'] = trailingslashit($upload_dir['basedir']) . $subdir; // /Users/robert/Sites/context.local/wp-content/uploads/post/client/contentnext/2011/12/
-    $new_image['filename'] = basename($filepath); // netflix-on-tv-in-living-room-o.jpg
-    // TODO: Ensure the correct URL is used for guid
-    $new_image['guid'] = trailingslashit(trailingslashit($upload_dir['baseurl']) . $subdir) . basename($filepath); // /Users/robert/Sites/context.local/wp-content/uploads/post/client/contentnext/2011/12/netflix-on-tv-in-living-room-o.jpg
-    $new_image['url_abs'] = $url_abs;
-    $new_image['url_rel'] = $url_rel;
-
-    // print_r($new_image);
-    return $new_image;
-
+    // Return the image details array
+    return array(
+        'subdir' => $subdir,
+        'subdir_stem' => $new_subdir_stem,
+        'filepath' => trailingslashit(trailingslashit($upload_dir['basedir']) . $subdir) . $filename,
+        'dirname' => trailingslashit($upload_dir['basedir']) . $subdir,
+        'filename' => $filename,
+        'guid' => $url_abs,
+        'url_abs' => $url_abs,
+        'url_rel' => $url_rel,
+    );
 }
+
+/**
+ * Custom Path Controller
+ *
+ * Handles the logic for moving image files from one path to another and updating post and metadata.
+ * Checks if a given attachment is in the folder intended by the user's specified custom format.
+ * If it is not, the main file (plus any sized files and original file) are moved, and attachment
+ * metadata is updated accordingly.
+ * Files will not be moved if they are already attached to another post.
+ *
+ * @param int $post_id - The ID of the post to which the attachment belongs.
+ * @param object $post_attachment - The attachment object to be moved.
+ * @return bool - Returns a boolean value of true if the main file move is successful, otherwise false.
+ */
 
 function custom_path_controller($post_id, $post_attachment)
 {
 
-    /**
-     * Custom Path Controller
-     *
-     * Handles the logic for moving image files from one path to another and updating post and metadata.
-     * Checks if a given attachment is in the folder intended by the user's specified custom format.
-     * If it is not, the main file (plus any sized files and original file) are moved, and attachment
-     * metadata is updated accordingly.
-     * Files will not be moved if they are already attached to another post.
-     *
-     * @param int $post_id - The ID of the post to which the attachment belongs.
-     * @param object $post_attachment - The attachment object to be moved.
-     * @return bool - Returns a boolean value of true if the main file move is successful, otherwise false.
-     */
-
     do_my_log("custom_path_controller()...");
 
     // Generate source and destination path pieces
-    $old_image_details = old_image_details($post_attachment);
+    $old_image_details = get_old_image_details($post_attachment->ID);
     // TODO: Failed to generate any custom-path details
-    $new_image_details = new_image_details($post_id, $post_attachment);
+    $new_image_details = generate_new_image_details($post_id, $post_attachment->ID);
     // do_my_log("🔬 Comparing " . $old_image_details['filepath'] . " vs " . $new_image_details['filepath']);
 
     // Check if need to move

@@ -136,7 +136,7 @@ function new_term_image_details($post_attachment, $term, $key)
 function term_img_move_controller($term_attachment, $term, $key)
 {
 
-    $old_term_image_details = old_image_details($term_attachment);
+    $old_term_image_details = get_old_image_details($term_attachment->ID);
     // print_r($old_term_image_details);
     $new_term_image_details = new_term_image_details($term_attachment, $term, $key);
     // print_r($new_term_image_details);

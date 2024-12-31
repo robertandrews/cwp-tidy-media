@@ -15,7 +15,8 @@ function tidy_do_localise_images($post_id)
      * @throws Exception If there is an error downloading an image or updating the post.
      */
 
-    do_my_log("🧩 tidy_do_localise_images()...");
+    do_my_log("-");
+    do_my_log("🧩 " . __FUNCTION__ . "...");
 
     $post_content = get_post_field('post_content', $post_id);
 
@@ -39,12 +40,10 @@ function tidy_do_localise_images($post_id)
         foreach ($tags as $tag) {
             $url = $tag->getAttribute($element_info['attr']);
 
-            // Check if URL points to an image by looking at the file extension
-            $is_image_url = preg_match('/\.(jpe?g|png|gif|webp)$/i', $url);
+            // Check if src URL 1) is an absolute URL, 2) has an image extension, 3) is not on our own website
+            if (is_absolute_url($url) && is_image_url($url) && !is_url_from_current_site($url)) {
 
-            // "Remote" URL i) starts with "http" but ii) not including http://www.yoursite.com
-            if ($is_image_url && strpos($url, 'http') === 0 && strpos($url, home_url()) === false) {
-                do_my_log("🎆 Found " . $element_info['tag'] . " " . $element_info['attr'] . " " . $url);
+                // do_my_log("🎆 Found " . $element_info['tag'] . " " . $element_info['attr'] . " " . $url);
 
                 // Check if we already have this image in the media library
                 $existing_attachment = attachment_url_to_postid($url);
@@ -103,14 +102,15 @@ function tidy_do_localise_images($post_id)
                         // Replace the URL with the new attachment URL
                         $tag->setAttribute($element_info['attr'], wp_get_attachment_url($attach_id));
 
-                        // Unhook catch_saved_post(), or wp_update_post() would cause an infinite loop
-                        remove_action('save_post', 'catch_saved_post', 10, 1);
-                        // Update the post content
-                        $post_content = $dom->saveHTML();
-                        wp_update_post(array('ID' => $post_id, 'post_content' => $post_content));
+                        // X. Update post content using dedicated function
+                        $old_image_details = array('url_rel' => $url);
+                        $new_image_details = array('url_rel' => wp_get_attachment_url($attach_id));
+                        tidy_update_body_media_urls($post_id, $attach_id, $old_image_details, $new_image_details);
                         do_my_log("✅ Updated post body.");
-                        // Hook it back up
-                        add_action('save_post', 'catch_saved_post', 10, 1);
+
+                        // 3. Attach image to this post if it was unattached
+                        tidy_do_attach_media_to_post($attach_id, $post_id);
+
                     } else {
                         do_my_log("❌ File save failed.");
                     }
@@ -306,7 +306,7 @@ function tidy_do_reorg_body_media($post_id)
                             // 2. Update the body
                             // do_my_log("Update the body...");
                             // Upload folder parts, used to generate attachment
-                            $new_image_details = new_image_details($post_id, $post_attachment);
+                            $new_image_details = generate_new_image_details($post_id, $post_attachment->ID);
 
                             $uploads_base = trailingslashit(wp_upload_dir()['baseurl']); // http://context.local:8888/wp-content/uploads/
                             $uploads_folder = str_replace(trailingslashit(home_url()), '', $uploads_base); // /wp-content/uploads/
@@ -344,17 +344,7 @@ function tidy_do_reorg_body_media($post_id)
                             }
 
                             // 3. Attach image to this post if it was unattached
-                            if ($post_attachment->post_parent === 0 || $post_attachment->post_parent === '') {
-                                do_my_log("Image " . $attachment_id . " not attached to any post - attach it to this (" . $post_id . ").");
-                                // Set the post_parent of the image to the post ID
-                                $update_args = array(
-                                    'ID' => $attachment_id,
-                                    'post_parent' => $post_id,
-                                );
-                                remove_action('save_post', 'catch_saved_post', 10, 1);
-                                wp_update_post($update_args);
-                                add_action('save_post', 'catch_saved_post', 10, 1);
-                            }
+                            tidy_do_attach_media_to_post($post_attachment->ID, $post_id);
 
                         }
 
@@ -376,7 +366,7 @@ function tidy_do_reorg_body_media($post_id)
                         $new_attachment_url = wp_get_attachment_image_url($found_attachment->ID, 'full');
                         $settings = tidy_db_get_settings();
 
-                        // $new_image_details = new_image_details($post_id, $post_attachment);
+                        // $new_image_details = generate_new_image_details($post_id, $post_attachment);
 
                         $uploads_base = trailingslashit(wp_upload_dir()['baseurl']); // http://context.local:8888/wp-content/uploads/
                         $uploads_folder = str_replace(trailingslashit(home_url()), '', $uploads_base); // /wp-content/uploads/
@@ -543,3 +533,42 @@ function tidy_do_delete_attachments_on_post_delete($post_id)
     }
 }
 add_action('before_delete_post', 'tidy_do_delete_attachments_on_post_delete');
+
+function tidy_do_attach_media_to_post($attachment_id, $post_id)
+{
+    /**
+     * Attach Media to Post
+     *
+     * Attaches a media item to a post if it's currently unattached.
+     *
+     * @param int $attachment_id The ID of the attachment to potentially attach
+     * @param int $post_id The ID of the post to attach the media to
+     * @return bool True if attachment was made, false if no attachment was needed
+     */
+
+    $post_attachment = get_post($attachment_id);
+
+    if (!$post_attachment) {
+        do_my_log("❌ Could not find attachment with ID " . $attachment_id);
+        return false;
+    }
+
+    // Only attach if currently unattached
+    if ($post_attachment->post_parent === 0 || $post_attachment->post_parent === '') {
+        do_my_log("Image " . $attachment_id . " not attached to any post - attach it to this (" . $post_id . ").");
+
+        // Set the post_parent of the image to the post ID
+        $update_args = array(
+            'ID' => $attachment_id,
+            'post_parent' => $post_id,
+        );
+
+        remove_action('save_post', 'catch_saved_post', 10, 1);
+        wp_update_post($update_args);
+        add_action('save_post', 'catch_saved_post', 10, 1);
+
+        return true;
+    }
+
+    return false;
+}
