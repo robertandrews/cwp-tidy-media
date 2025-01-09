@@ -222,3 +222,110 @@ function is_image_url($url)
 {
     return (bool) preg_match('/\.(jpe?g|png|gif|webp)$/i', $url);
 }
+
+function is_valid_image_data($image_data)
+{
+    /**
+     * Check if the given binary data represents a valid image
+     *
+     * @param string $image_data Binary string data of the potential image file
+     * @return bool True if the data represents a valid image, false otherwise
+     */
+    return (bool) getimagesizefromstring($image_data);
+}
+
+function is_valid_media_data($file_data, $allowed_types = ['image', 'video', 'audio', 'application/pdf'])
+{
+    /**
+     * Check if the given binary data represents a valid media file
+     *
+     * @param string $file_data Binary string data of the potential media file
+     * @param array $allowed_types Array of allowed media types/MIME prefixes
+     * @return bool True if the data represents a valid media file of allowed type, false otherwise
+     */
+    if (empty($file_data)) {
+        return false;
+    }
+
+    // Create a finfo instance
+    $finfo = new finfo(FILEINFO_MIME_TYPE);
+
+    // Get the MIME type of the data
+    $mime_type = $finfo->buffer($file_data);
+
+    if (!$mime_type) {
+        return false;
+    }
+
+    // Check if the MIME type matches any of our allowed types
+    foreach ($allowed_types as $type) {
+        // Handle full MIME types (like application/pdf)
+        if (strpos($type, '/') !== false) {
+            if ($mime_type === $type) {
+                return true;
+            }
+        }
+        // Handle type prefixes (like 'image', 'video', 'audio')
+        else if (strpos($mime_type, $type . '/') === 0) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function tidy_store_media_file($file_data, $file_name, $post_id)
+{
+    /**
+     * Store Media File
+     *
+     * Stores a media file to disk and creates a WordPress attachment for it.
+     * The file will be stored in the WordPress uploads directory and properly registered
+     * in the WordPress media library.
+     *
+     * @param string $file_data The binary data of the file to store
+     * @param string $file_name The name to give the file (including extension)
+     * @param int    $post_id   The ID of the post to attach this media to
+     * @return int|false        The attachment ID if successful, false if failed
+     */
+
+    // Generate default uploads destination directory path
+    $upload_dir = wp_upload_dir(); // eg. /wp-content/uploads/YEAR/MONTH/
+    $file_path = $upload_dir['path'] . '/' . $file_name; // eg. /wp-content/uploads/YEAR/MONTH/myfile.jpg
+
+    // Try to store the file
+    if (file_put_contents($file_path, $file_data) === false) {
+        do_my_log("❌ File save failed.");
+        return false;
+    }
+
+    do_my_log("Saved file to " . $file_path);
+
+    // Get the post date of the parent post
+    $post_date = get_post_field('post_date', $post_id);
+
+    // Create attachment post object
+    $attachment = array(
+        'post_title' => $file_name,
+        'post_mime_type' => wp_check_filetype($file_name)['type'],
+        'post_content' => '',
+        'post_status' => 'inherit',
+        'post_parent' => $post_id,
+        'post_date' => $post_date,
+        'post_date_gmt' => get_gmt_from_date($post_date),
+    );
+
+    // Insert the attachment into the media library
+    $attach_id = wp_insert_attachment($attachment, $file_path, $post_id);
+    if (!$attach_id) {
+        do_my_log("❌ Failed to create attachment.");
+        return false;
+    }
+
+    // Set the attachment metadata
+    $attach_data = wp_generate_attachment_metadata($attach_id, $file_path);
+    wp_update_attachment_metadata($attach_id, $attach_data);
+
+    do_my_log("Created attachment ID " . $attach_id);
+    return $attach_id;
+}

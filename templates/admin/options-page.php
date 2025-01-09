@@ -156,6 +156,20 @@ echo date('Y/m');
                                             </td>
                                         </tr>
 
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Post media folders -->
+                        <div class="postbox">
+                            <div class="postbox-header">
+                                <h2>Post attachment custom filepath</h2>
+                            </div>
+                            <div class="inside">
+                                <table class="form-table" role="presentation">
+                                    <tbody>
+
                                         <tr>
                                             <th scope="row">
                                                 <label for="path_inc_post_type">Tidy functions</label>
@@ -205,19 +219,6 @@ echo date('Y/m');
                                                 </div>
                                             </td>
                                         </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
-                        <!-- Post media folders -->
-                        <div class="postbox">
-                            <div class="postbox-header">
-                                <h2>Post attachment custom filepath</h2>
-                            </div>
-                            <div class="inside">
-                                <table class="form-table" role="presentation">
-                                    <tbody>
                                         <tr>
                                             <th scope="row">
                                                 <label for="path_inc_post_type">Organize by post type?</label>

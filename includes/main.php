@@ -15,104 +15,52 @@ function tidy_do_localise_images($post_id)
      * @throws Exception If there is an error downloading an image or updating the post.
      */
 
-    do_my_log("-");
-    do_my_log("🧩 " . __FUNCTION__ . "...");
+    do_my_log("🧩 " . __FUNCTION__ . ":");
 
+    // Why get this anymore?
     $post_content = get_post_field('post_content', $post_id);
 
-    if (!$post_content) {
-        return;
-    }
+    // First, get the media elements from the post body
+    $body_media_elements = get_post_body_media_elements($post_id);
 
-    $dom = tidy_get_content_dom($post_content);
+    // Initialize an array to hold all attachments
+    $body_media_objects = array();
 
-    // Process both img tags and anchor tags that link to images
-    $elements_to_check = array(
-        array('tag' => 'img', 'attr' => 'src'),
-        // array('tag' => 'a', 'attr' => 'href'),
-    );
+    if (!empty($body_media_elements)) {
+        foreach ($body_media_elements as $media_element) {
 
-    $num_localised = 0;
-
-    foreach ($elements_to_check as $element_info) {
-        $tags = $dom->getElementsByTagName($element_info['tag']);
-
-        foreach ($tags as $tag) {
-            $url = $tag->getAttribute($element_info['attr']);
+            $url = $media_element['src'];
 
             // Check if src URL 1) is an absolute URL, 2) has an image extension, 3) is not on our own website
             if (is_absolute_url($url) && is_image_url($url) && !is_url_from_current_site($url)) {
 
-                // do_my_log("🎆 Found " . $element_info['tag'] . " " . $element_info['attr'] . " " . $url);
+                // Get the image file contents to PHP memory
+                $file_data = file_get_contents($url);
 
-                // Check if we already have this image in the media library
-                $existing_attachment = attachment_url_to_postid($url);
-                if ($existing_attachment) {
-                    do_my_log("Image already exists in media library with ID: " . $existing_attachment);
-                    $tag->setAttribute($element_info['attr'], wp_get_attachment_url($existing_attachment));
-                    continue;
-                }
+                if ($file_data) {
+                    do_my_log("Got file data.");
 
-                // Download the image file contents
-                $image_data = file_get_contents($url);
-
-                if ($image_data) {
-                    do_my_log("🛬 Downloaded file.");
-
-                    // Check if the downloaded file is an image
-                    $image_info = getimagesizefromstring($image_data);
-                    if (!$image_info) {
-                        do_my_log("❌ Not a valid image.");
+                    // Check if the downloaded file is a valid media file
+                    if (!is_valid_media_data($file_data, ['image', 'video', 'audio', 'application/pdf'])) {
+                        do_my_log("❌ File invalid.");
                         continue;
                     }
 
-                    // Generate path info
-                    $image_info = pathinfo($url);
-                    $image_name = $image_info['basename'];
-                    // Generate uploads directory info
-                    $upload_dir = wp_upload_dir();
-                    $image_file = $upload_dir['path'] . '/' . $image_name;
+                    // Generate file pathinfo
+                    $file_pathinfo = pathinfo($url); // eg. array('dirname' => '/wp-content/uploads/2024/12', 'basename' => 'photo.jpg', 'extension' => 'jpg', 'filename' => 'photo')
+                    $file_basename = $file_pathinfo['basename']; // eg. 'photo.jpg'
 
-                    if (file_put_contents($image_file, $image_data) !== false) {
-                        do_my_log("Saved file to " . $image_file);
+                    // 1. Store the file and create attachment
+                    $attach_id = tidy_store_media_file($file_data, $file_basename, $post_id);
 
-                        // Get the post date of the parent post
-                        $post_date = get_post_field('post_date', $post_id);
-                        // Create attachment post object
-                        $attachment = array(
-                            'post_title' => $image_name,
-                            'post_mime_type' => wp_check_filetype($image_name)['type'],
-                            'post_content' => '',
-                            'post_status' => 'inherit',
-                            'post_parent' => $post_id,
-                            'post_date' => $post_date,
-                            'post_date_gmt' => get_gmt_from_date($post_date),
-                        );
-
-                        // Insert the attachment into the media library
-                        $attach_id = wp_insert_attachment($attachment, $image_file, $post_id);
-
-                        // Set the attachment metadata
-                        $attach_data = wp_generate_attachment_metadata($attach_id, $image_file);
-                        wp_update_attachment_metadata($attach_id, $attach_data);
-
-                        do_my_log("📎 Attachment created.");
-                        $num_localised++;
-
-                        // Replace the URL with the new attachment URL
-                        $tag->setAttribute($element_info['attr'], wp_get_attachment_url($attach_id));
-
-                        // X. Update post content using dedicated function
-                        $old_image_details = array('url_rel' => $url);
-                        $new_image_details = array('url_rel' => wp_get_attachment_url($attach_id));
-                        tidy_update_body_media_urls($post_id, $attach_id, $old_image_details, $new_image_details);
-                        do_my_log("✅ Updated post body.");
-
-                        // 3. Attach image to this post if it was unattached
+                    if ($attach_id) {
+                        // 2. Attach image to this post if it was unattached
                         tidy_do_attach_media_to_post($attach_id, $post_id);
 
-                    } else {
-                        do_my_log("❌ File save failed.");
+                        // 3. Update the src URL in the post content using existing function
+                        $old_image_details = array('url_abs' => $url);
+                        $new_image_details = generate_new_image_details($post_id, $attach_id);
+                        tidy_update_body_media_urls($post_id, $attach_id, $old_image_details, $new_image_details);
                     }
                 } else {
                     do_my_log("❌ File download failed.");
@@ -122,10 +70,11 @@ function tidy_do_localise_images($post_id)
                     do_my_log("🚫 Image not remote - " . $url);
                 }
             }
+
         }
     }
 
-    do_my_log("🧮 Localised images: " . $num_localised);
+    do_my_log("🧮 Localised images");
 }
 
 function tidy_do_relativise_urls($post_id)
@@ -533,42 +482,3 @@ function tidy_do_delete_attachments_on_post_delete($post_id)
     }
 }
 add_action('before_delete_post', 'tidy_do_delete_attachments_on_post_delete');
-
-function tidy_do_attach_media_to_post($attachment_id, $post_id)
-{
-    /**
-     * Attach Media to Post
-     *
-     * Attaches a media item to a post if it's currently unattached.
-     *
-     * @param int $attachment_id The ID of the attachment to potentially attach
-     * @param int $post_id The ID of the post to attach the media to
-     * @return bool True if attachment was made, false if no attachment was needed
-     */
-
-    $post_attachment = get_post($attachment_id);
-
-    if (!$post_attachment) {
-        do_my_log("❌ Could not find attachment with ID " . $attachment_id);
-        return false;
-    }
-
-    // Only attach if currently unattached
-    if ($post_attachment->post_parent === 0 || $post_attachment->post_parent === '') {
-        do_my_log("Image " . $attachment_id . " not attached to any post - attach it to this (" . $post_id . ").");
-
-        // Set the post_parent of the image to the post ID
-        $update_args = array(
-            'ID' => $attachment_id,
-            'post_parent' => $post_id,
-        );
-
-        remove_action('save_post', 'catch_saved_post', 10, 1);
-        wp_update_post($update_args);
-        add_action('save_post', 'catch_saved_post', 10, 1);
-
-        return true;
-    }
-
-    return false;
-}

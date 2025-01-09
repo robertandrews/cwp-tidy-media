@@ -46,79 +46,98 @@ function tidy_get_content_dom($content)
 
 function tidy_update_body_media_urls($post_id, $post_att_id, $old_image_details, $new_image_details)
 {
-
-    do_my_log("🧩 tidy_update_body_media_urls()...");
+    do_my_log("👉🏻 " . __FUNCTION__ . ":");
 
     // 1. Get the old URL we just updated - relative and absolute forms
-    // $old_image_details['url_rel']
+    $search_url = isset($old_image_details['url_abs']) ? $old_image_details['url_abs'] : $old_image_details['url_rel'];
 
     // 2. Do a post query for that string
-    // do_my_log("looking for " . $old_image_details['url_rel']);
     $args = array(
         'post_type' => tidy_get_our_post_types(),
         'posts_per_page' => -1,
-        'post__not_in' => array($post_id), // omit the starting post, which was already updated
-        's' => $old_image_details['url_rel'],
+        // Only exclude current post if we're not dealing with a remote URL (i.e., if url_abs isn't set)
+        'post__not_in' => !isset($old_image_details['url_abs']) ? array($post_id) : array(),
+        's' => $search_url,
     );
     $query = new WP_Query($args);
+    // do_my_log("-- " . $query->found_posts . " posts contain " . $search_url);
 
     // 3. Replace old string
-
-    // The Loop
     if ($query->have_posts()) {
         while ($query->have_posts()) {
             $query->the_post();
+            $current_post_id = get_the_ID();
+            // do_my_log("📄 Processing post ID: " . $current_post_id . " - " . get_post_field('post_title', $current_post_id));
+            do_my_log("Post ID: " . $current_post_id . " ('" . get_post_field('post_title', $current_post_id) . "') contains " . $search_url);
 
-            // Get the post content
-            $content = get_post_field('post_content', $post_id);
+            // Get the post content and media elements
+            $content = get_post_field('post_content', $current_post_id);
+            $media_elements = get_post_body_media_elements($current_post_id);
 
-            $doc = tidy_get_content_dom($content);
+            if (!empty($media_elements)) {
+                do_my_log("🖼 Found " . count($media_elements) . " media elements in post content");
+                $doc = tidy_get_content_dom($content);
+                $modified = false;
 
-            // Find all img tags in the post content
-            $images = $doc->getElementsByTagName('img');
+                foreach ($media_elements as $element) {
+                    $src = $element['src'];
+                    do_my_log("🔍 Checking media src: " . $src);
 
-            foreach ($images as $img) {
+                    // Check absolute URL first if it exists, then fall back to relative
+                    if (isset($old_image_details['url_abs']) && strpos($src, $old_image_details['url_abs']) !== false) {
+                        do_my_log("✅ Found match with url_abs: " . $old_image_details['url_abs']);
+                        $new_src = str_replace($old_image_details['url_abs'], $new_image_details['url_rel'], $src);
+                        do_my_log("🔄 Replacing with: " . $new_src);
 
-                // Get the src attribute of the img tag
-                $src = $img->getAttribute('src');
+                        // Find and update the element in the DOM
+                        $elements = $doc->getElementsByTagName($element['tag']);
+                        foreach ($elements as $el) {
+                            if ($el->getAttribute('src') === $src) {
+                                $el->setAttribute('src', $new_src);
+                                $modified = true;
+                            }
+                        }
+                    } else if (isset($old_image_details['url_rel']) && !empty($old_image_details['url_rel']) && strpos($src, $old_image_details['url_rel']) !== false) {
+                        do_my_log("✅ Found match with url_rel: " . $old_image_details['url_rel']);
+                        $new_src = str_replace($old_image_details['url_rel'], $new_image_details['url_rel'], $src);
+                        do_my_log("🔄 Replacing with: " . $new_src);
 
-                // If old URL form is in the src
-                if (strpos($src, $old_image_details['url_rel']) !== false) { // was: if ($src === $old_image_details['url_rel']) {
-
-                    // do_my_log("Found old relative URL " . $src ." in '". get_post_field('post_title', get_the_ID()) ."'. Need to replace img src with ".$new_image_details['url_rel']);
-                    $new_src = str_replace($old_image_details['url_rel'], $new_image_details['url_rel'], $src);
-                    // do_my_log("New is ".$new_src);
-                    do_my_log("Updating img src " . $src . " in '" . get_post_field('post_title', get_the_ID()) . "' to " . $new_image_details['url_rel']);
-
-                    $img->setAttribute('src', $new_src);
-                    $new_content = $doc->saveHTML();
-
+                        // Find and update the element in the DOM
+                        $elements = $doc->getElementsByTagName($element['tag']);
+                        foreach ($elements as $el) {
+                            if ($el->getAttribute('src') === $src) {
+                                $el->setAttribute('src', $new_src);
+                                $modified = true;
+                            }
+                        }
+                    } else {
+                        do_my_log("❌ No match found for this media element");
+                    }
                 }
-            }
 
-            // Save the updated post, if updates occurred
-            if ($new_content !== $content) {
-                $modified = true;
-                $content = $new_content;
+                // Save the updated post if modifications were made
+                if ($modified) {
+                    do_my_log("💾 Content modified, saving updates...");
+                    // Unhook catch_saved_post(), or wp_update_post() would cause an infinite loop
+                    remove_action('save_post', 'catch_saved_post', 10, 1);
+                    // Re-save the post
+                    wp_update_post(array(
+                        'ID' => $current_post_id,
+                        'post_content' => $doc->saveHTML(),
+                    ));
+                    // Hook it back up
+                    add_action('save_post', 'catch_saved_post', 10, 1);
+                    do_my_log("✅ Post updated successfully");
+                } else {
+                    do_my_log("ℹ️ No content changes needed");
+                }
+            } else {
+                do_my_log("ℹ️ No media elements found in post content");
             }
-            if ($modified == true) { // was if ($new_content) {
-                // do_my_log("Updating '". get_post_field('post_title', get_the_ID()) ."'");
-                // Unhook catch_saved_post(), or wp_update_post() would cause an infinite loop
-                remove_action('save_post', 'catch_saved_post', 10, 1);
-                // Re-save the post
-                wp_update_post(array(
-                    'ID' => get_the_ID(),
-                    'post_content' => $content,
-                ));
-                // Hook it back up
-                add_action('save_post', 'catch_saved_post', 10, 1);
-                // do_my_log("Done.");
-            }
-
         }
     } else {
-        // no posts found
-        // do_my_log("👍🏻 No posts containing old URL.");
+        do_my_log("ℹ️ No posts found containing the URL");
     }
 
+    wp_reset_postdata();
 }

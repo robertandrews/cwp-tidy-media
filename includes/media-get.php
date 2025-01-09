@@ -51,10 +51,11 @@ function get_post_body_media_elements($post_id)
     }
 
     // Log the results
-    do_my_log(__FUNCTION__ . ": 🔍 Found " . count($body_media_elements) . " media elements in post body");
+    do_my_log("👉🏻 " . __FUNCTION__ . ":");
+    // : 🔍 Found " . count($body_media_elements) . " media elements in post body");
     if (!empty($body_media_elements)) {
         foreach ($body_media_elements as $position => $element) {
-            do_my_log($position . ": " . $element['tag'] . " with src " . $element['src']);
+            do_my_log($position + 1 . ": " . $element['tag'] . " with src " . $element['src']);
         }
     }
 
@@ -115,7 +116,7 @@ function get_post_body_media_objects($post_id)
  */
 function get_media_object_from_filepath($found_media_src)
 {
-    do_my_log(__FUNCTION__);
+    do_my_log(__FUNCTION__ . ":");
 
     // 1. Generate an initial relative path
 
